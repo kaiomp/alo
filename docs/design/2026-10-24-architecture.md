@@ -62,7 +62,7 @@ the hard parts (crypto, sync, multi-device) come from audited libraries.
 
 | Unit | What it does | Depends on |
 |---|---|---|
-| `server/` | Docker Compose stack: Synapse, PostgreSQL, Caddy, chama-id. Config templates and a seed script. | Docker |
+| `server/` | Docker Compose stack: Synapse (main + workers), PostgreSQL, Redis, Caddy, chama-id. Config templates and a seed script. | Docker |
 | `services/chama-id/` | Phone sign-in (SMS code → signed JWT), contact discovery, device-link rendezvous. Small TypeScript service on Bun. | Synapse admin API, SQLite |
 | `web/` | WhatsApp-Web-style client. | matrix-js-sdk |
 | `android/` | Native Android app. | matrix-rust-sdk Kotlin bindings |
