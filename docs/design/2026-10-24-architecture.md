@@ -63,7 +63,7 @@ the hard parts (crypto, sync, multi-device) come from audited libraries.
 | Unit | What it does | Depends on |
 |---|---|---|
 | `server/` | Docker Compose stack: Synapse (main + workers), PostgreSQL, Redis, Caddy, chama-id. Config templates and a seed script. | Docker |
-| `services/chama-id/` | Phone sign-in (SMS code → signed JWT), contact discovery, device-link rendezvous. Small TypeScript service on Bun. | Synapse admin API, SQLite |
+| `services/chama-id/` | Phone sign-in (SMS code → signed JWT), contact discovery, device-link rendezvous. Small TypeScript service on Node 26. | Synapse admin API, SQLite |
 | `web/` | WhatsApp-Web-style client. | matrix-js-sdk |
 | `android/` | Native Android app. | matrix-rust-sdk Kotlin bindings |
 | `docs/` | Design and operator docs. | — |
@@ -209,7 +209,7 @@ The MVP (M1–M3 plus push) is the one-week target. It must be ready for million
 
 ## 10. Testing
 
-- chama-id: `bun test` unit tests (phone normalisation, OTP expiry and tries, JWT claims,
+- chama-id: `node --test` unit tests (phone normalisation, OTP expiry and tries, JWT claims,
   rate limits) plus an integration test against the real Synapse.
 - Stack: `scripts/smoke.ts` signs in two users and exchanges an encrypted message.
 - Web: Vitest for pure logic; Playwright end-to-end tests with two browser contexts
