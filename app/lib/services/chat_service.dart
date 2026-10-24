@@ -19,9 +19,6 @@ const pinnedTag = 'chat.chama.pinned';
 const archivedTag = 'chat.chama.archived';
 const privacyType = 'chat.chama.privacy';
 
-/// Above this many members a group shows no grey ✓✓ (spec §6, ticks).
-const deliveryMaxMembers = 32;
-
 /// What this device must do before it can read and send messages (spec §5).
 enum CryptoStatus {
   /// Keys are set up and this device is verified.

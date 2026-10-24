@@ -48,7 +48,9 @@ SystemKind? systemKindOf(Event e) {
 bool isVisible(Event e, {required bool isGroup, required Set<String> hidden}) {
   if (hidden.contains(e.eventId)) return false;
   if (e.type == EventTypes.Message || e.type == EventTypes.Encrypted) {
-    return e.relationshipType != RelationshipTypes.edit;
+    // m.relates_to stays in cleartext, so this also works before decryption.
+    final rel = e.relationshipType;
+    return rel != RelationshipTypes.edit && rel != RelationshipTypes.reaction;
   }
   return isGroup && systemKindOf(e) != null;
 }

@@ -9,6 +9,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// (spec section 6, "Ticks ✓✓ delivered").
 const deliveredEventType = 'chat.chama.delivered';
 
+/// Above this many members a group sends and shows no grey ✓✓ (spec §6, ticks).
+const deliveryMaxMembers = 32;
+
 /// Sends and receives `chat.chama.delivered`.
 ///
 /// Outgoing: every message from someone else that arrives by sync is acked to
@@ -48,7 +51,7 @@ class DeliveryTracker {
     if (e.senderId == _client.userID) return;
     if (e.type != EventTypes.Message && e.type != EventTypes.Encrypted) return;
     // Large groups get no delivery acks (spec §6): too many to-device messages.
-    if ((e.room.summary.mJoinedMemberCount ?? 0) > 32) return;
+    if ((e.room.summary.mJoinedMemberCount ?? 0) > deliveryMaxMembers) return;
     final perRoom = _queue.putIfAbsent(e.senderId, () => {});
     final prev = perRoom[e.room.id];
     final ts = e.originServerTs.millisecondsSinceEpoch;
@@ -75,13 +78,17 @@ class DeliveryTracker {
     }
   }
 
-  void _onDelivered(ToDeviceEvent e) {
+  Future<void> _onDelivered(ToDeviceEvent e) async {
     final roomId = e.content['room_id'];
     final ts = e.content['ts'];
-    if (roomId is! String || ts is! int) return;
-    // A forged ack only changes a tick colour, so a room check is enough.
-    if (_client.getRoomById(roomId) == null || e.sender == _client.userID) return;
-    final users = _upTo.putIfAbsent(roomId, () => {});
+    final room = roomId is String ? _client.getRoomById(roomId) : null;
+    if (room == null || ts is! int || e.sender == _client.userID) return;
+    // A forged ack only changes a tick colour, so a membership check is
+    // enough. Memory or the local database (rooms load partially): encrypted
+    // rooms keep their full member list, so no server call is needed.
+    final member = await room.requestUser(e.sender, ignoreErrors: true, requestState: false, requestProfile: false);
+    if (member?.membership != Membership.join) return;
+    final users = _upTo.putIfAbsent(room.id, () => {});
     if ((users[e.sender] ?? -1) >= ts) return;
     users[e.sender] = ts;
     _prefs.setString(_prefsKey, jsonEncode(_upTo));
