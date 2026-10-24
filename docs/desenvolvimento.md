@@ -135,7 +135,7 @@ chama/
 │   ├── web/                    página e ícones da versão web (web/pkg é gerado)
 │   └── assets/                 fontes e marca
 └── docs/
-    ├── design/                 especificação de arquitetura
+    ├── design/                 documento de arquitetura
     ├── imagens/                capturas de tela e logo usados na documentação
     ├── chama-id-api.md         API do chama-id
     ├── desenvolvimento.md      este guia
@@ -144,7 +144,7 @@ chama/
 
 Outros documentos: [README do app](../app/README.md),
 [API do chama-id](chama-id-api.md), [operação em produção](operacao.md) e a
-[especificação de arquitetura](design/2026-10-24-architecture.md).
+[arquitetura](design/2026-10-24-architecture.md).
 
 ---
 
@@ -244,7 +244,7 @@ O que o `init.sh` faz a cada `make up`:
 ### Fatos do ambiente local
 
 - Endereço base: `http://localhost:8080` (no emulador Android: `http://10.0.2.2:8080`).
-- `server_name` é `chama.test`. As contas têm ID opaco, por exemplo `@u7k3m9q2x4w8a1b5:chama.test`
+- `server_name` é `chama.test`. As contas têm ID opaco, por exemplo `@u7k3m5q2x4w6a2b5c:chama.test`
   (`u` + 16 caracteres aleatórios). O número de telefone nunca aparece no ID.
 - O SMS é simulado: o código de verdade aparece no log do chama-id, e o código fixo `000000` é
   aceito para qualquer número que tenha pedido um código (`CHAMA_DEV=1`). Para ver o código
@@ -739,6 +739,5 @@ certo é `10.0.2.2`.
 
 ### O push não chega no emulador
 
-Rode `cd app && ./scripts/ntfy-setup.sh` com a pilha e o emulador ligados. O teste de push
-espera o registro com a mensagem `push registration (is ntfy set up?)` quando o ntfy não está
-configurado.
+Rode `cd app && ./scripts/ntfy-setup.sh` com a pilha e o emulador ligados. Sem o ntfy configurado, o teste
+de push falha esperando o registro, com a mensagem `push registration (is ntfy set up?)`.

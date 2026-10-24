@@ -1,6 +1,6 @@
 # API do chama-id
 
-O chama-id é o serviço de entrada do Chama (especificação, seção 4): ele confirma o número de
+O chama-id é o serviço de entrada do Chama ([arquitetura, seção 4](design/2026-10-24-architecture.md#4-identidade-e-entrada)): ele confirma o número de
 telefone por código SMS e libera o login no servidor Matrix. Também responde quais contatos da
 agenda têm conta e cuida da redefinição de identidade de criptografia.
 
@@ -75,7 +75,7 @@ Confere o código e depois encontra ou cria a conta do telefone.
   ```json
   {
     "phone": "5511987654321",
-    "user_id": "@u7k3m9q2x4w8a1b5c:chama.test",
+    "user_id": "@u7k3m5q2x4w6a2b5c:chama.test",
     "homeserver": "http://localhost:8080",
     "new_account": true,
     "login_token": "<JWT>"
@@ -117,7 +117,7 @@ curl -s -XPOST http://localhost:8080/id/v1/directory/lookup \
 
 ### `POST /id/v1/account/reset-identity`
 
-Para um telefone novo sem a chave de recuperação (especificação, seções 4 e 5). Exige um token
+Para um telefone novo sem a chave de recuperação (arquitetura, [seção 4](design/2026-10-24-architecture.md#4-identidade-e-entrada) e [seção 5](design/2026-10-24-architecture.md#5-criptografia-aparelhos-e-vinculação)). Exige um token
 de acesso válido da conta, um segundo código SMS, novo, para o mesmo telefone, e as novas chaves
 de cross-signing **públicas**. Quem cria as chaves é o celular; as chaves privadas nunca saem
 dele.
@@ -206,7 +206,7 @@ sozinho: o primeiro envio de chaves de cross-signing não exige autenticação i
 | Tentativas erradas por telefone | 10 em 24 h | igual |
 | Pedidos de código por IP | 10 por hora | ×100 |
 | Buscas por conta | 30 por hora | ×100 |
-| Hashes buscados por conta | 10 000 em 24 h (janela fixa a partir da primeira busca) | ×100 |
+| Hashes buscados por conta | 10.000 em 24 h (janela fixa a partir da primeira busca) | ×100 |
 | Tokens de acesso inválidos na busca, por IP | 100 por hora (tokens válidos não contam) | ×100 |
 | Chamadas de reset-identity por IP | 10 por hora | ×100 |
 | Tamanho do corpo | 16 KiB (lookup: 96 KiB, reset-identity: 8 KiB) | igual |
@@ -218,9 +218,9 @@ sozinho: o primeiro envio de chaves de cross-signing não exige autenticação i
 - No modo de desenvolvimento, o código `000000` é aceito para qualquer telefone que tenha pedido
   um código.
 
-## Privacidade da busca de contatos (issue #7)
+## Privacidade da busca de contatos ([issue #7](https://github.com/kaiomp/chama/issues/7))
 
-Decisão para o M3: manter hashes SHA-256 simples e limitar quantos números uma conta pode testar.
+Decisão para a etapa M3: manter hashes SHA-256 simples e limitar quantos números uma conta pode testar.
 
 - Não há limite de busca por IP. As operadoras móveis brasileiras colocam muitos celulares atrás
   de um mesmo endereço IP (CGNAT, o compartilhamento de um IP público entre muitos clientes),
@@ -229,7 +229,7 @@ Decisão para o M3: manter hashes SHA-256 simples e limitar quantos números uma
   por IP (100 por hora), porque cada um custa ao chama-id uma chamada ao Synapse; passado esse
   limite, os tokens desse IP que o chama-id não viu nos últimos 60 s são recusados até a janela
   passar.
-- Cada conta pode fazer 30 buscas por hora e enviar 10 000 hashes em 24 horas. A primeira
+- Cada conta pode fazer 30 buscas por hora e enviar 10.000 hashes em 24 horas. A primeira
   sincronização de uma agenda grande cabe nisso; depois, o app confere cada número no máximo
   uma vez por dia.
 - O chama-id não guarda nem registra em log os hashes que um cliente envia. Ele guarda só uma
@@ -241,12 +241,12 @@ Risco residual, aceito por enquanto:
   então um hash pode ser revertido testando todos os números. O operador, portanto, consegue
   ver quais números estão na agenda de alguém enquanto a busca é processada. "Não guardado" é
   uma promessa do operador, não uma propriedade do protocolo.
-- Um atacante com muitas contas confirmadas por SMS pode testar 10 000 números por conta por
+- Um atacante com muitas contas confirmadas por SMS pode testar 10.000 números por conta por
   dia para descobrir quem usa o Chama. Listar todos os celulares brasileiros levaria centenas de
   milhares de contas-dia (cada conta precisa do próprio chip).
 - Um esquema de descoberta privada de contatos (por exemplo um enclave seguro ou interseção
   privada de conjuntos) elimina os dois riscos. É criptografia nova no servidor e continua em
-  aberto na issue #7 (M7).
+  aberto na [issue #7](https://github.com/kaiomp/chama/issues/7) (M7).
 
 ## Outros erros
 

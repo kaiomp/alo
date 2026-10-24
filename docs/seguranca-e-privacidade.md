@@ -7,7 +7,7 @@ os limites**. Foi escrito para quem vai operar, financiar ou apoiar o Chama (ins
 órgãos públicos, financiadores) e também para desenvolvedores. Os detalhes técnicos estão na
 [arquitetura](design/2026-10-24-architecture.md) e na [API do chama-id](chama-id-api.md).
 
-Situação: reflete o código depois do M3 (2026-10-24). Onde algo ainda é plano, o texto diz em
+Situação: reflete o código depois da etapa M3 (2026-10-24). Onde algo ainda é plano, o texto diz em
 qual marco ele entra.
 
 ## Resumo em uma frase
@@ -95,7 +95,7 @@ nem por resposta rápida na notificação.
 ### 2. Chaves só para aparelhos verificados
 
 Entrar com o código SMS **não basta para ler mensagens**. Um aparelho novo só recebe as chaves
-das mensagens depois de provar que é do dono, com a chave de recuperação (e, a partir do M4,
+das mensagens depois de provar que é do dono, com a chave de recuperação (e, a partir da etapa M4,
 também por outro aparelho do mesmo dono). O app nunca compartilha chaves com aparelhos não
 verificados (`ShareKeysWith.crossVerifiedIfEnabled`). Isso vale contra o golpista do SIM swap
 e contra o próprio operador, que controla a entrada e poderia entrar como qualquer pessoa.
@@ -103,18 +103,18 @@ e contra o próprio operador, que controla a entrada e poderia entrar como qualq
 ### 3. Aviso de "código de segurança mudou"
 
 Cada app guarda a última chave mestra vista de cada contato. Quando ela muda (por exemplo, num
-reset de identidade), o app grava "O código de segurança de {nome} mudou" em todas as conversas
+redefinição de identidade), o app grava "O código de segurança de {nome} mudou" em todas as conversas
 com essa pessoa. A comparação é feita **no aparelho**, então o operador não consegue esconder o
 aviso.
 
 <p align="center"><img src="imagens/android-chave-de-recuperacao-claro.webp" width="240" alt="Tela da chave de recuperação gerada no aparelho"></p>
 <p align="center"><em>A chave de recuperação é gerada no aparelho e só o usuário a guarda.</em></p>
 
-### 4. O reset de identidade desconecta os outros aparelhos
+### 4. A redefinição de identidade desconecta os outros aparelhos
 
-Quem perdeu o celular e a chave de recuperação pode resetar a identidade com um segundo código
-SMS. O reset **desconecta todos os outros aparelhos da conta**. Assim, um golpista que fizer
-reset depois de um SIM swap derruba o dono verdadeiro, que percebe na hora, e os contatos
+Quem perdeu o celular e a chave de recuperação pode redefinir a identidade com um segundo código
+SMS. A redefinição **desconecta todos os outros aparelhos da conta**. Assim, um golpista que fizer a
+redefinição depois de um SIM swap derruba o dono verdadeiro, que percebe na hora, e os contatos
 recebem o aviso de código de segurança. As mensagens antigas continuam ilegíveis no aparelho
 novo.
 
@@ -123,7 +123,7 @@ flowchart TD
     g["Golpista com o chip da vítima"] --> sms["Entra com o código SMS"]
     sms --> nokeys["Aparelho novo, não verificado:<br/>não recebe as chaves das mensagens"]
     nokeys --> read{"Quer ler as<br/>conversas?"}
-    read -- "sem a chave de recuperação" --> reset["Faz o reset de identidade<br/>com outro código SMS"]
+    read -- "sem a chave de recuperação" --> reset["Faz a redefinição de identidade<br/>com outro código SMS"]
     reset --> out["Todos os aparelhos da vítima<br/>são desconectados"]
     reset --> notice["Contatos veem<br/>'O código de segurança mudou'"]
     reset --> old["Mensagens antigas<br/>continuam ilegíveis"]
@@ -157,7 +157,8 @@ sistema. O mapa número → conta da agenda também fica no armazenamento seguro
 - Registros de IP: apagados depois de 7 dias (configurado).
 - Hashes enviados na busca de contatos: não são guardados nem registrados; o chama-id guarda só
   uma contagem por conta para o limite diário.
-- Códigos SMS: guardados só como hash, por 5 minutos.
+- Códigos SMS: guardados só como hash; valem 5 minutos e são apagados quando usados (um código
+  não usado pode ficar no banco por mais de 24 horas).
 - Mensagens e mídia: **decidido** guardar só até a entrega, no máximo 30 dias, com o histórico
   vivendo nos celulares ([issue #12](https://github.com/kaiomp/chama/issues/12), M5). **Ainda não
   está configurado:** hoje o servidor guarda as mensagens cifradas sem prazo.
@@ -184,15 +185,15 @@ reduz cada risco e o plano.
 | Limite | O que significa | O que já ajuda | Plano |
 |---|---|---|---|
 | **Metadados visíveis** | O operador sabe quem tem conta, quem conversa com quem, em quais grupos e quando. Nomes e fotos de perfil e de grupos não são cifrados. | Registros de IP por 7 dias; retenção curta decidida. | Retenção de 30 dias (M5). Metadados são inerentes ao modelo com servidor; a federação (seção 13 da arquitetura) evita que um único operador veja tudo. |
-| **Hashes de contatos podem ser revertidos** | Há poucos números de celular possíveis, então um hash SHA-256 pode ser revertido testando todos. O operador pode ver quais números estão na agenda de um usuário durante a consulta. Quem tiver muitas contas verificadas pode testar 10 000 números por conta por dia para descobrir quem usa o Chama. | Consultas exigem conta verificada por SMS; 30 consultas por hora e 10 000 hashes por dia por conta; os hashes não são guardados. Listar todos os celulares do Brasil exigiria centenas de milhares de contas-dia, cada uma com seu próprio chip. | Descoberta privada de contatos (por exemplo, enclave seguro ou interseção privada de conjuntos), [issue #7](https://github.com/kaiomp/chama/issues/7), M7. |
-| **SIM swap até o PIN do M4** | Com o chip da vítima, um golpista entra na conta. Sem a chave de recuperação ele não lê nada, mas pode fazer o reset de identidade e passar a falar em nome da vítima dali em diante. | O reset derruba os aparelhos da vítima e mostra "código de segurança mudou" aos contatos; mensagens antigas continuam protegidas. | PIN da conta (verificação em duas etapas, que também bloqueia o novo registro do número por 7 dias), [issue #3](https://github.com/kaiomp/chama/issues/3), M4. |
-| **Mensagens de aparelho não verificado aparecem normalmente na conversa** | Um aparelho que entrou só com SMS (SIM swap ou operador) não lê nada, mas pode enviar mensagens. A notificação já esconde nome e texto, mas dentro da conversa a mensagem aparece como as outras. Hoje o dono também não recebe aviso de "aparelho novo". | Notificação genérica "Nova mensagem" para esses casos. | Aviso na conversa ("Enviada por um dispositivo não verificado"), [issue #11](https://github.com/kaiomp/chama/issues/11), e avisos de aparelho novo, M4. |
+| **Hashes de contatos podem ser revertidos** | Há poucos números de celular possíveis, então um hash SHA-256 pode ser revertido testando todos. O operador pode ver quais números estão na agenda de um usuário durante a consulta. Quem tiver muitas contas verificadas pode testar 10.000 números por conta por dia para descobrir quem usa o Chama. | Consultas exigem conta verificada por SMS; 30 consultas por hora e 10.000 hashes por dia por conta; os hashes não são guardados. Listar todos os celulares do Brasil exigiria centenas de milhares de contas-dia, cada uma com seu próprio chip. | Descoberta privada de contatos (por exemplo, enclave seguro ou interseção privada de conjuntos), [issue #7](https://github.com/kaiomp/chama/issues/7), M7. |
+| **SIM swap até o PIN da etapa M4** | Com o chip da vítima, um golpista entra na conta. Sem a chave de recuperação ele não lê nada, mas pode fazer a redefinição de identidade e passar a falar em nome da vítima dali em diante. | A redefinição derruba os aparelhos da vítima e mostra "código de segurança mudou" aos contatos; mensagens antigas continuam protegidas. | PIN da conta (verificação em duas etapas, que também bloqueia o novo registro do número por 7 dias), [issue #3](https://github.com/kaiomp/chama/issues/3), M4. |
+| **Mensagens de aparelho não verificado aparecem normalmente na conversa** | Um aparelho que entrou só com SMS (SIM swap ou operador) não lê nada, mas pode enviar mensagens. A notificação já esconde nome e texto, mas dentro da conversa a mensagem aparece como as outras. Hoje o dono também não recebe aviso de "aparelho novo". | Notificação genérica "Nova mensagem" para esses casos. | Aviso na conversa ("Enviada por um aparelho não verificado"), [issue #11](https://github.com/kaiomp/chama/issues/11), e avisos de aparelho novo, M4. |
 | **O operador controla a entrada** | Quem roda o chama-id pode emitir logins e, mexendo no próprio servidor, instalar chaves novas numa conta ou incluir um participante falso num grupo. | Esses ataques deixam rastro que o servidor não esconde: "código de segurança mudou" (comparação local) e o aviso de "entrou" no grupo. O operador também pode bloquear usuários. | Avisos de aparelho novo e PIN (M4); federação para não depender de um único operador. |
 | **Lei de outro país, se hospedado em nuvem dos EUA** | O CLOUD Act (lei dos EUA de 2018) permite que autoridades dos EUA exijam dados de empresas americanas, mesmo guardados fora dos EUA. Num servidor em AWS, Google Cloud ou Azure, inclusive na região de São Paulo, os metadados e as mensagens cifradas podem ser entregues. O conteúdo continua cifrado. | A criptografia de ponta a ponta protege o conteúdo em qualquer hospedagem. | Recomendação para operadores: hospedar em infraestrutura própria ou de provedores sob jurisdição brasileira. |
 | **Retenção ainda não configurada** | Hoje o servidor guarda as mensagens cifradas sem prazo. Se um dia uma chave vazar, mais histórico estaria exposto. | Conteúdo cifrado; registros de IP por 7 dias. | Retenção de 30 dias, [issue #12](https://github.com/kaiomp/chama/issues/12), M5. |
 | **Web: dados locais sem cifra própria** | Na web, o app guarda dados e chaves no IndexedDB do navegador, sem a cifra extra que o Android tem (SQLCipher). | A proteção é a do perfil do navegador e do computador. | Vinculação da web pelo QR (M4). Para computadores compartilhados, sair da conta ao terminar. |
 | **Push no build da Play Store passa pelo Google** | O Google não vê o conteúdo (vai cifrado), mas vê quando um aparelho recebe notificações. | Conteúdo cifrado; o build F-Droid não usa nenhum serviço do Google. | — |
-| **Reciclagem de número: caso raro** | Quem saiu da conta e ficou de 8 a 45 dias sem abrir o app, com a última entrada há mais de 45 dias, pode ganhar uma conta nova ao voltar. | A regra protege o caso comum (número repassado pela operadora). | O PIN do M4 impede a troca automática para quem tiver PIN. |
+| **Reciclagem de número: caso raro** | Quem saiu da conta e ficou de 8 a 45 dias sem abrir o app, com a última entrada há mais de 45 dias, pode ganhar uma conta nova ao voltar. | A regra protege o caso comum (número repassado pela operadora). | O PIN da etapa M4 impede a troca automática para quem tiver PIN. |
 | **Registros de acesso e a lei brasileira** | O Marco Civil da Internet (art. 15) exige que provedores de aplicação com fins econômicos guardem registros de acesso por 6 meses. Um operador sem fins lucrativos pode não se enquadrar, mas isso precisa ser confirmado. | — | Cada operador deve confirmar com sua assessoria jurídica antes do lançamento. |
 
 ## O que cada pessoa pode fazer
@@ -210,7 +211,7 @@ reduz cada risco e o plano.
 
 - Não mudar o comportamento de segurança do código (por exemplo, compartilhar chaves com
   aparelhos não verificados). Os apps oficiais seguem o código aberto.
-- Manter a retenção curta (IPs por 7 dias, mensagens até 30 dias quando o M5 entrar).
+- Manter a retenção curta (IPs por 7 dias, mensagens até 30 dias quando a etapa M5 entrar).
 - Preferir hospedagem sob jurisdição brasileira.
 - Publicar relatórios de transparência e permitir auditorias independentes.
 

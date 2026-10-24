@@ -36,7 +36,7 @@ As diferenças estão por trás:
 |---|---|---|
 | Dono | Uma empresa privada (Meta) | Ninguém em particular: código aberto, pensado para ser operado por instituições públicas ou sem fins lucrativos |
 | Código | Fechado | Aberto (AGPL-3.0), qualquer pessoa pode auditar |
-| Anúncios e venda de dados | Faz parte do negócio da empresa dona | Não existem |
+| Anúncios e uso de dados | Anúncios na aba Atualizações (desde 2025) e dados compartilhados com a Meta | Não existem |
 | Algoritmo, feed ou recomendação | Há conteúdo recomendado em algumas áreas | Não existe. A lista segue só a ordem da última mensagem |
 | Protocolo | Fechado | Aberto (Matrix). Outros servidores compatíveis podem existir |
 | Criptografia de ponta a ponta | Sim | Sim, em todas as conversas, sem exceção |
@@ -128,8 +128,8 @@ Sobre a agenda: para mostrar quem já usa o Chama, o app manda ao servidor um re
 (hash) de cada número, e não o número em si. Mas como a quantidade de números de celular
 possíveis é pequena, quem opera o servidor conseguiria descobrir os números a partir desses
 resumos. O Chama não guarda nem registra esses resumos, mas isso é uma promessa do operador, não
-uma garantia técnica. O app explica isso antes de pedir acesso aos contatos, e você pode negar o
-acesso e iniciar conversas digitando o número. Um método de busca mais privado está planejado
+uma garantia técnica. Antes de pedir acesso, o app explica que só envia os números em forma codificada (hash) e que
+você pode negar. Sem o acesso, dá para iniciar conversas digitando o número. Um método de busca mais privado está planejado
 antes do lançamento ([#7](https://github.com/kaiomp/chama/issues/7)).
 
 ### Quem administra o servidor pode ler minhas conversas?
@@ -191,7 +191,7 @@ números e sabe entrar num app com um código por SMS. Sem senha para esquecer, 
 usuário para inventar.
 
 Mas o número **não é** a sua identidade dentro do Chama. Cada conta tem um identificador
-aleatório (algo como `@u7k3m9q2x4w8a1b5:chama.chat`), e o número serve só para entrar e para seus
+aleatório (algo como `@u7k3m5q2x4w6a2b5c:chama.chat`), e o número serve só para entrar e para seus
 contatos acharem você. Isso tem duas vantagens:
 
 - Seu número não fica gravado nos grupos e conversas.
@@ -200,8 +200,8 @@ contatos acharem você. Isso tem duas vantagens:
 
 ### E se eu trocar de número, ou a operadora der meu número antigo para outra pessoa?
 
-As operadoras brasileiras repassam números cancelados para novos clientes depois de uns 180
-dias. No Chama:
+As operadoras brasileiras repassam números cancelados para novos clientes depois de alguns
+meses (a Anatel define uma quarentena mínima). No Chama:
 
 - Se o número entrar de novo em até 45 dias desde o último uso, é a mesma conta (e o aparelho
   novo ainda precisa ser confirmado com a chave de recuperação).
@@ -312,7 +312,8 @@ Configurações → Notificações o app mostra se as notificações estão ativ
 
 O Chama é um projeto de código aberto, feito para ser operado por uma instituição pública ou sem
 fins lucrativos. Qualquer pessoa pode ler o código, apontar problemas e contribuir. Para começar,
-veja o [guia de desenvolvimento](desenvolvimento.md).
+veja o [guia de desenvolvimento](desenvolvimento.md). Instituições e financiadores que queiram
+apoiar ou operar um servidor encontram o caminho em [Como apoiar](../README.md#como-apoiar).
 
 ### Quem paga os servidores?
 
@@ -356,8 +357,8 @@ de um servidor específico.
 ### Funciona sem internet?
 
 Não, ainda não. Como o WhatsApp, o Chama precisa de internet (dados móveis ou Wi-Fi). Mensagens
-enviadas sem conexão ficam com um reloginho até a conexão voltar, e o app mostra "Conectando…"
-enquanto isso.
+enviadas sem conexão ficam com um reloginho enquanto o app tenta enviar (até 30 segundos); depois aparece um aviso
+vermelho e basta tocar para tentar de novo. Sem conexão, o app mostra "Conectando…".
 
 Um "modo sem internet", para celulares próximos trocarem mensagens por Bluetooth ou Wi-Fi Direct
 em protestos, apagões ou bloqueios, está na lista de pesquisa para depois do lançamento

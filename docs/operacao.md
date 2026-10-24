@@ -2,7 +2,7 @@
 
 Este documento é para quem vai operar um servidor Chama: instituições, equipes de
 infraestrutura e financiadores que querem entender o que custa e o que dá trabalho. Ele separa
-com clareza o que **já existe** no repositório do que **ainda falta** (o marco M7, issue #6).
+com clareza o que **já existe** no repositório do que **ainda falta** (o marco M7, [issue #6](https://github.com/kaiomp/chama/issues/6)).
 
 > **Situação hoje (outubro de 2026): o Chama ainda não roda em produção.** A pilha deste
 > repositório é a de desenvolvimento. O ponto que bloqueia é o SMS: não há provedor de SMS real,
@@ -12,7 +12,7 @@ com clareza o que **já existe** no repositório do que **ainda falta** (o marco
 > precisa dos ajustes listados aqui.
 
 Para rodar a pilha local, veja o [guia de desenvolvimento](desenvolvimento.md). Para a
-arquitetura completa, veja a [especificação](design/2026-10-24-architecture.md), seções 11 a 13.
+arquitetura completa, veja o [documento de arquitetura](design/2026-10-24-architecture.md), seções 11 a 13.
 
 ## Sumário
 
@@ -41,7 +41,7 @@ arquitetura completa, veja a [especificação](design/2026-10-24-architecture.md
 | Proxy | Caddy com as rotas e o bloqueio da API admin | HTTPS com domínio real |
 | Push | Synapse → Sygnal → UnifiedPush ou FCM, só com IDs; Sygnal numa rede isolada | firewall de saída do Sygnal na produção; tirar a liberação da rede de desenvolvimento |
 | Mídia | worker de mídia em disco local | armazenamento compatível com S3 e uma CDN na frente |
-| Retenção | logs de IP do Synapse por 7 dias | política de 30 dias para mensagens e mídia (issue #12); rotação dos logs do Docker |
+| Retenção | logs de IP do Synapse por 7 dias | política de 30 dias para mensagens e mídia ([issue #12](https://github.com/kaiomp/chama/issues/12)); rotação dos logs do Docker |
 | Monitoramento | verificações de saúde em cada serviço | métricas, alertas e um teste de carga |
 | App | builds de release só com HTTPS, assinatura vinda do ambiente, flavors F-Droid e Play | publicação nas lojas |
 | Documentação | este documento | guia de implantação passo a passo |
@@ -51,7 +51,7 @@ arquitetura completa, veja a [especificação](design/2026-10-24-architecture.md
 ## 2. Arquitetura de produção
 
 O ambiente local já usa o mesmo desenho da produção. Na produção cada peça ganha réplicas
-(especificação, seção 12):
+([arquitetura, seção 12](design/2026-10-24-architecture.md#12-escala-milhões-de-usuários-desde-o-lançamento)):
 
 ```mermaid
 flowchart TB
@@ -86,19 +86,19 @@ flowchart TB
     chamaid --> sms["Provedor de SMS"]
 ```
 
-Metas para os primeiros meses (especificação, seção 12):
+Metas para os primeiros meses ([arquitetura, seção 12](design/2026-10-24-architecture.md#12-escala-milhões-de-usuários-desde-o-lançamento)):
 
 | Métrica | Meta |
 |---|---|
 | Contas | 5 milhões |
 | Usuários ativos por dia | 1 milhão |
-| Conexões simultâneas | 100 000 |
-| Pico de mensagens | 2 000 por segundo |
+| Conexões simultâneas | 100.000 |
+| Pico de mensagens | 2.000 por segundo |
 
 > **Limite conhecido.** Uma única instalação do Synapse está comprovada com centenas de milhares
 > de usuários ativos, não dezenas de milhões. Acima disso, a ideia é dividir os usuários entre
-> vários servidores Chama federados, por exemplo por região (especificação, seção 13). A
-> estimativa de custo da issue #6 calcula cerca de 20 servidores federados (entre 10 e 40) para
+> vários servidores Chama federados, por exemplo por região ([arquitetura, seção 13](design/2026-10-24-architecture.md#13-modelo-de-federação-proposta)). A
+> estimativa de custo da [issue #6](https://github.com/kaiomp/chama/issues/6) calcula cerca de 20 servidores federados (entre 10 e 40) para
 > 1 milhão de usuários por dia.
 
 ---
@@ -140,7 +140,7 @@ Os limites que protegem o custo e as pessoas já estão prontos e testados: 1 c�
 e 5 por dia por telefone, 10 pedidos por hora por IP, código válido por 5 minutos e no máximo 5
 tentativas (tabela completa na [API do chama-id](chama-id-api.md#limites)).
 
-Opções citadas na especificação: Zenvia, Infobip, Twilio ou verificação por chamada perdida
+Opções citadas na [arquitetura, seção 12](design/2026-10-24-architecture.md#12-escala-milhões-de-usuários-desde-o-lançamento): Zenvia, Infobip, Twilio ou verificação por chamada perdida
 (flash call). O custo pesa:
 
 | Provedor (checado em 24/10/2026) | Custo para 5 milhões de cadastros |
@@ -151,7 +151,7 @@ Opções citadas na especificação: Zenvia, Infobip, Twilio ou verificação po
 
 Esse é um custo único de cadastro; novos aparelhos e redefinições geram mais SMS depois.
 
-Ponto em aberto (issue #6): tentativas erradas de código ainda não têm limite por IP. Um atacante
+Ponto em aberto ([issue #6](https://github.com/kaiomp/chama/issues/6)): tentativas erradas de código ainda não têm limite por IP. Um atacante
 pode gastar as tentativas diárias de um número e bloquear a pessoa por 24 horas.
 
 ---
@@ -168,7 +168,7 @@ pode gastar as tentativas diárias de um número e bloquear a pessoa por 24 hora
   sem `https://`.
 - O Caddy obtém e renova certificados sozinho quando `auto_https` não está desligado e o domínio
   aponta para o servidor. A configuração de produção do Caddy ainda não está no repositório
-  (faz parte do guia de implantação do M7).
+  (faz parte do guia de implantação da etapa M7).
 - O chama-id confia no cabeçalho `X-Forwarded-For` para saber o IP do cliente. Por isso ele não
   pode ter porta pública: só o proxy pode alcançá-lo.
 
@@ -176,7 +176,7 @@ pode gastar as tentativas diárias de um número e bloquear a pessoa por 24 hora
 
 ## 6. Hospedagem e custos
 
-Duas estimativas foram checadas em 24/10/2026 (comentários da issue #6). Valores em dólar por
+Duas estimativas foram checadas em 24/10/2026 (comentários da [issue #6](https://github.com/kaiomp/chama/issues/6)). Valores em dólar por
 mês, sem SMS.
 
 | Usuários ativos por dia | AWS São Paulo (serviços gerenciados) | Bare metal em São Paulo (Latitude.sh + Backblaze B2) |
@@ -204,7 +204,7 @@ Formas de baixar o custo:
 | PostgreSQL operado pela própria equipe, ou máquinas mais baratas (Hetzner, OVH, Magalu) | corta o custo mensal de computação |
 | Retenção de mídia de 30 dias | menos armazenamento (e menos dado guardado) |
 | Element Synapse Pro (2 a 3 servidores; preço só sob consulta) ou um homeserver mais leve | a maior alavanca de todas, segundo a estimativa de bare metal |
-| Federação regional (especificação, seção 13) | o custo se divide entre instituições: cerca de US$ 2–5 mil por mês por região em escala cheia |
+| Federação regional ([arquitetura, seção 13](design/2026-10-24-architecture.md#13-modelo-de-federação-proposta)) | o custo se divide entre instituições: cerca de US$ 2–5 mil por mês por região em escala cheia |
 
 ```mermaid
 flowchart LR
@@ -224,7 +224,7 @@ flowchart LR
 
 Na proposta de federação, o DDD do número escolhe o servidor na entrada, então a pessoa só
 digita o número. Um operador com problema afeta só a própria região. É uma proposta, ainda
-com questões em aberto (issue #13).
+com questões em aberto ([issue #13](https://github.com/kaiomp/chama/issues/13)).
 
 ---
 
@@ -238,7 +238,7 @@ O que guardar, do mais crítico para o menos:
 | Banco do chama-id: telefone → conta | `server/data/chama-id/chama-id.sqlite` | ninguém volta para a própria conta: cada número ganha uma conta nova e vazia |
 | Banco do Synapse | volume Docker `pgdata` (PostgreSQL) | todas as contas, salas e mensagens cifradas pendentes |
 | Chave de assinatura do Synapse | `server/data/synapse/signing.key` | o servidor perde a identidade dele na federação |
-| Chave VAPID do Sygnal | `server/data/push/vapid.pem` | o push pelo FCM para até cada app registrar de novo |
+| Chave VAPID do Sygnal | `server/data/push/vapid.pem` | o push pelo FCM para de funcionar até cada app se registrar de novo |
 | Mídia | `server/data/media` (S3 em produção) | anexos ainda não baixados |
 
 Comandos que funcionam na pilha atual (rode da raiz do repositório):
@@ -250,7 +250,7 @@ docker compose -f server/compose.yaml --env-file server/data/.env exec -T postgr
 
 # Banco do chama-id: cópia consistente com o serviço rodando
 docker compose -f server/compose.yaml --env-file server/data/.env exec -T chama-id \
-  node -e "new (require('node:sqlite').DatabaseSync)('/data/chama-id.sqlite').exec(\"VACUUM INTO '/data/backup.sqlite'\")"
+  node -e "require('node:fs').rmSync('/data/backup.sqlite', {force: true}); new (require('node:sqlite').DatabaseSync)('/data/chama-id.sqlite').exec(\"VACUUM INTO '/data/backup.sqlite'\")"
 # a cópia aparece em server/data/chama-id/backup.sqlite
 ```
 
@@ -260,7 +260,7 @@ Cuidados:
   tem as chaves. Mas o backup tem metadados sensíveis: quem fala com quem, a ligação entre
   telefone e conta, e os endereços IP dos últimos 7 dias.
 - **Teste a restauração.** O roteiro de restauração ainda não foi escrito nem testado (faz parte
-  do guia de implantação do M7).
+  do guia de implantação da etapa M7).
 - O histórico das conversas mora nos celulares. Com a retenção de 30 dias (seção 9), o servidor
   guarda cada vez menos, e o backup do servidor não substitui o backup das próprias pessoas.
 
@@ -309,8 +309,8 @@ no futuro.
 | Dado | Regra | Situação |
 |---|---|---|
 | IPs dos usuários no Synapse | 7 dias (`user_ips_max_age: 7d`) | configurado |
-| Logs dos contêineres | sem IPs além de 7 dias (especificação, seção 11) | **falta:** os logs do Synapse e do Docker ainda não têm rotação |
-| Mensagens e mídia no servidor | só até a entrega, no máximo 30 dias, como no WhatsApp (issue #12) | **decidido, não configurado:** política de retenção do Synapse e limpeza de mídia |
+| Logs dos contêineres | sem IPs além de 7 dias ([arquitetura, seção 11](design/2026-10-24-architecture.md#11-operação-e-confiança)) | **falta:** os logs do Synapse e do Docker ainda não têm rotação |
+| Mensagens e mídia no servidor | só até a entrega, no máximo 30 dias, como no WhatsApp ([issue #12](https://github.com/kaiomp/chama/issues/12)) | **decidido, não configurado:** política de retenção do Synapse e limpeza de mídia |
 | Códigos SMS no chama-id | só o hash; apagado ao ser usado; registros de tentativa somem depois de 24 h | configurado |
 | Pedidos por IP no chama-id | apagados depois de 1 hora | configurado |
 | Hashes da busca de contatos | nunca guardados; só uma contagem por conta | configurado |
@@ -318,7 +318,7 @@ no futuro.
 
 Com a retenção de 30 dias, um aparelho novo ou a versão web só verão os últimos 30 dias de
 conversa no servidor. Um backup de conversas controlado pela própria pessoa ainda vai ser
-desenhado (issue #12).
+desenhado ([issue #12](https://github.com/kaiomp/chama/issues/12)).
 
 ---
 
@@ -353,7 +353,7 @@ A regra de firewall de produção (descrita em `server/sygnal/sygnal.yaml`):
 | IPv6 local único (ULA) e link-local | bloqueado |
 | Rede do Synapse principal, replicação dos workers, chama-id, PostgreSQL, Redis | o Sygnal não compartilha rede com nenhum deles |
 
-Também falta (issue #6): tirar do Synapse de produção a liberação `ip_range_whitelist:
+Também falta ([issue #6](https://github.com/kaiomp/chama/issues/6)): tirar do Synapse de produção a liberação `ip_range_whitelist:
 ['10.0.2.0/24']`, que só existe para o ambiente local, e confirmar que o próprio Sygnal recusa
 endereços privados ou de loopback.
 
@@ -394,7 +394,7 @@ Regras:
 
 ## 12. Lista de tarefas até o lançamento
 
-Tudo isso está na issue #6 (M7) e nos comentários dela.
+Tudo isso está na [issue #6](https://github.com/kaiomp/chama/issues/6) (M7) e nos comentários dela.
 
 **chama-id**
 
@@ -403,7 +403,7 @@ Tudo isso está na issue #6 (M7) e nos comentários dela.
 - [ ] Prazo máximo nas chamadas ao Synapse; pular as chamadas admin quando o último login tem
       menos de 45 dias; revogar tokens admin perdidos.
 - [ ] Limite por IP para tentativas erradas de código.
-- [ ] Descoberta privada de contatos (issue #7).
+- [ ] Descoberta privada de contatos ([issue #7](https://github.com/kaiomp/chama/issues/7)).
 
 **Synapse e rede**
 
@@ -411,7 +411,7 @@ Tudo isso está na issue #6 (M7) e nos comentários dela.
 - [ ] Rota de mídia da federação; limites de requisição e custo de presença ajustados para produção.
 - [ ] Mídia em S3 com CDN; PgBouncer.
 - [ ] Rotação dos logs (Synapse e Docker) para cumprir a promessa dos 7 dias.
-- [ ] Retenção de 30 dias para mensagens e mídia (issue #12).
+- [ ] Retenção de 30 dias para mensagens e mídia ([issue #12](https://github.com/kaiomp/chama/issues/12)).
 - [ ] Guardar e trocar o token do application service como segredo; confirmar o IP real do
       cliente atrás do proxy.
 - [ ] Permissões fechadas nos arquivos de configuração; lista de chaves permitidas no `init.sh`.
