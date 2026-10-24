@@ -9,6 +9,8 @@ import { OtpService } from '../src/otp.ts';
 import { Directory } from '../src/directory.ts';
 import { verifyJwt } from '../src/jwt.ts';
 import { createServer } from '../src/server.ts';
+import { rateKey, windowLimiter } from '../src/http.ts';
+import { connect } from 'node:net';
 
 function make(now?: () => number) {
   const db = openDb(':memory:');
@@ -102,6 +104,74 @@ test('directory lookup is capped at 30 per IP per rolling hour', async () => {
   } finally { s.close(); }
 });
 
+const hex = (i: number) => createHash('sha256').update(String(i)).digest('hex');
+test('lookup validates hashes over HTTP and fits 1000 hashes in one request', async () => {
+  assert.equal((await post('/id/v1/directory/lookup', { hashes: 'abc' })).status, 400);
+  assert.equal((await post('/id/v1/directory/lookup', {})).status, 400);
+  assert.equal((await post('/id/v1/directory/lookup', { hashes: Array.from({ length: 1001 }, (_, i) => hex(i)) })).status, 400);
+  const r = await post('/id/v1/directory/lookup', { hashes: Array.from({ length: 1000 }, (_, i) => hex(i)) });
+  assert.equal(r.status, 200);
+  assert.deepEqual(await r.json(), { registered: [] });
+});
+test('other routes keep the 16 KiB body cap', async () => {
+  const r = await post('/id/v1/otp/verify', { phone: '11987654321', code: 'x'.repeat(20_000) });
+  assert.equal(r.status, 400);
+});
+test('malformed request target is bad_request, not 500', async () => {
+  const { port } = server.address() as AddressInfo;
+  const raw = await new Promise<string>((resolve, reject) => {
+    let out = '';
+    const sock = connect(port, '127.0.0.1', () => sock.end('GET http://[ HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n'));
+    sock.on('data', (c) => { out += c; }).on('end', () => resolve(out)).on('error', reject);
+  });
+  assert.match(raw, /^HTTP\/1\.1 400/);
+  assert.match(raw, /"error":"bad_request"/);
+});
+
+test('rateKey groups IPv6 by /64 and unwraps IPv4-mapped addresses', () => {
+  assert.equal(rateKey('2001:db8:1:2::1'), rateKey('2001:db8:1:2:ffff:1:2:3'));
+  assert.equal(rateKey('2001:db8:1:2::1'), rateKey('2001:0DB8:0001:0002::9%eth0'));
+  assert.notEqual(rateKey('2001:db8:1:2::1'), rateKey('2001:db8:1:3::1'));
+  assert.equal(rateKey('::ffff:1.2.3.4'), '1.2.3.4');
+  assert.equal(rateKey('::ffff:102:304'), '1.2.3.4');
+  assert.equal(rateKey('1.2.3.4'), '1.2.3.4');
+  assert.equal(rateKey('unknown'), 'unknown');
+});
+test('two IPv6 addresses in one /64 share the lookup budget; IPv4-mapped equals IPv4', async () => {
+  const s = make(() => 1_000_000);
+  const at = await listen(s);
+  try {
+    const look = (ip: string) => post('/id/v1/directory/lookup', { hashes: [] }, { 'x-forwarded-for': ip }, at);
+    for (let i = 0; i < 30; i++) assert.equal((await look(`2001:db8:a:b::${(i + 1).toString(16)}`)).status, 200);
+    assert.equal((await look('2001:db8:a:b:dead:beef:0:1')).status, 429);
+    assert.equal((await look('2001:db8:a:c::1')).status, 200, 'other /64 has its own budget');
+    for (let i = 0; i < 30; i++) assert.equal((await look(i % 2 ? '9.9.9.9' : '::ffff:9.9.9.9')).status, 200);
+    assert.equal((await look('9.9.9.9')).status, 429);
+  } finally { s.close(); }
+});
+test('OTP per-IP limit also groups IPv6 by /64', async () => {
+  const s = make();
+  const at = await listen(s);
+  try {
+    const req = (i: number) => post('/id/v1/otp/request', { phone: `1198765${String(4300 + i)}` }, { 'x-forwarded-for': `2001:db8:5:6::${i + 1}` }, at);
+    for (let i = 0; i < 10; i++) assert.equal((await req(i)).status, 200);
+    const r = await req(10);
+    assert.equal(r.status, 429);
+    assert.equal((await r.json()).error, 'rate_limited');
+  } finally { s.close(); }
+});
+test('limiter map never grows past maxKeys and frees keys after the window', () => {
+  let t = 1000;
+  const l = windowLimiter({ limit: 30, window: 3600, maxKeys: 3, now: () => t });
+  for (const k of ['a', 'b', 'c']) l.hit(k);
+  assert.throws(() => l.hit('d'), (e: any) => e.code === 'rate_limited' && e.extra.retry_after === 3600);
+  l.hit('a');
+  assert.equal(l.size(), 3);
+  t += 3600;
+  l.hit('d');
+  assert.equal(l.size(), 1, 'stale keys swept once the window passed');
+});
+
 const start = (env: Record<string, string>) => spawnSync(process.execPath, ['src/server.ts'], {
   cwd: new URL('..', import.meta.url), encoding: 'utf8', timeout: 10_000,
   env: { PATH: process.env.PATH ?? '', DB_PATH: ':memory:', PORT: '0', ...env },
@@ -122,5 +192,12 @@ test('refuses to start when a secret is missing or empty', () => {
       assert.equal(r.status, 1, `${k}=${v}`);
       assert.match(r.stderr, new RegExp(`missing env ${k}`));
     }
+  }
+});
+test('refuses to start with an invalid PORT', () => {
+  for (const PORT of ['abc', '70000', '-1', '80.5']) {
+    const r = start({ ...secrets, CHAMA_DEV: '1', PORT });
+    assert.equal(r.status, 1, PORT);
+    assert.match(r.stderr, /invalid PORT/);
   }
 });

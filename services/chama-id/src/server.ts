@@ -6,9 +6,7 @@ import { ConsoleSms } from './sms.ts';
 import { signJwt } from './jwt.ts';
 import { normalizePhone } from './phone.ts';
 import { AppError } from './errors.ts';
-import { router, clientIp } from './http.ts';
-
-const LOOKUP_LIMIT = 30, LOOKUP_WINDOW = 3600;
+import { router, clientIp, rateKey, windowLimiter } from './http.ts';
 
 export function createServer(d: {
   otp: OtpService; directory: Directory; jwtSecret: string; serverName: string; publicBaseUrl: string; now?: () => number;
@@ -16,23 +14,14 @@ export function createServer(d: {
   const now = d.now ?? (() => Math.floor(Date.now() / 1000));
   const str = (v: unknown) => { if (typeof v !== 'string') throw new AppError('bad_request'); return v; };
 
-  // Unsalted phone hashes are enumerable, so lookups are capped per client IP.
-  // Limit: in-memory per-IP limit, single replica only; move to Redis in M7
-  const lookups = new Map<string, number[]>();
-  const limitLookup = (ip: string) => {
-    const t = now();
-    if (lookups.size > 10_000) for (const [k, v] of lookups) if (v.at(-1)! <= t - LOOKUP_WINDOW) lookups.delete(k);
-    const recent = (lookups.get(ip) ?? []).filter((at) => at > t - LOOKUP_WINDOW);
-    if (recent.length >= LOOKUP_LIMIT) throw new AppError('rate_limited', { retry_after: recent[0] + LOOKUP_WINDOW - t });
-    recent.push(t);
-    lookups.set(ip, recent);
-  };
+  // Unsalted phone hashes are enumerable, so lookups are capped per client IP (or IPv6 /64).
+  const lookups = windowLimiter({ limit: 30, window: 3600, maxKeys: 100_000, now });
 
   return http.createServer(router({
     'GET /id/v1/health': () => ({ ok: true }),
     'POST /id/v1/otp/request': async (b, req) => {
       const phone = normalizePhone(str(b.phone));
-      const { retryAfter } = await d.otp.request(phone, clientIp(req));
+      const { retryAfter } = await d.otp.request(phone, rateKey(clientIp(req)));
       return { phone, retry_after: retryAfter };
     },
     'POST /id/v1/otp/verify': (b) => {
@@ -45,10 +34,10 @@ export function createServer(d: {
       };
     },
     'POST /id/v1/directory/lookup': (b, req) => {
-      limitLookup(clientIp(req));
+      lookups.hit(rateKey(clientIp(req)));
       return { registered: d.directory.lookup(b.hashes) };
     },
-  }));
+  }, { 'POST /id/v1/directory/lookup': 96 * 1024 })); // room for 1000 hashes (about 67 KB)
 }
 
 if (import.meta.main) {
@@ -58,6 +47,8 @@ if (import.meta.main) {
     return v;
   };
   const dev = process.env.CHAMA_DEV === '1';
+  const port = Number(env('PORT', '8090'));
+  if (!Number.isInteger(port) || port < 0 || port > 65535) { console.error(`invalid PORT ${process.env.PORT}`); process.exit(1); }
   const secrets = { pepper: env('OTP_PEPPER'), jwtSecret: env('JWT_SECRET'), serverName: env('SERVER_NAME'), publicBaseUrl: env('PUBLIC_BASEURL') };
   // No real SMS provider exists yet; ConsoleSms prints codes, so it is dev only.
   if (!dev) { console.error('no SMS provider configured (set CHAMA_DEV=1 for development)'); process.exit(1); }
@@ -67,6 +58,5 @@ if (import.meta.main) {
     directory: new Directory(db), jwtSecret: secrets.jwtSecret,
     serverName: secrets.serverName, publicBaseUrl: secrets.publicBaseUrl,
   });
-  const port = Number(env('PORT', '8090'));
   server.listen(port, () => console.log(`chama-id listening on :${port}${dev ? ' (dev mode: code 000000 accepted)' : ''}`));
 }

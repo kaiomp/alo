@@ -1,12 +1,13 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { isIPv6 } from 'node:net';
 import { AppError } from './errors.ts';
 
 export type Handler = (body: any, req: IncomingMessage) => Promise<unknown> | unknown;
 
-// Returns the parsed JSON object; anything else (bad JSON, arrays, null, > 16 KiB) is bad_request.
-export async function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
+// Returns the parsed JSON object; anything else (bad JSON, arrays, null, > maxBytes) is bad_request.
+export async function readJson(req: IncomingMessage, maxBytes = 16_384): Promise<Record<string, unknown>> {
   const chunks: Buffer[] = []; let size = 0;
-  for await (const c of req) { size += c.length; if (size > 16_384) throw new AppError('bad_request'); chunks.push(c); }
+  for await (const c of req) { size += c.length; if (size > maxBytes) throw new AppError('bad_request'); chunks.push(c); }
   if (!size) return {};
   let v: unknown;
   try { v = JSON.parse(Buffer.concat(chunks).toString()); } catch { throw new AppError('bad_request'); }
@@ -26,13 +27,56 @@ export function clientIp(req: IncomingMessage): string {
   return first || req.socket.remoteAddress || 'unknown';
 }
 
-export function router(routes: Record<string, Handler>) {
+// Rate-limit key for an IP: IPv6 counts per /64 (one customer's block), IPv4-mapped IPv6 counts as IPv4.
+export function rateKey(ip: string): string {
+  const a = ip.split('%')[0];
+  if (!isIPv6(a)) return ip;
+  const groups = (s?: string) => !s ? [] : s.split(':').flatMap((g) => {
+    if (!g.includes('.')) return [parseInt(g, 16)];
+    const [w, x, y, z] = g.split('.').map(Number);
+    return [w * 256 + x, y * 256 + z];
+  });
+  const [head, tail] = a.split('::');
+  const h = groups(head), t = groups(tail);
+  const g = tail === undefined ? h : [...h, ...Array(8 - h.length - t.length).fill(0), ...t];
+  if (g.slice(0, 5).every((x) => x === 0) && g[5] === 0xffff) return [g[6] >> 8, g[6] & 255, g[7] >> 8, g[7] & 255].join('.');
+  return `${g.slice(0, 4).map((x) => x.toString(16)).join(':')}::/64`;
+}
+
+// Sliding window: at most `limit` hits per key per `window` seconds, at most `maxKeys` keys in memory.
+// Stale keys are swept at most once per window; a new key while full is rate_limited, so memory stays bounded.
+// Limit: in-memory, single replica only; move to Redis in M7
+export function windowLimiter(o: { limit: number; window: number; maxKeys: number; now: () => number }) {
+  const hits = new Map<string, number[]>();
+  let lastSweep = -Infinity;
+  return {
+    size: () => hits.size,
+    hit(key: string) {
+      const t = o.now();
+      if (t - lastSweep >= o.window) {
+        for (const [k, v] of hits) if (v.at(-1)! <= t - o.window) hits.delete(k);
+        lastSweep = t;
+      }
+      const prev = hits.get(key);
+      if (!prev && hits.size >= o.maxKeys) throw new AppError('rate_limited', { retry_after: lastSweep + o.window - t });
+      const recent = (prev ?? []).filter((at) => at > t - o.window);
+      if (recent.length >= o.limit) throw new AppError('rate_limited', { retry_after: recent[0] + o.window - t });
+      recent.push(t);
+      hits.set(key, recent);
+    },
+  };
+}
+
+// `bodyCaps` overrides the 16 KiB body cap per route key.
+export function router(routes: Record<string, Handler>, bodyCaps: Record<string, number> = {}) {
   return async (req: IncomingMessage, res: ServerResponse) => {
     try {
-      const path = new URL(req.url ?? '/', 'http://x').pathname;
-      const h = routes[`${req.method} ${path}`];
+      let path: string;
+      try { path = new URL(req.url ?? '/', 'http://x').pathname; } catch { throw new AppError('bad_request'); }
+      const key = `${req.method} ${path}`;
+      const h = routes[key];
       if (!h) throw new AppError('not_found');
-      send(res, 200, await h(req.method === 'POST' ? await readJson(req) : {}, req));
+      send(res, 200, await h(req.method === 'POST' ? await readJson(req, bodyCaps[key]) : {}, req));
     } catch (e) {
       if (e instanceof AppError && e.status < 500) send(res, e.status, { error: e.code, ...e.extra });
       else { console.error(e); send(res, 500, { error: 'internal' }); }
