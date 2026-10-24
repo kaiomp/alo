@@ -54,6 +54,7 @@ Future<void> _walk(WidgetTester tester, _Shots t) async {
   await t.enter(const Key('sms_code'), '000000'); // 6 digits submit on their own
   await t.waitFor(find.byKey(const Key('recovery_key')), timeout: const Duration(seconds: 60));
   await t.shot('recovery-key');
+  await t.tap(const Key('recovery_key_saved'));
   await t.tap(const Key('recovery_key_done'));
   await t.enter(const Key('profile_name'), 'Ana Souza');
   await t.shot('profile');
@@ -123,7 +124,7 @@ Future<void> _walk(WidgetTester tester, _Shots t) async {
   await t.shot('chat');
   await t.tap(const Key('chat_header'));
   await t.shot('contact-info');
-  await t.back();
+  await t.closeInfo(wide);
 
   if (!wide) await t.back();
 
@@ -133,7 +134,7 @@ Future<void> _walk(WidgetTester tester, _Shots t) async {
   await t.enter(const Key('group_name'), 'Almoço de domingo');
   await t.enter(const Key('group_member_phone'), peerPhone.substring(2));
   await t.tap(const Key('group_member_phone_go'));
-  await t.waitFor(find.byIcon(Icons.person));
+  await t.waitFor(find.byKey(const Key('group_members')));
   await t.shot('new-group');
   await t.tap(const Key('create_group'));
   await t.waitFor(find.text('oi, entrei'), timeout: const Duration(seconds: 60));
@@ -149,7 +150,7 @@ Future<void> _walk(WidgetTester tester, _Shots t) async {
   dm.dispose();
   await t.tap(const Key('chat_header'));
   await t.shot('group-info');
-  await t.back();
+  await t.closeInfo(wide);
   if (!wide) await t.back();
 
   // Chat list with the unread badge, then the filters.
@@ -244,6 +245,7 @@ class _Shots {
     ListTile() => w.onTap,
     InkWell() => w.onTap,
     ChoiceChip(:final onSelected?) => () => onSelected(true),
+    CheckboxListTile(:final onChanged?) => () => onChanged(true),
     _ => null,
   };
 
@@ -252,7 +254,11 @@ class _Shots {
   Future<void> tapFinder(Finder finder) async {
     await waitFor(finder);
     final w = tester.widget(finder.last);
-    if (w is ButtonStyleButton || w is FloatingActionButton || w is IconButton || _onTap(w) != null) {
+    if (w is ButtonStyleButton ||
+        w is FloatingActionButton ||
+        w is IconButton ||
+        w is CheckboxListTile ||
+        _onTap(w) != null) {
       await until(() => _onTap(tester.widget(finder.last)) != null, timeout: const Duration(seconds: 10));
       _onTap(tester.widget(finder.last))!();
     } else {
@@ -266,20 +272,28 @@ class _Shots {
   // Synthetic taps and long presses on and into bottom sheets are sometimes
   // lost on web, so these two call the handlers the gestures would call.
 
-  /// Opens the actions sheet of a message bubble or chat tile.
+  /// Opens the actions of a message bubble or chat tile (a sheet on phones,
+  /// a menu on wide screens).
   Future<void> longPress(Finder finder) async {
     await waitFor(finder);
     final target = find.ancestor(
       of: finder.last,
       matchRoot: true,
       matching: find.byWidgetPredicate(
-        (w) => (w is GestureDetector && w.onLongPress != null) || (w is ListTile && w.onLongPress != null),
+        (w) =>
+            (w is GestureDetector && w.onLongPress != null) ||
+            (w is InkWell && w.onLongPress != null) ||
+            (w is ListTile && w.onLongPress != null),
       ),
     );
     final w = tester.widget(target.first);
-    (w is ListTile ? w.onLongPress : (w as GestureDetector).onLongPress)!();
+    (switch (w) {
+      ListTile() => w.onLongPress,
+      InkWell() => w.onLongPress,
+      _ => (w as GestureDetector).onLongPress,
+    })!();
     await settle();
-    await waitFor(find.byType(BottomSheet));
+    await waitFor(find.byKey(const Key('actions')));
   }
 
   /// Picks an item (list tile or reaction) in the open sheet.
@@ -307,6 +321,9 @@ class _Shots {
     await enter(const Key('composer_text'), text);
     await tap(const Key('send'));
   }
+
+  /// Contact/group info: a side pane with an X on wide screens, a page on phones.
+  Future<void> closeInfo(bool wide) => wide ? tap(const Key('info_close')) : back();
 
   /// The app bar back arrow (tester.pageBack looks for the English tooltip).
   Future<void> back() async {

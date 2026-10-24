@@ -24,6 +24,7 @@ void main() {
     await t.tap(const Key('sign_in_next'));
     await t.enter(const Key('sms_code'), '000000'); // 6 digits submit on their own
     await t.waitFor(find.byKey(const Key('recovery_key')), timeout: const Duration(seconds: 60));
+    await t.tap(const Key('recovery_key_saved'));
     await t.tap(const Key('recovery_key_done'));
     await t.enter(const Key('profile_name'), 'Ana Teste');
     await t.tap(const Key('profile_done'));
