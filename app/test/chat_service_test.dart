@@ -102,8 +102,10 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('request_reset_code')));
-    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
-    await tester.pump();
+    for (var i = 0; i < 50 && find.text('Reenviar SMS em 60 s').evaluate().isEmpty; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+      await tester.pump();
+    }
     expect(requests, 1);
     expect(find.text('Reenviar SMS em 60 s'), findsOneWidget);
     await tester.tap(find.byKey(const Key('request_reset_code')));

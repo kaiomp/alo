@@ -65,6 +65,7 @@ void main() {
     await t.waitFor(_keyPrefix('download_'));
 
     // Voice note: hold the mic, release to send.
+    await t.waitFor(find.byKey(const Key('mic')).hitTestable()); // attach sheet gone
     final hold = await tester.startGesture(tester.getCenter(find.byKey(const Key('mic'))));
     await Future<void>.delayed(const Duration(milliseconds: 1500));
     await tester.pump();
@@ -76,6 +77,7 @@ void main() {
     // Play it: download, decrypt, load into the player.
     final play = _keyPrefix('voice_play_').last;
     final voiceId = (tester.widget(play).key! as ValueKey<String>).value.substring('voice_play_'.length);
+    await t.waitFor(play.hitTestable());
     await tester.tap(play);
     await t.waitFor(find.byIcon(Icons.pause_rounded));
     // Native: the decrypted copy sits in the temp folder while the player lives.
@@ -87,8 +89,7 @@ void main() {
     final wide = tester.view.physicalSize.width / tester.view.devicePixelRatio >= wideLayoutMinWidth;
     if (!wide) {
       Navigator.of(tester.element(find.byType(ChatScreen))).pop();
-      await Future<void>.delayed(const Duration(milliseconds: 600));
-      await tester.pump();
+      await t.until(() => find.byType(ChatScreen).evaluate().isEmpty, 'the chat to close');
       // The popped route disposes the player a few frames later.
       if (!kIsWeb) {
         for (var i = 0; i < 20 && (await _voiceTempFiles(voiceId)).isNotEmpty; i++) {
@@ -97,18 +98,17 @@ void main() {
         expect(await _voiceTempFiles(voiceId), isEmpty, reason: 'decrypted voice note left behind');
       }
     }
+    await t.waitFor(find.byType(ChatTile).hitTestable());
     await tester.longPress(find.byType(ChatTile));
-    await Future<void>.delayed(const Duration(milliseconds: 600));
-    await tester.pump();
-    await tester.tap(find.widgetWithIcon(ListTile, Icons.archive_outlined));
-    await Future<void>.delayed(const Duration(milliseconds: 600));
-    await tester.pump();
+    final archive = find.widgetWithIcon(ListTile, Icons.archive_outlined).hitTestable();
+    await t.waitFor(archive); // sheet slid in
+    await tester.tap(archive);
     await t.tap(const Key('archived_row'));
-    await t.waitFor(find.byType(ChatTile));
+    await t.waitFor(find.byType(ChatTile).hitTestable());
     await tester.tap(find.byType(ChatTile));
-    await Future<void>.delayed(const Duration(milliseconds: 600));
-    await tester.pump();
-    if (wide) expect(find.byWidgetPredicate((w) => w is ChatListView && w.archived), findsNothing);
+    await t.waitFor(find.byType(ChatScreen));
+    final archivedList = find.byWidgetPredicate((w) => w is ChatListView && w.archived);
+    if (wide) await t.until(() => archivedList.evaluate().isEmpty, 'the archived list to close');
     expect(find.byType(ChatScreen), findsOneWidget);
   }, timeout: const Timeout(Duration(minutes: 5)));
 }
@@ -130,20 +130,24 @@ class _Steps {
   _Steps(this.tester);
   final WidgetTester tester;
 
-  Future<void> waitFor(Finder finder, {Duration timeout = const Duration(seconds: 30)}) async {
+  Future<void> waitFor(Finder finder, {Duration timeout = const Duration(seconds: 30)}) =>
+      until(() => finder.evaluate().isNotEmpty, '$finder', timeout: timeout);
+
+  /// Pumps until [done] holds (real time: the app runs live against the server).
+  Future<void> until(bool Function() done, String what, {Duration timeout = const Duration(seconds: 30)}) async {
     final end = DateTime.now().add(timeout);
-    while (finder.evaluate().isEmpty) {
-      if (DateTime.now().isAfter(end)) throw TestFailure('Timed out waiting for $finder');
+    while (!done()) {
+      if (DateTime.now().isAfter(end)) throw TestFailure('Timed out waiting for $what');
       await tester.pump(const Duration(milliseconds: 250));
     }
   }
 
-  /// Taps, then lets page and sheet animations finish (real time: the app
-  /// runs live against the server).
+  /// Taps once the widget can take the tap: built, on screen, and no page or
+  /// sheet animation covering it.
   Future<void> tap(Key key) async {
-    await waitFor(find.byKey(key));
-    await tester.tap(find.byKey(key));
-    await Future<void>.delayed(const Duration(milliseconds: 600));
+    final target = find.byKey(key).hitTestable();
+    await waitFor(target);
+    await tester.tap(target);
     await tester.pump();
   }
 
