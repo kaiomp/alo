@@ -1,0 +1,7 @@
+{
+  "name": "smoke",
+  "private": true,
+  "type": "module",
+  "scripts": { "start": "node smoke.ts" },
+  "dependencies": { "matrix-js-sdk": "44.0.0" }
+}
