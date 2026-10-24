@@ -1,4 +1,231 @@
 {
   "@@locale": "pt",
-  "appName": "Chama"
+  "appName": "Chama",
+  "signInTitle": "Insira seu número de telefone",
+  "signInExplain": "O Chama vai enviar um SMS com um código para confirmar seu número.",
+  "countryCode": "País",
+  "phoneNumber": "Número de telefone",
+  "next": "Avançar",
+  "codeTitle": "Verificando {phone}",
+  "@codeTitle": {
+    "placeholders": {
+      "phone": {
+        "type": "String"
+      }
+    }
+  },
+  "codeExplain": "Digite o código de 6 dígitos enviado por SMS.",
+  "code": "Código",
+  "resendCode": "Reenviar SMS",
+  "resendIn": "Reenviar SMS em {seconds} s",
+  "@resendIn": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "wrongNumber": "Número errado?",
+  "errInvalidPhone": "Número inválido. Confira o DDD e o número.",
+  "errInvalidCode": "Código incorreto. Confira e tente de novo.",
+  "errExpired": "O código expirou. Peça um novo.",
+  "errTooManyAttempts": "Muitas tentativas com este código. Peça um novo.",
+  "errRateLimited": "Muitas tentativas. Tente de novo em {seconds} s.",
+  "@errRateLimited": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "errNetwork": "Sem conexão com o servidor. Verifique sua internet.",
+  "errUnknown": "Algo deu errado. Tente de novo.",
+  "profileTitle": "Perfil",
+  "profileExplain": "Informe seu nome e, se quiser, uma foto de perfil.",
+  "yourName": "Seu nome",
+  "choosePhoto": "Escolher foto",
+  "done": "Concluir",
+  "tabChats": "Conversas",
+  "tabUpdates": "Atualizações",
+  "tabCommunities": "Comunidades",
+  "tabCalls": "Ligações",
+  "comingSoon": "Em breve no Chama.",
+  "search": "Pesquisar",
+  "filterAll": "Todas",
+  "filterUnread": "Não lidas",
+  "filterFavourites": "Favoritas",
+  "filterGroups": "Grupos",
+  "archived": "Arquivadas",
+  "noChats": "Nenhuma conversa ainda. Toque em + para começar.",
+  "noResults": "Nenhuma conversa encontrada.",
+  "connecting": "Conectando…",
+  "you": "Você",
+  "today": "Hoje",
+  "yesterday": "Ontem",
+  "pin": "Fixar",
+  "unpin": "Desafixar",
+  "archive": "Arquivar",
+  "unarchive": "Desarquivar",
+  "mute": "Silenciar",
+  "unmute": "Ativar som",
+  "favourite": "Adicionar às favoritas",
+  "unfavourite": "Remover das favoritas",
+  "markUnread": "Marcar como não lida",
+  "newChat": "Nova conversa",
+  "settings": "Configurações",
+  "signOut": "Sair",
+  "readReceipts": "Confirmações de leitura",
+  "readReceiptsExplain": "Se desativar, você não envia nem vê confirmações de leitura.",
+  "selectChat": "Selecione uma conversa para começar.",
+  "e2eNotice": "As mensagens são protegidas com a criptografia de ponta a ponta. Ninguém fora desta conversa pode ler ou ouvir o que você envia.",
+  "photo": "Foto",
+  "voiceMessage": "Mensagem de voz",
+  "file": "Arquivo",
+  "deletedMessage": "Mensagem apagada",
+  "youDeleted": "Você apagou esta mensagem",
+  "waitingMessage": "Aguardando esta mensagem. Isso pode levar alguns instantes.",
+  "online": "online",
+  "typing": "digitando…",
+  "userTyping": "{name} está digitando…",
+  "@userTyping": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "lastSeenToday": "visto por último hoje às {time}",
+  "@lastSeenToday": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "lastSeenYesterday": "visto por último ontem às {time}",
+  "@lastSeenYesterday": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "lastSeenDate": "visto por último em {date}",
+  "@lastSeenDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "messageHint": "Mensagem",
+  "edited": "Editada",
+  "reply": "Responder",
+  "copy": "Copiar",
+  "edit": "Editar",
+  "delete": "Apagar",
+  "deleteQuestion": "Apagar mensagem?",
+  "deleteForEveryone": "Apagar para todos",
+  "deleteForMe": "Apagar para mim",
+  "cancel": "Cancelar",
+  "editing": "Editando mensagem",
+  "notSent": "Não enviada. Toque para tentar de novo.",
+  "attachPhoto": "Fotos",
+  "attachDocument": "Documento",
+  "holdToRecord": "Segure para gravar e solte para enviar.",
+  "slideToCancel": "Deslize para cancelar",
+  "micDenied": "Permita o acesso ao microfone para gravar mensagens de voz.",
+  "sendFailed": "Não foi possível enviar.",
+  "groupCreated": "{name} criou o grupo",
+  "@groupCreated": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "userJoined": "{name} entrou",
+  "@userJoined": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "userLeft": "{name} saiu",
+  "@userLeft": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "userAdded": "{name} adicionou {target}",
+  "@userAdded": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "userRemoved": "{name} removeu {target}",
+  "@userRemoved": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "groupRenamed": "{name} mudou o nome do grupo para \"{title}\"",
+  "@groupRenamed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "newGroup": "Novo grupo",
+  "groupName": "Nome do grupo",
+  "addMember": "Adicionar",
+  "create": "Criar",
+  "members": "{count, plural, =1{1 participante} other{{count} participantes}}",
+  "@members": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupInfo": "Dados do grupo",
+  "contactInfo": "Dados do contato",
+  "admin": "Admin do grupo",
+  "makeAdmin": "Tornar admin do grupo",
+  "removeMember": "Remover",
+  "leaveGroup": "Sair do grupo",
+  "leaveQuestion": "Sair do grupo?",
+  "startChat": "Conversar",
+  "notOnChama": "Este número não usa o Chama.",
+  "download": "Baixar",
+  "errForbidden": "Esta ação não é permitida para esta conta.",
+  "errRecoveryKey": "Chave incorreta. Confira e tente de novo.",
+  "recoveryKeyTitle": "Sua chave de recuperação",
+  "recoveryKeyExplain": "Guarde esta chave em um lugar seguro. Com ela você lê suas conversas se trocar de aparelho. O Chama não consegue recuperá-la.",
+  "continueLabel": "Continuar",
+  "tryAgain": "Tentar de novo",
+  "settingUpEncryption": "Preparando a criptografia…",
+  "newDeviceTitle": "Confirme que é você",
+  "newDeviceExplain": "Esta conta já tem conversas protegidas. Para lê-las neste aparelho, digite sua chave de recuperação.",
+  "recoveryKey": "Chave de recuperação",
+  "noRecoveryKey": "Não tenho a chave",
+  "resetExplain": "Sem a chave, as mensagens antigas não podem ser lidas neste aparelho e seus contatos verão que seu código de segurança mudou. Digite o código que enviamos por SMS.",
+  "resetConfirm": "Redefinir e continuar"
 }
