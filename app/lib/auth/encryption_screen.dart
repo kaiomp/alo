@@ -154,6 +154,14 @@ class _EncryptionScreenState extends State<EncryptionScreen> {
                 Icon(Icons.lock_outline, size: 56, color: theme.colorScheme.primary),
                 const SizedBox(height: 16),
                 ...body,
+                // A way out on every step but the key display: some errors
+                // (number moved, session expired) need a new sign-in.
+                if (key == null)
+                  TextButton(
+                    key: const Key('encryption_sign_out'),
+                    onPressed: _busy ? null : () => _run(_chat.signOut),
+                    child: Text(l.signOut),
+                  ),
               ],
             ),
           ),

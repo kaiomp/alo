@@ -1,3 +1,6 @@
+import 'package:chama/chat/chat_screen.dart';
+import 'package:chama/chat_list/chat_list_view.dart';
+import 'package:chama/chat_list/chat_tile.dart';
 import 'package:chama/main.dart' as app;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -36,6 +39,22 @@ void main() {
     await t.waitFor(find.byKey(const Key('tick_delivered')));
     await t.waitFor(find.byKey(const Key('tick_read')));
     await t.waitFor(find.text('eco: Olá, peer!'));
+
+    // Archive the chat, then open it from "Arquivadas": on the wide layout
+    // the archived list closes and the chat shows in the right pane.
+    await tester.longPress(find.byType(ChatTile));
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+    await tester.pump();
+    await tester.tap(find.widgetWithIcon(ListTile, Icons.archive_outlined));
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+    await tester.pump();
+    await t.tap(const Key('archived_row'));
+    await t.waitFor(find.byType(ChatTile));
+    await tester.tap(find.byType(ChatTile));
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+    await tester.pump();
+    expect(find.byWidgetPredicate((w) => w is ChatListView && w.archived), findsNothing);
+    expect(find.byType(ChatScreen), findsOneWidget);
   }, timeout: const Timeout(Duration(minutes: 5)));
 }
 

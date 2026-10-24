@@ -24,6 +24,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _open(BuildContext context, String roomId, bool wide) {
     if (wide) {
+      // The chat opens in the right pane: close anything over it first
+      // (the archived list is a full-window route).
+      Navigator.of(context).popUntil((r) => r.isFirst);
       setState(() => _selected = roomId);
     } else {
       Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ChatScreen(roomId: roomId)));

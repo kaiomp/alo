@@ -115,7 +115,13 @@ class ChatService {
   }
 
   Future<void> signOut() async {
-    await client.logout();
+    try {
+      await client.logout();
+    } catch (_) {
+      // The SDK clears the local session even when the server refuses the
+      // logout (an expired session does). Only a failed clear is an error.
+      if (client.isLogged()) rethrow;
+    }
     await _prefs.remove(_phoneKey);
   }
 

@@ -113,6 +113,7 @@ class _ChatListViewState extends State<ChatListView> {
             if (archivedCount > 0)
               SliverToBoxAdapter(
                 child: ListTile(
+                  key: const Key('archived_row'),
                   leading: const Icon(Icons.archive_outlined),
                   title: Text(l.archived),
                   trailing: Text('$archivedCount'),
