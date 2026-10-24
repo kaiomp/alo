@@ -1,78 +1,121 @@
-# Chama app
+# App Chama
 
-One Flutter app for Android and the web (iOS and desktop later), built on the
-[matrix](https://pub.dev/packages/matrix) Dart SDK with vodozemac for end-to-end encryption.
+Um único app Flutter para Android e para a web (iOS e desktop depois), construído sobre o SDK
+Dart [matrix](https://pub.dev/packages/matrix), com o vodozemac para a criptografia de ponta a
+ponta.
 
-## Run
+<p align="center">
+  <img src="../docs/imagens/android-conversa-claro-e-escuro.webp" alt="Conversa no Android nos temas claro e escuro, lado a lado" width="560">
+</p>
 
-Prerequisites: Flutter 3.47.8, rustup (vodozemac compiles from Rust for Android and the web), the
-Android SDK with the NDK and an emulator (AVD), and Chrome.
+O passo a passo completo do ambiente (versões, emulador, solução de problemas) está no
+[guia de desenvolvimento](../docs/desenvolvimento.md).
 
-Start the server stack first (`make up` at the repo root). Then:
+## Rodar
 
-- Android emulator: start the AVD, then `make app-android`.
-- Chrome: `make app-web` (the first run builds vodozemac for the web, about 10 minutes).
+Pré-requisitos: Flutter 3.47.8, rustup (o vodozemac é compilado de Rust para Android e para a
+web), o Android SDK com o NDK e um emulador (AVD), e o Chrome.
 
-Sign in with any Brazilian mobile number (for example `11 91234-5678`) and the code `000000`
-(development stack only).
+Suba a pilha do servidor antes (`make up` na raiz do repositório). Depois:
 
-## Test
+- Emulador Android: ligue o AVD e rode `make app-android`.
+- Chrome: `make app-web` (a primeira execução compila o vodozemac para a web, cerca de 10 minutos).
 
-- `make app-test`: unit and widget tests.
-- `make app-e2e-web`, `make app-e2e-android`: the app chats with a scripted peer (`tools/peer`)
-  against the local stack. `scripts/e2e.sh <chrome|android> <file>` runs one integration test.
-  Android boots the first AVD unless `CHAMA_AVD=<name>` is set. Chrome is found at the macOS path;
-  elsewhere set `CHROME=<path to the chrome binary>`.
+Entre com qualquer celular brasileiro (por exemplo `11 91234-5678`) e o código `000000`
+(só na pilha de desenvolvimento).
 
-## Code map
+O endereço do servidor vem de `lib/config.dart`: em debug, `http://localhost:8080` na web e
+`http://10.0.2.2:8080` no emulador Android (é assim que o emulador enxerga a sua máquina). Para
+outro endereço, use `--dart-define=CHAMA_BASE_URL=…`.
 
-- `lib/services/`: the only code that talks to the Matrix SDK. Widgets get plain models.
-- `lib/auth`, `lib/chat_list`, `lib/chat`, `lib/group`, `lib/profile`, `lib/common`: one folder per feature.
-- Strings: `lib/l10n/app_pt.arb` (Portuguese, the template) and `app_en.arb`.
-- Colours: `lib/common/theme.dart` only.
+## Testar
 
-## Contacts
+- `make app-test`: testes de unidade e de widget.
+- `make app-e2e-web`, `make app-e2e-android`: o app conversa com uma pessoa de teste
+  roteirizada (`tools/peer`) contra a pilha local. `scripts/e2e.sh <chrome|android> <arquivo>`
+  roda um teste de integração só. No Android, o primeiro AVD é ligado, a menos que
+  `CHAMA_AVD=<nome>` diga outro. O Chrome é procurado no caminho do macOS; em outros sistemas,
+  defina `CHROME=<caminho do executável do chrome>`.
+- `scripts/screenshots.sh`: gera as capturas de tela da documentação (web e Android, temas claro
+  e escuro) em `build/screenshots`.
 
-After sign-in the app reads the address book (READ_CONTACTS; New chat explains why before Android asks) and asks
-chama-id which numbers have an account. Only SHA-256 hashes of the numbers leave the phone, each number at most once
-a day, at most 1000 per request (docs/chama-id-api.md, "Contact lookup privacy"). Saved names replace display names
-everywhere. Without the permission, chats start by typing a number.
+## Mapa do código
 
-## Push notifications
+```mermaid
+flowchart TD
+    subgraph telas["Telas (uma pasta por funcionalidade)"]
+        auth["auth<br/>entrada, código SMS, chave de recuperação"]
+        list["chat_list<br/>lista de conversas e filtros"]
+        chat["chat<br/>conversa, composer, voz"]
+        group["group<br/>nova conversa, novo grupo, dados do grupo"]
+        contacts["contacts<br/>agenda e sincronização"]
+        profile["profile<br/>perfil e configurações"]
+    end
+    common["common<br/>tema, tokens de cor, widgets, notificações"]
+    services["services<br/>única camada que fala com o SDK Matrix"]
+    sdk["SDK matrix + vodozemac"]
+    telas --> common
+    telas -- "modelos simples" --> services
+    services --> sdk
+```
 
-Pushes come through UnifiedPush: the user's distributor app (for example ntfy) or, in the Play build, FCM through
-UnifiedPush's embedded distributor. The server (Synapse pusher → Sygnal) sends only room and event IDs, encrypted with
-Web Push; the app fetches and decrypts the message and shows it. Without a distributor, Settings → Notificações says so.
+- `lib/services/`: o único código que fala com o SDK Matrix. Os widgets recebem modelos simples.
+- `lib/auth`, `lib/chat_list`, `lib/chat`, `lib/group`, `lib/contacts`, `lib/profile`,
+  `lib/common`: uma pasta por funcionalidade.
+- Textos: `lib/l10n/app_pt.arb` (português, o modelo) e `app_en.arb`.
+- Cores: só em `lib/common/theme.dart`.
 
-On the emulator: start the stack (`make up`) and the emulator, then run `./scripts/ntfy-setup.sh` once. It installs
-ntfy and points it at the stack's ntfy (`http://10.0.2.2:8081`).
+## Contatos
 
-## Release builds
+Depois da entrada, o app lê a agenda (permissão READ_CONTACTS; a tela Nova conversa explica o
+motivo antes de o Android perguntar) e pergunta ao chama-id quais números têm conta. Só os
+hashes SHA-256 dos números saem do celular, cada número no máximo uma vez por dia, no máximo
+1000 por requisição (veja [API do chama-id, "Privacidade da busca de contatos"](../docs/chama-id-api.md#privacidade-da-busca-de-contatos-issue-7)).
+Os nomes salvos na agenda substituem os nomes de exibição em todo o app. Sem a permissão, as
+conversas começam digitando um número.
 
-Two flavors: `fdroid` (the default, no Google code; push needs a UnifiedPush app such as ntfy) and
-`play` (adds UnifiedPush's embedded FCM distributor, so push works without one).
+<p align="center">
+  <img src="../docs/imagens/android-nova-conversa-claro.webp" alt="Tela Nova conversa com Contatos no Chama e Convidar para o Chama" width="260">
+</p>
 
-- `make app-apk CHAMA_BASE_URL=https://chama.example`: one fdroid APK per ABI (arm64-v8a,
-  armeabi-v7a, x86_64) in `build/app/outputs/flutter-apk/`.
-- `make app-aab CHAMA_BASE_URL=https://chama.example`: the Play Store bundle,
+## Notificações push
+
+Os pushes chegam pelo UnifiedPush: pelo app distribuidor da pessoa (por exemplo o ntfy) ou, no
+build da Play Store, pelo FCM através do distribuidor embutido do UnifiedPush. O servidor
+(pusher do Synapse → Sygnal) manda só os IDs da sala e do evento, criptografados com Web Push; o
+app busca a mensagem, decifra e mostra. Sem um distribuidor, Configurações → Notificações avisa.
+
+No emulador: suba a pilha (`make up`) e o emulador, e rode `./scripts/ntfy-setup.sh` uma vez. O
+script instala o ntfy e o aponta para o ntfy da pilha (`http://10.0.2.2:8081`).
+
+## Builds de release
+
+Dois flavors: `fdroid` (o padrão, sem código do Google; o push precisa de um app UnifiedPush, como
+o ntfy) e `play` (adiciona o distribuidor FCM embutido do UnifiedPush, então o push funciona sem
+app extra).
+
+- `make app-apk CHAMA_BASE_URL=https://chama.example`: um APK fdroid por ABI (arm64-v8a,
+  armeabi-v7a, x86_64) em `build/app/outputs/flutter-apk/`.
+- `make app-aab CHAMA_BASE_URL=https://chama.example`: o pacote da Play Store,
   `build/app/outputs/bundle/playRelease/app-play-release.aab`.
 
-`CHAMA_BASE_URL` is required and must be `https://`: release and profile builds refuse to start
-without it. Android's `network_security_config.xml` (HTTPS only) does not cover Dart's own HTTP
-client, so this check is what keeps codes and tokens off cleartext HTTP.
+`CHAMA_BASE_URL` é obrigatório e precisa ser `https://`: builds release e profile se recusam a
+abrir sem ele. O `network_security_config.xml` do Android (só HTTPS) não vale para o cliente HTTP
+do próprio Dart, então é essa checagem que impede códigos e tokens de saírem por HTTP sem
+criptografia.
 
-Signing reads the key from the environment, never from the repo: `CHAMA_KEYSTORE` (path to a .jks or
-.p12 file outside the repo), `CHAMA_KEYSTORE_PASSWORD`, `CHAMA_KEY_ALIAS` and `CHAMA_KEY_PASSWORD`.
-Without them a release build stops with an error. For local testing only, `CHAMA_ALLOW_DEBUG_KEY=1`
-signs with the debug key and the version name ends in `-debugkey`; the stores refuse such builds,
-and a store-signed build cannot update them (a tester would have to uninstall and lose keys and
-chats).
+A assinatura lê a chave do ambiente, nunca do repositório: `CHAMA_KEYSTORE` (caminho de um
+arquivo .jks ou .p12 fora do repositório), `CHAMA_KEYSTORE_PASSWORD`, `CHAMA_KEY_ALIAS` e
+`CHAMA_KEY_PASSWORD`. Sem elas, um build release para com erro. Só para teste local,
+`CHAMA_ALLOW_DEBUG_KEY=1` assina com a chave de debug e o nome da versão termina em `-debugkey`;
+as lojas recusam esses builds, e um build assinado pela loja não consegue atualizá-los (quem
+testou teria de desinstalar e perder chaves e conversas).
 
-For a store that signs the APK itself (the F-Droid build server), `CHAMA_UNSIGNED=1` builds the
-release unsigned and ignores the variables above, for example
+Para uma loja que assina o APK sozinha (o servidor de build do F-Droid), `CHAMA_UNSIGNED=1` gera o
+release sem assinatura e ignora as variáveis acima, por exemplo
 `CHAMA_UNSIGNED=1 flutter build apk --release --flavor fdroid --dart-define=CHAMA_BASE_URL=https://chama.example`.
-The APK is `build/app/outputs/flutter-apk/app-fdroid-release.apk` (unsigned: it does not install
-until signed).
+O APK é `build/app/outputs/flutter-apk/app-fdroid-release.apk` (sem assinatura, ele não instala
+até ser assinado).
 
-Version: `version: <name>+<code>` in pubspec.yaml. Raise the code for every release; split APKs get
-1000 × ABI number on top (armeabi-v7a 1, arm64-v8a 2, x86_64 4).
+Versão: `version: <nome>+<código>` no pubspec.yaml. Aumente o código a cada release; os APKs
+divididos por ABI somam 1000 × número da ABI (armeabi-v7a 1, arm64-v8a 2, x86_64 4).
