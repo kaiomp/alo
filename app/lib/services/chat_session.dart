@@ -265,30 +265,56 @@ class ChatSession extends ChangeNotifier {
     if (!encrypted) throw StateError('Chat ${_room.id} is not end-to-end encrypted');
   }
 
-  /// Bound on the device-list refresh: on a stalled network the key query
-  /// would wait the SDK's 35 s request timeout.
+  /// First pause before device lists that did not load are asked for
+  /// again; it doubles up to [_deviceListCap].
   @visibleForTesting
-  static Duration deviceListTimeout = const Duration(seconds: 5);
+  static Duration deviceListRetry = const Duration(seconds: 1);
+
+  /// Bound on the device-list refresh before "typing": on a stalled network
+  /// the key query would wait the SDK's 35 s request timeout.
+  @visibleForTesting
+  static const typingDeviceListTimeout = Duration(seconds: 5);
+
+  /// Longest pause between two tries, and longest wait for one /keys/query.
+  static const _deviceListCap = Duration(seconds: 30);
+
+  /// One refresh of the members' device lists that are missing or outdated,
+  /// bounded by [timeout]. True once none is left. Members are the joined and
+  /// the invited (a new chat's peer is only invited at first).
+  Future<bool> _refreshDeviceLists(Duration timeout) async {
+    final client = _service.client;
+    bool stale(String userId) => client.userDeviceKeys[userId]?.outdated != false;
+    try {
+      return await () async {
+        final members = await _room.requestParticipants(const [Membership.join, Membership.invite], true);
+        final outdated = {
+          for (final u in members)
+            if (stale(u.id)) u.id,
+        };
+        if (outdated.isEmpty) return true;
+        // Swallows its errors, and a list it could not load stays outdated.
+        await client.updateUserDeviceKeys(additionalUsers: outdated);
+        return !outdated.any(stale);
+      }().timeout(timeout);
+    } catch (e) {
+      Logs().w('Could not refresh device lists', e);
+      return false;
+    }
+  }
 
   /// The SDK makes the room key for the devices in the members' device
-  /// lists. A list still loading counts as "no devices": a member left out
-  /// then can never read the message (the key is re-shared only from the
-  /// next message on). So load stale lists first. Members are the joined and
-  /// the invited (a new chat's peer is only invited at first).
-  /// Offline or slow it gives up quietly after [deviceListTimeout].
+  /// lists, and a list still loading (or whose /keys/query failed) counts as
+  /// "no devices". A member left out then can never read the message: the
+  /// first message of a room key is never re-shared. So a send waits until
+  /// every list has loaded, asking again after a pause that doubles up to
+  /// 30 s, for as long as it takes. Meanwhile the message shows as pending
+  /// (the clock), also offline. Signed out, it stops waiting.
   Future<void> _deviceListsReady() async {
-    final client = _service.client;
-    try {
-      await () async {
-        final members = await _room.requestParticipants(const [Membership.join, Membership.invite], true);
-        final stale = {
-          for (final u in members)
-            if (client.userDeviceKeys[u.id]?.outdated != false) u.id,
-        };
-        if (stale.isNotEmpty) await client.updateUserDeviceKeys(additionalUsers: stale);
-      }().timeout(deviceListTimeout);
-    } catch (e) {
-      Logs().w('Could not refresh device lists before sending', e);
+    var pause = deviceListRetry;
+    while (!await _refreshDeviceLists(_deviceListCap)) {
+      if (!_service.client.isLogged()) return;
+      await Future<void>.delayed(pause);
+      pause = pause * 2 > _deviceListCap ? _deviceListCap : pause * 2;
     }
   }
 
@@ -433,7 +459,8 @@ class ChatSession extends ChangeNotifier {
     _lastTypingSent = on ? now : DateTime(0);
     try {
       // The SDK prepares the room key when typing starts: device lists first.
-      if (on) await _deviceListsReady();
+      // One try only: the send shares that key with devices found later.
+      if (on) await _refreshDeviceLists(typingDeviceListTimeout);
       await _room.setTyping(on, timeout: 15000);
     } catch (e) {
       Logs().v('Typing notice failed', e);

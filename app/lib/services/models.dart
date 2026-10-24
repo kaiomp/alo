@@ -169,12 +169,26 @@ class IncomingMessage {
     this.body = '',
   });
 
+  /// "Nova mensagem", from no one by name: nothing about it can be trusted
+  /// or shown.
+  const IncomingMessage.hidden({required this.roomId, required this.eventId, required this.time})
+    : chatName = '',
+      senderId = '',
+      senderName = '',
+      kind = MessageKind.undecryptable,
+      isGroup = false,
+      body = '';
+
   final String roomId;
   final String eventId;
+
+  /// Empty when hidden.
   final String chatName;
 
   /// Matrix user ID; empty when unknown. Never shown.
   final String senderId;
+
+  /// Empty when hidden; the notification then names the app.
   final String senderName;
   final MessageKind kind;
   final bool isGroup;

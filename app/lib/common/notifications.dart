@@ -1,8 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:math';
 import 'dart:ui';
 
+import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config.dart';
 import '../l10n/app_localizations.dart';
@@ -10,19 +15,26 @@ import '../services/chat_service.dart';
 import '../services/models.dart' hide Message;
 import 'theme.dart';
 
-/// Notification text for [m]: the message, a label for media, or "Nova
-/// mensagem" when this device could not decrypt it yet.
+/// Notification text for [m]: the message, a label for media (never the
+/// file name, which is often the sender's camera roll), or "Nova mensagem"
+/// when it cannot be shown.
 String notificationBody(IncomingMessage m, L10n l) => switch (m.kind) {
   MessageKind.undecryptable => l.newMessage,
-  MessageKind.image => m.body.isEmpty ? l.photo : '📷 ${m.body}',
+  MessageKind.image => '📷 ${l.photo}',
   MessageKind.voice => '🎤 ${l.voiceMessage}',
-  MessageKind.file => '📄 ${m.body.isEmpty ? l.file : m.body}',
+  MessageKind.file => '📎 ${l.file}',
   _ => m.body,
 };
 
-/// Stable across runs (String.hashCode is not guaranteed to be), so a later
-/// start of the app can still replace or cancel a chat's notification.
-int notificationId(String roomId) => roomId.codeUnits.fold(17, (h, c) => (h * 31 + c) & 0x3fffffff);
+/// The first 32 bits of the SHA-256 of [roomId]: Android's notification ID,
+/// one per chat. Stable across runs (String.hashCode is not guaranteed to
+/// be), so a later start of the app can still replace or cancel it.
+/// Limit: Android IDs are 32-bit, so two chats can still share one, about
+/// once in 4 billion pairs.
+int notificationId(String roomId) {
+  final h = sha256.convert(utf8.encode(roomId)).bytes;
+  return (h[0] << 24 | h[1] << 16 | h[2] << 8 | h[3]).toSigned(32);
+}
 
 const replyActionId = 'reply';
 
@@ -32,7 +44,10 @@ const replyActionId = 'reply';
 Message notificationMessage(IncomingMessage m, L10n l) => Message(
   notificationBody(m, l),
   m.time,
-  Person(name: m.senderName, key: m.senderId.isEmpty ? null : 's${notificationId(m.senderId)}'),
+  Person(
+    name: m.senderName.isEmpty ? l.appName : m.senderName,
+    key: m.senderId.isEmpty ? null : 's${notificationId(m.senderId)}',
+  ),
 );
 
 /// Android notifications for new messages: one per chat, Android's
@@ -46,8 +61,37 @@ class Notifications {
   /// Sends a reply typed in a notification. Set by the app before [init].
   Future<void> Function(String roomId, String text)? onReply;
 
+  static const _secretKey = 'chama.notifications.secret';
+
+  /// Marks the notifications this app posts, in their payload. MainActivity
+  /// is exported (it is the launcher) and the plugin acts on any intent with
+  /// its action and extras, so without it another app on the phone could
+  /// make Chama send a reply. Random per install, kept in app-private storage.
+  @visibleForTesting
+  String? secret;
+
+  /// Payload of [roomId]'s notifications.
+  String _payload(String roomId) => '$secret|$roomId';
+
+  /// The chat of a notification [payload], or null when it does not carry
+  /// [secret] (not a notification of this app, or one from before it).
+  @visibleForTesting
+  String? roomOf(String? payload) {
+    final s = secret;
+    if (s == null || payload == null || !payload.startsWith('$s|')) return null;
+    final roomId = payload.substring(s.length + 1);
+    return roomId.isEmpty ? null : roomId;
+  }
+
   Future<void> init() async {
     if (!onAndroid) return;
+    final prefs = await SharedPreferences.getInstance();
+    secret = prefs.getString(_secretKey);
+    if (secret == null) {
+      final r = Random.secure();
+      secret = List.generate(16, (_) => r.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
+      await prefs.setString(_secretKey, secret!);
+    }
     await _plugin.initialize(
       settings: const InitializationSettings(android: AndroidInitializationSettings('ic_notification')),
       onDidReceiveNotificationResponse: handleResponse,
@@ -87,8 +131,8 @@ class Notifications {
     if (key == _lastResponse && now.difference(_lastResponseAt) < const Duration(seconds: 5)) return;
     _lastResponse = key;
     _lastResponseAt = now;
-    final roomId = r.payload;
-    if (roomId == null || roomId.isEmpty) return;
+    final roomId = roomOf(r.payload);
+    if (roomId == null) return;
     // The chat opens at once; a reply goes out meanwhile and shows there,
     // as sending or failed.
     opened.value = roomId;
@@ -98,24 +142,41 @@ class Notifications {
     if (r.actionId == replyActionId && text.isNotEmpty) unawaited(_sendReply(roomId, text));
   }
 
+  /// The notification shows the reply at once: the send can wait a while
+  /// for device lists (or the network), and the chat, opening, shows it as
+  /// sending or failed.
   Future<void> _sendReply(String roomId, String text) async {
-    try {
-      await onReply?.call(roomId, text);
-    } catch (e) {
-      // The type only: an error can quote the message.
-      debugPrint('Notification reply failed (${e.runtimeType})');
-    }
+    final sent = () async {
+      try {
+        await onReply?.call(roomId, text);
+      } catch (e) {
+        // The type only: an error can quote the message.
+        debugPrint('Notification reply failed (${e.runtimeType})');
+      }
+    }();
     try {
       await _showReply(roomId, text);
     } catch (e) {
       debugPrint('Notification update failed (${e.runtimeType})');
     }
+    await sent;
+  }
+
+  /// Signed out (here, or remotely after an identity reset): no message
+  /// preview stays on the shade or the lock screen.
+  void clearOnSignOut(ValueListenable<bool> loggedIn) => loggedIn.addListener(() {
+    if (!loggedIn.value) unawaited(cancelAll());
+  });
+
+  @visibleForTesting
+  Future<void> cancelAll() async {
+    if (onAndroid) await _plugin.cancelAll();
   }
 
   /// A push arrived ([PushService.onPush]): fetch, decrypt and show the
   /// message, unless the app is on screen (the chat list shows it already).
   Future<void> showPush(ChatService chat, String roomId, String eventId) async {
-    if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) return;
+    if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed || !chat.loggedIn.value) return;
     // Limit: a closed app gets about 5-10 s from the distributor's wake-up
     // before Android may freeze it again, so a very slow network can delay the
     // notification. A short foreground service lifts that (FluffyChat starts one).
@@ -127,18 +188,10 @@ class Notifications {
       // The type only: an error can quote the event.
       debugPrint('Push: could not load the message (${e.runtimeType})');
       // Still tell the user something arrived, without names or IDs.
-      message = IncomingMessage(
-        roomId: roomId,
-        eventId: eventId,
-        chatName: l.appName,
-        senderId: '',
-        senderName: l.appName,
-        kind: MessageKind.undecryptable,
-        isGroup: false,
-        time: DateTime.now(),
-      );
+      message = IncomingMessage.hidden(roomId: roomId, eventId: eventId, time: DateTime.now());
     }
-    if (message != null) await show(message, l);
+    // Signed out while it loaded: cancelAll has run already.
+    if (message != null && chat.loggedIn.value) await show(message, l);
   }
 
   /// pt-BR unless the phone uses another language the app has (no screen,
@@ -192,7 +245,7 @@ class Notifications {
     style?.messages?.add(message);
     await _plugin.show(
       id: id,
-      payload: roomId,
+      payload: _payload(roomId),
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
           isGroup ? 'groups' : 'messages',

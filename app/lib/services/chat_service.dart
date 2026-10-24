@@ -499,21 +499,27 @@ class ChatService {
     return client.getRoomById(roomId)?.membership == Membership.join;
   }
 
-  /// A reply typed in a notification.
+  /// A reply typed in a notification: the chat screen's own send (spec §5),
+  /// so it is refused in a chat without encryption and waits for the
+  /// members' device lists. Throws for a chat this device does not have.
   Future<void> sendQuickReply(String roomId, String text) async {
-    final room = client.getRoomById(roomId);
-    if (room == null) return;
-    await room.sendTextEvent(text, parseCommands: false, parseMarkdown: false);
+    await client.roomsLoading;
+    final session = openChat(roomId);
+    try {
+      await session.sendText(text);
+    } finally {
+      session.dispose();
+    }
   }
 
   // ---- push (spec §6: event_id_only, the phone decrypts) ----
 
   /// What to show for a push about [eventId], or null when nothing should
-  /// show: a muted chat, my own message, one already read, or no message
-  /// (edits, reactions, state). A message this device cannot decrypt yet
-  /// comes back as [MessageKind.undecryptable], with no body.
+  /// show: a chat without encryption or muted, my own message, one already
+  /// read, or no message (edits, reactions, state). See [incomingFor].
   Future<IncomingMessage?> notificationFor(String roomId, String eventId) async {
-    // One sync brings the room key (to-device) and sends the delivery ack.
+    // One sync brings the room key (to-device), my newest read receipt, and
+    // sends the delivery ack.
     await client.oneShotSync(timeout: Duration.zero).timeout(const Duration(seconds: 10)).catchError((_) {});
     final event = await client.getEventByPushNotification(
       PushNotification(roomId: roomId, eventId: eventId),
@@ -522,28 +528,74 @@ class ChatService {
     return event == null ? null : incomingFor(event);
   }
 
-  /// The checks of [notificationFor], on the fetched [event].
+  /// The checks of [notificationFor], on the fetched [event]. A message
+  /// shows with its sender's name and text only when it came encrypted from
+  /// a device its sender cross-signed, and the sender has a name to show.
+  /// Otherwise it is a nameless "Nova mensagem" ([IncomingMessage.hidden]):
+  /// one this device cannot decrypt yet, one from a device signed in with
+  /// the SMS code alone (a SIM swap) or by the server's operator, plaintext
+  /// slipped into an encrypted chat, or a sender known only by user ID.
   @visibleForTesting
   IncomingMessage? incomingFor(Event event) {
     if (event.senderId == myUserId) return null;
     final room = event.room;
+    // Spec §5: such a chat is read-only here, and a reply would go out in clear.
+    if (!room.encrypted) return null;
     if (room.pushRuleState != PushRuleState.notify) return null;
+    if (_alreadyRead(event)) return null;
     if (!isVisible(event, isGroup: !room.isDirectChat, hidden: const {})) return null;
     final kind = kindOf(event);
     if (kind == MessageKind.system || kind == MessageKind.deleted) return null;
     if (kind != MessageKind.undecryptable && !client.pushruleEvaluator.match(event).notify) return null;
+    final sender = event.senderFromMemoryOrFallback;
+    final named = _contactNames.containsKey(sender.id) || sender.displayName != null;
+    if (kind == MessageKind.undecryptable || !named || !_fromSignedDevice(event)) {
+      return IncomingMessage.hidden(roomId: room.id, eventId: event.eventId, time: event.originServerTs);
+    }
     return IncomingMessage(
       roomId: room.id,
       eventId: event.eventId,
       chatName: chatName(room),
       senderId: event.senderId,
-      senderName: nameOf(event.senderFromMemoryOrFallback),
+      senderName: nameOf(sender),
       kind: kind,
       isGroup: !room.isDirectChat,
       time: event.originServerTs,
-      // Never the ciphertext or the SDK's decryption error.
-      body: kind == MessageKind.undecryptable ? '' : previewText(event),
+      body: previewText(event),
     );
+  }
+
+  /// My read marker is on [event], or one of my read receipts (from any of
+  /// my devices) is on it or was set after it was sent. Limit: a receipt
+  /// set after it on an older message (this phone skips ones it could not
+  /// decrypt) counts as read too.
+  bool _alreadyRead(Event event) {
+    final room = event.room;
+    if (room.fullyRead == event.eventId) return true;
+    final sentAt = event.originServerTs.millisecondsSinceEpoch;
+    return [
+      room.receiptState.global.latestOwnReceipt,
+      room.receiptState.mainThread?.latestOwnReceipt,
+    ].any((r) => r != null && (r.eventId == event.eventId || r.ts >= sentAt));
+  }
+
+  /// [event] came encrypted, in a Megolm session from a device of its sender
+  /// that the sender's own cross-signing keys signed.
+  bool _fromSignedDevice(Event event) {
+    final source = event.originalSource;
+    if (source == null || source.type != EventTypes.Encrypted) return false;
+    final sessionId = source.content.tryGet<String>('session_id');
+    final session = sessionId == null
+        ? null
+        : client.encryption?.keyManager.getInboundGroupSession(event.room.id, sessionId);
+    if (session == null) return false;
+    final device = client.userDeviceKeys[event.senderId]?.deviceKeys.values
+        .where((d) => d.curve25519Key == session.senderKey)
+        .firstOrNull;
+    return device != null &&
+        !device.blocked &&
+        device.ed25519Key == session.senderClaimedKeys['ed25519'] &&
+        device.hasValidSignatureChain(verifiedByTheirMasterKey: true);
   }
 
   // ---- media ----

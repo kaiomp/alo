@@ -94,18 +94,31 @@ void main() {
   late ChatService service;
   late _TestClient client;
   late Future<void> keysAnswer; // when /keys/query answers
+  late int keysFailures; // /keys/query answers 502 this many times first
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     requests = [];
     keysAnswer = Future.value();
+    keysFailures = 0;
     final server = MockClient((req) async {
       requests.add('${req.method} ${Uri.decodeComponent(req.url.path)}');
       if (req.url.path.endsWith('/keys/query')) {
+        if (keysFailures > 0) {
+          keysFailures--;
+          return http.Response('{"errcode":"M_UNKNOWN","error":"bad gateway"}', 502);
+        }
         await keysAnswer;
         requests.add('keys answered');
-        return http.Response(jsonEncode({'device_keys': <String, Object>{}}), 200);
+        // Every user asked for, with no devices.
+        final asked = (jsonDecode(req.body)['device_keys'] as Map<String, dynamic>).keys;
+        return http.Response(
+          jsonEncode({
+            'device_keys': {for (final u in asked) u: <String, Object>{}},
+          }),
+          200,
+        );
       }
       if (req.url.path.endsWith('/members')) {
         return http.Response(
@@ -209,6 +222,9 @@ void main() {
     final off = ChatSession(service, room('!e2e:chama.test', membership: Membership.join, encrypted: true));
     expect(off.encrypted, isFalse);
     await expectLater(off.sendText('oi'), throwsStateError);
+    // Nor from a notification's reply field.
+    await expectLater(service.sendQuickReply('!plain:chama.test', 'oi'), throwsStateError);
+    await expectLater(service.sendQuickReply('!unknown:chama.test', 'oi'), throwsA(anything));
     expect(requests.where((r) => r.contains('/send/')), isEmpty);
   });
 
@@ -229,27 +245,53 @@ void main() {
       client.fake = _FakeEncryption(requests);
       // Bob's list as the sync loop leaves it while /keys/query is in flight.
       client.userDeviceKeys[bob] = DeviceKeysList(bob, client);
-      ChatSession.deviceListTimeout = const Duration(milliseconds: 300);
+      ChatSession.deviceListRetry = const Duration(milliseconds: 20);
     });
-    tearDown(() => ChatSession.deviceListTimeout = const Duration(seconds: 5));
+    tearDown(() => ChatSession.deviceListRetry = const Duration(seconds: 1));
 
     Iterable<String> sends() => requests.where((r) => r.contains('/send/${EventTypes.Encrypted}/'));
 
-    test('on a stalled key query shows and stores the message at once, and goes out after the timeout', () async {
-      keysAnswer = Completer<void>().future; // never answers
+    test('on a slow key query shows and stores the message at once, waits, then goes out once it answers', () async {
+      final answer = Completer<void>();
+      keysAnswer = answer.future;
       final r = room('!e2e:chama.test', membership: Membership.join, encrypted: true);
-      final sending = ChatSession(service, r).sendText('oi');
+      var done = false;
+      final sending = ChatSession(service, r).sendText('oi').whenComplete(() => done = true);
       await Future<void>.delayed(const Duration(milliseconds: 100));
       expect(r.lastEvent?.body, 'oi');
       expect(r.lastEvent?.status, EventStatus.sending);
       // Stored: it survives the app being killed now.
       expect((await client.database.getEventList(r)).map((e) => e.body), contains('oi'));
       expect(requests, contains(endsWith('/keys/query')));
+
+      // Well past the old 5 s give-up (scaled): still waiting, no room key.
+      await Future<void>.delayed(const Duration(milliseconds: 600));
+      expect(done, isFalse);
+      expect(r.lastEvent?.status, EventStatus.sending);
       expect(requests, isNot(contains('encrypt')));
       expect(sends(), isEmpty);
 
+      answer.complete();
       await sending;
-      expect(requests, contains('encrypt'));
+      expect(requests.indexOf('encrypt'), greaterThan(requests.indexOf('keys answered')));
+      expect(sends(), hasLength(1));
+    });
+
+    test('after a failed key query asks again, and makes the room key only once it answers', () async {
+      keysFailures = 2; // e.g. a 502 from the edge, a dropped mobile connection
+      final r = room('!e2e:chama.test', membership: Membership.join, encrypted: true);
+      await ChatSession(service, r).sendText('oi');
+      expect(requests.where((r) => r.endsWith('/keys/query')), hasLength(3));
+      expect(requests.indexOf('encrypt'), greaterThan(requests.indexOf('keys answered')));
+      expect(sends(), hasLength(1));
+    });
+
+    test('a reply from a notification waits for device lists too', () async {
+      keysAnswer = Future<void>.delayed(const Duration(milliseconds: 100));
+      room('!e2e:chama.test', membership: Membership.join, encrypted: true);
+      await service.sendQuickReply('!e2e:chama.test', 'já vou');
+      expect(requests, contains('keys answered'));
+      expect(requests.indexOf('encrypt'), greaterThan(requests.indexOf('keys answered')));
       expect(sends(), hasLength(1));
     });
 

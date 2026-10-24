@@ -22,14 +22,22 @@ void main() {
   test('notification text per message kind; "Nova mensagem" when it cannot be decrypted yet', () {
     expect(notificationBody(msg(MessageKind.text, 'oi'), l), 'oi');
     expect(notificationBody(msg(MessageKind.undecryptable), l), 'Nova mensagem');
-    expect(notificationBody(msg(MessageKind.image), l), 'Foto');
     expect(notificationBody(msg(MessageKind.voice), l), '🎤 Mensagem de voz');
-    expect(notificationBody(msg(MessageKind.file, 'nota.pdf'), l), '📄 nota.pdf');
+  });
+
+  test('a photo or a file shows as one, never by its file name', () {
+    expect(notificationBody(msg(MessageKind.image, 'IMG_20261024_083112.jpg'), l), '📷 Foto');
+    expect(notificationBody(msg(MessageKind.file, 'exames-mae.pdf'), l), '📎 Arquivo');
+    final en = lookupL10n(const Locale('en'));
+    expect(notificationBody(msg(MessageKind.image, 'IMG_1.jpg'), en), '📷 Photo');
+    expect(notificationBody(msg(MessageKind.file, 'a.pdf'), en), '📎 File');
   });
 
   test('notification IDs are stable per chat and fit an Android int', () {
     expect(notificationId('!r:chama.test'), notificationId('!r:chama.test'));
     expect(notificationId('!r:chama.test'), isNot(notificationId('!s:chama.test')));
-    expect(notificationId('!r:chama.test'), inInclusiveRange(0, 0x3fffffff));
+    expect(notificationId('!r:chama.test'), inInclusiveRange(-0x80000000, 0x7fffffff));
+    // These two collide in a 31-based string hash ("Aa" and "BB").
+    expect(notificationId('!Aa:chama.test'), isNot(notificationId('!BB:chama.test')));
   });
 }

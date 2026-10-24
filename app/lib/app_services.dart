@@ -32,7 +32,9 @@ class AppServices with WidgetsBindingObserver {
     final chat = await ChatService.start(homeserver: chamaBaseUrl, id: id, background: background);
     final prefs = await SharedPreferences.getInstance();
     final contacts = ContactsService(chat, onAndroid ? DeviceAddressBook() : NoAddressBook(), prefs);
-    final notifications = Notifications()..onReply = chat.sendQuickReply;
+    final notifications = Notifications()
+      ..onReply = chat.sendQuickReply
+      ..clearOnSignOut(chat.loggedIn);
     // onPush before init: a push that started the app comes right after it.
     final push = PushService(chat, prefs)..onPush = (roomId, eventId) => notifications.showPush(chat, roomId, eventId);
     await notifications.init();

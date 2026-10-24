@@ -12,19 +12,24 @@ import 'fakes.dart';
 
 class _Captured extends Notifications {
   final shown = <IncomingMessage>[];
+  var cancelledAll = 0;
 
   @override
   Future<void> show(IncomingMessage m, L10n l) async => shown.add(m);
+
+  @override
+  Future<void> cancelAll() async => cancelledAll++;
 }
 
 const roomId = '!r:chama.test';
+const secret = '0123456789abcdef0123456789abcdef';
 
-NotificationResponse reply(String text) => NotificationResponse(
+NotificationResponse reply(String text, {String payload = '$secret|$roomId'}) => NotificationResponse(
   notificationResponseType: NotificationResponseType.selectedNotificationAction,
   id: 1,
   actionId: replyActionId,
   input: text,
-  payload: roomId,
+  payload: payload,
 );
 
 IncomingMessage from(String senderId, String name) => IncomingMessage(
@@ -45,14 +50,29 @@ void main() {
   testWidgets('a push it cannot load shows only the app name and "Nova mensagem"', (tester) async {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
     SharedPreferences.setMockInitialValues({});
-    // Signed out: loading the event fails.
+    // No session on the client: loading the event fails.
     final chat = (await tester.runAsync(() async => testService(await SharedPreferences.getInstance())))!;
+    chat.loggedIn.value = true;
     final notifications = _Captured();
     await tester.runAsync(() => notifications.showPush(chat, roomId, r'$e'));
 
     final m = notifications.shown.single;
-    expect((m.chatName, m.senderName, m.senderId, m.body), ('Chama', 'Chama', '', ''));
+    expect((m.chatName, m.senderName, m.senderId, m.body), ('', '', '', ''));
+    expect(notificationMessage(m, l).person!.name, 'Chama');
     expect(notificationBody(m, l), 'Nova mensagem');
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+  });
+
+  testWidgets('signed out, a push shows nothing and every notification goes', (tester) async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    SharedPreferences.setMockInitialValues({});
+    final chat = (await tester.runAsync(() async => testService(await SharedPreferences.getInstance())))!;
+    chat.loggedIn.value = true;
+    final notifications = _Captured()..clearOnSignOut(chat.loggedIn);
+    chat.loggedIn.value = false;
+    expect(notifications.cancelledAll, 1);
+    await tester.runAsync(() => notifications.showPush(chat, roomId, r'$e'));
+    expect(notifications.shown, isEmpty);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
   });
 
@@ -80,7 +100,9 @@ void main() {
     late DateTime now;
 
     setUp(() {
-      notifications = Notifications()..clock = () => now;
+      notifications = Notifications()
+        ..secret = secret
+        ..clock = (() => now);
       sent = [];
       now = DateTime(2026, 10, 24, 12);
     });
@@ -102,6 +124,16 @@ void main() {
       await notifications.handleResponse(reply('já vou'));
       await Future<void>.delayed(Duration.zero);
       expect(notifications.opened.value, roomId);
+    });
+
+    test('only from a notification this app posted: another app cannot make it send', () async {
+      notifications.onReply = (room, text) async => sent.add(text);
+      for (final payload in [roomId, 'guess|$roomId', '$secret|', '']) {
+        await notifications.handleResponse(reply('manda o PIX', payload: payload));
+      }
+      expect(sent, isEmpty);
+      expect(notifications.opened.value, isNull);
+      expect(notifications.roomOf('$secret|$roomId'), roomId);
     });
 
     test('is sent once when Android hands it over twice, and again when typed again later', () async {
