@@ -30,6 +30,10 @@ class ChatSession extends ChangeNotifier {
   bool get isGroup => !_room.isDirectChat;
   bool get canLoadMore => _timeline?.canRequestHistory ?? false;
 
+  /// Older messages remain on the server, not just in the local database
+  /// (whose pages load within a few frames).
+  bool get moreOnServer => canLoadMore && _room.prev_batch != null;
+
   /// Display names of members typing right now (me excluded).
   List<String> get typing =>
       _room.typingUsers.where((u) => u.id != _service.myUserId).map((u) => u.calcDisplayname()).toList();
@@ -229,11 +233,7 @@ class ChatSession extends ChangeNotifier {
     required List<int> waveform,
     String? replyTo,
   }) {
-    final ext = mimeType.contains('wav')
-        ? 'wav'
-        : mimeType.contains('ogg')
-        ? 'ogg'
-        : 'm4a';
+    final ext = ['wav', 'ogg', 'webm'].firstWhere(mimeType.contains, orElse: () => 'm4a');
     final file = MatrixAudioFile(
       bytes: bytes,
       name: 'voz_${DateTime.now().millisecondsSinceEpoch}.$ext',

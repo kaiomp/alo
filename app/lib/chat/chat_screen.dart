@@ -237,6 +237,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   Widget _timeline(BuildContext context, L10n l) {
     final items = buildTimelineItems(_session.messages);
+    // Bubbles keep their state (a decrypted photo, a playing voice note)
+    // when newer messages shift them down the list.
+    final indexOf = {
+      for (final (i, item) in items.indexed)
+        if (item case MessageItem(:final message)) message.id: i,
+    };
     return LayoutBuilder(
       builder: (context, c) {
         final width = c.maxWidth;
@@ -256,10 +262,15 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             reverse: true,
             padding: const EdgeInsets.only(top: 8, bottom: 8),
             itemCount: items.length + 1,
+            findChildIndexCallback: (key) => key is ValueKey<String> ? indexOf[key.value] : null,
             itemBuilder: (context, i) {
               if (i == items.length) {
                 if (_session.canLoadMore) {
                   WidgetsBinding.instance.addPostFrameCallback((_) => _session.loadMore());
+                  // Every reopened chat pages through the local database first;
+                  // a spinner there only flashes (a stray orange dot where the
+                  // encryption notice belongs). Spin only for the server.
+                  if (!_session.moreOnServer) return const SizedBox.shrink();
                   return const Padding(
                     padding: EdgeInsets.all(16),
                     child: Center(child: CircularProgressIndicator()),
@@ -274,6 +285,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                   margin: 8,
                 ),
                 MessageItem(:final message, :final startsGroup) => MessageBubble(
+                  key: ValueKey(message.id),
                   message: message,
                   showSender: _session.isGroup && startsGroup && !message.isMine,
                   tail: startsGroup,

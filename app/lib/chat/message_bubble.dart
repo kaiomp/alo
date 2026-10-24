@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -13,6 +14,7 @@ import '../services/chat_session.dart';
 import '../services/models.dart';
 import '../services/ticks.dart';
 import 'tick_icon.dart';
+import 'voice/voice_player.dart';
 
 /// One message, WhatsApp style: time and ticks inline at the bottom right,
 /// a tail on the first bubble of a run, reactions overlapping the bottom edge.
@@ -78,7 +80,10 @@ class MessageBubble extends StatelessWidget {
       height: kIsWeb ? 20 / 15 : 22 / 16,
     );
     const r = Radius.circular(8);
-    const pad = EdgeInsets.fromLTRB(9, 6, 9, 6);
+    // Photos fill the bubble up to a 3 px frame; their sender and reply sit inset.
+    final photo = m.kind == MessageKind.image;
+    final pad = photo ? const EdgeInsets.all(3) : const EdgeInsets.fromLTRB(9, 6, 9, 6);
+    final inner = photo ? const EdgeInsets.fromLTRB(6, 3, 6, 0) : EdgeInsets.zero;
 
     final bubble = Container(
       constraints: BoxConstraints(maxWidth: maxWidth),
@@ -103,7 +108,7 @@ class MessageBubble extends StatelessWidget {
           children: [
             if (showSender)
               Padding(
-                padding: const EdgeInsets.only(bottom: 2),
+                padding: inner.add(const EdgeInsets.only(bottom: 2)),
                 child: Text(
                   m.senderName,
                   maxLines: 1,
@@ -111,11 +116,15 @@ class MessageBubble extends StatelessWidget {
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.accent),
                 ),
               ),
-            if (m.reply != null) _ReplyBox(reply: m.reply!),
+            if (m.reply != null)
+              Padding(
+                padding: inner,
+                child: _ReplyBox(reply: m.reply!),
+              ),
             _contentWithMeta(context, l, textStyle, maxWidth - pad.horizontal),
             if (m.tick == Tick.failed)
               Padding(
-                padding: const EdgeInsets.only(top: 2),
+                padding: inner.add(const EdgeInsets.only(top: 2)),
                 child: Text(l.notSent, style: TextStyle(fontSize: 12.5, color: theme.colorScheme.error)),
               ),
           ],
@@ -187,7 +196,10 @@ class MessageBubble extends StatelessWidget {
   Widget _contentWithMeta(BuildContext context, L10n l, TextStyle textStyle, double maxContent) {
     final colors = ChatColors.of(context);
     final m = message;
-    final metaStyle = TextStyle(fontSize: 11, height: 16 / 11, color: colors.meta, fontFeatures: tabularFigures);
+    // Measured and drawn with the same resolved style (the theme's font), so
+    // the gap before the time is the real 8 px.
+    final metaStyle = DefaultTextStyle.of(context).style
+        .merge(TextStyle(fontSize: 11, height: 16 / 11, color: colors.meta, fontFeatures: tabularFigures));
     final metaText = '${m.edited ? '${l.edited}  ' : ''}${clock(m.time, l)}';
     final scaler = MediaQuery.textScalerOf(context);
     final direction = Directionality.of(context);
@@ -210,6 +222,45 @@ class MessageBubble extends StatelessWidget {
         if (m.tick != null) ...[const SizedBox(width: 3), TickIcon(m.tick!)],
       ],
     );
+
+    switch (m.kind) {
+      case MessageKind.image:
+        // Time and ticks in white on a shade at the photo's bottom right.
+        return _Picture(
+          message: m,
+          session: session,
+          width: math.min(maxContent, 280),
+          meta: Container(
+            padding: const EdgeInsets.fromLTRB(6, 1, 5, 1),
+            decoration: BoxDecoration(color: Colors.black38, borderRadius: BorderRadius.circular(10)),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(metaText, style: metaStyle.copyWith(color: Colors.white)),
+                if (m.tick != null) ...[const SizedBox(width: 3), TickIcon(m.tick!, onPhoto: true)],
+              ],
+            ),
+          ),
+        );
+      case MessageKind.voice:
+        return Stack(
+          children: [
+            VoicePlayer(message: m, load: () => session.download(m.id), color: colors.accent),
+            Positioned(right: 0, bottom: 0, child: meta),
+          ],
+        );
+      case MessageKind.file:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _FileCard(message: m, session: session, width: math.min(maxContent, 280)),
+            const SizedBox(height: 3),
+            meta,
+          ],
+        );
+      default:
+    }
 
     if (m.kind == MessageKind.text) {
       final painter = TextPainter(
@@ -241,7 +292,7 @@ class MessageBubble extends StatelessWidget {
         ),
       );
     }
-    // Deleted, waiting, media placeholders: one row with room for the meta.
+    // Deleted and waiting: one row with room for the meta.
     return Stack(
       children: [
         Padding(
@@ -259,11 +310,7 @@ class MessageBubble extends StatelessWidget {
     final m = message;
     final (icon, text, style) = switch (m.kind) {
       MessageKind.deleted => (Icons.block, m.isMine ? l.youDeleted : l.deletedMessage, muted),
-      MessageKind.undecryptable => (Icons.schedule, l.waitingMessage, muted),
-      // Photos, files and voice notes get their own widgets in the media task.
-      MessageKind.image => (Icons.photo_camera, l.photo, null),
-      MessageKind.voice => (Icons.mic, l.voiceMessage, null),
-      _ => (Icons.insert_drive_file_outlined, m.body, null),
+      _ => (Icons.schedule, l.waitingMessage, muted),
     };
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -453,6 +500,189 @@ class _ReplyBox extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Encrypted photo: the thumbnail fills the bubble, a tap opens it full size.
+class _Picture extends StatefulWidget {
+  const _Picture({required this.message, required this.session, required this.width, required this.meta});
+  final Message message;
+  final ChatSession session;
+  final double width;
+  final Widget meta;
+
+  @override
+  State<_Picture> createState() => _PictureState();
+}
+
+class _PictureState extends State<_Picture> {
+  late final Future<Uint8List> _thumb = widget.session.download(widget.message.id, thumbnail: true);
+
+  void _open(Uint8List thumb) {
+    final full = widget.session.download(widget.message.id);
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(backgroundColor: Colors.black, foregroundColor: Colors.white),
+          body: Center(
+            child: FutureBuilder<Uint8List>(
+              future: full,
+              builder: (context, snap) =>
+                  InteractiveViewer(child: Image.memory(snap.data ?? thumb, gaplessPlayback: true)),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final m = widget.message;
+    final colors = ChatColors.of(context);
+    final ratio = (m.width != null && m.height != null && m.height! > 0) ? m.width! / m.height! : 4 / 3;
+    final width = widget.width;
+    return SizedBox(
+      width: width,
+      height: width / ratio.clamp(0.75, 2.0),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(6),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            FutureBuilder<Uint8List>(
+              future: _thumb,
+              builder: (context, snap) => switch (snap) {
+                AsyncSnapshot(:final data?) => GestureDetector(
+                  onTap: () => _open(data),
+                  child: Image.memory(data, key: Key('image_${m.id}'), fit: BoxFit.cover),
+                ),
+                AsyncSnapshot(hasError: true) => ColoredBox(
+                  color: colors.meta.withValues(alpha: 0.15),
+                  child: Icon(Icons.broken_image_outlined, color: colors.meta),
+                ),
+                _ => ColoredBox(
+                  color: colors.meta.withValues(alpha: 0.15),
+                  child: Center(
+                    child: SizedBox.square(
+                      dimension: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: colors.meta),
+                    ),
+                  ),
+                ),
+              },
+            ),
+            Positioned(right: 4, bottom: 4, child: widget.meta),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A file: icon, name, size and type, and a button that decrypts and saves it.
+class _FileCard extends StatefulWidget {
+  const _FileCard({required this.message, required this.session, required this.width});
+  final Message message;
+  final ChatSession session;
+  final double width;
+
+  @override
+  State<_FileCard> createState() => _FileCardState();
+}
+
+class _FileCardState extends State<_FileCard> {
+  bool _busy = false;
+
+  Future<void> _save() async {
+    final m = widget.message;
+    final failed = L10n.of(context).downloadFailed;
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _busy = true);
+    try {
+      final bytes = await widget.session.download(m.id);
+      await FilePicker.saveFile(fileName: m.body, bytes: bytes, mimeType: m.mimeType ?? 'application/octet-stream');
+    } catch (_) {
+      messenger.showSnackBar(SnackBar(content: Text(failed)));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  static String _size(int bytes) => switch (bytes) {
+    < 1024 => '$bytes B',
+    < 1024 * 1024 => '${(bytes / 1024).ceil()} KB',
+    _ => '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final m = widget.message;
+    final theme = Theme.of(context);
+    final colors = ChatColors.of(context);
+    final dark = theme.brightness == Brightness.dark;
+    final dot = m.body.lastIndexOf('.');
+    final type = dot > 0 && dot < m.body.length - 1 ? m.body.substring(dot + 1).toUpperCase() : null;
+    final details = [if (m.size != null) _size(m.size!), ?type].join(' · ');
+    return Container(
+      width: widget.width,
+      padding: const EdgeInsets.fromLTRB(8, 8, 4, 8),
+      decoration: BoxDecoration(
+        color: (dark ? Colors.white : Colors.black).withValues(alpha: dark ? 0.06 : 0.05),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(color: colors.tint, borderRadius: BorderRadius.circular(6)),
+            child: Icon(Icons.insert_drive_file_outlined, size: 20, color: colors.onTint),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  m.body,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 14,
+                    height: 18 / 14,
+                    fontWeight: FontWeight.w500,
+                    color: colors.bubbleText,
+                  ),
+                ),
+                if (details.isNotEmpty)
+                  Text(
+                    details,
+                    style: TextStyle(fontSize: 12, height: 16 / 12, color: colors.meta, fontFeatures: tabularFigures),
+                  ),
+              ],
+            ),
+          ),
+          SizedBox.square(
+            dimension: 40,
+            child: _busy
+                ? Padding(
+                    padding: const EdgeInsets.all(11),
+                    child: CircularProgressIndicator(strokeWidth: 2, color: colors.meta),
+                  )
+                : IconButton(
+                    key: Key('download_${m.id}'),
+                    tooltip: L10n.of(context).download,
+                    color: colors.meta,
+                    onPressed: _save,
+                    icon: const Icon(Icons.download_rounded),
+                  ),
+          ),
+        ],
       ),
     );
   }

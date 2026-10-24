@@ -34,6 +34,10 @@ class ComposerState extends State<Composer> {
   DateTime? _recordingSince;
   Timer? _tick;
 
+  /// The finger is still on the mic. Starting can outlast the hold (the
+  /// first time, Android asks for the microphone).
+  bool _holding = false;
+
   void replyTo(Message m) {
     setState(() {
       _editing = null;
@@ -99,15 +103,20 @@ class ComposerState extends State<Composer> {
     if (image != null) await _sendPicked(image: image);
   }
 
-  // Voice notes: hold the mic, release to send (shorter than 0.5 s is dropped).
+  // Voice notes: hold the mic, release to send, slide left to cancel
+  // (shorter than 0.5 s is dropped).
   Future<void> _startRecording() async {
+    _holding = true;
     final recorder = Deps.of(context).newRecorder();
     if (!await recorder.start()) {
       recorder.dispose();
       if (mounted) _snack(L10n.of(context).micDenied);
       return;
     }
-    if (!mounted) return recorder.dispose();
+    if (!mounted || !_holding) {
+      await recorder.cancel();
+      return recorder.dispose();
+    }
     setState(() {
       _recorder = recorder;
       _recordingSince = DateTime.now();
@@ -115,7 +124,8 @@ class ComposerState extends State<Composer> {
     _tick = Timer.periodic(const Duration(milliseconds: 250), (_) => setState(() {}));
   }
 
-  Future<void> _stopRecording() async {
+  Future<void> _stopRecording({bool cancel = false}) async {
+    _holding = false;
     final recorder = _recorder;
     final since = _recordingSince;
     _tick?.cancel();
@@ -125,7 +135,7 @@ class ComposerState extends State<Composer> {
     });
     if (recorder == null || since == null) return;
     try {
-      if (DateTime.now().difference(since) < const Duration(milliseconds: 500)) {
+      if (cancel || DateTime.now().difference(since) < const Duration(milliseconds: 500)) {
         await recorder.cancel();
         return;
       }
@@ -186,7 +196,7 @@ class ComposerState extends State<Composer> {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                l.holdToRecord,
+                '‹ ${l.slideToCancel}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(fontSize: 14, color: iconColor),
@@ -282,7 +292,11 @@ class ComposerState extends State<Composer> {
                     if (context_ != null && since == null)
                       _ContextBanner(
                         title: _editing != null ? l.editing : context_.senderName,
-                        body: context_.body,
+                        body: switch (context_.kind) {
+                          MessageKind.image => l.photo,
+                          MessageKind.voice => l.voiceMessage,
+                          _ => context_.body,
+                        },
                         onClose: () {
                           if (_editing != null) _text.clear();
                           _clearContext();
@@ -313,12 +327,20 @@ class ComposerState extends State<Composer> {
                   : GestureDetector(
                       key: const ValueKey('mic_hold'),
                       onLongPressStart: (_) => _startRecording(),
+                      onLongPressMoveUpdate: (d) {
+                        if (d.offsetFromOrigin.dx < -80) _stopRecording(cancel: true);
+                      },
                       onLongPressEnd: (_) => _stopRecording(),
-                      child: _RoundButton(
-                        buttonKey: const Key('mic'),
-                        icon: Icons.mic,
-                        tooltip: l.voiceMessage,
-                        onPressed: () => _snack(l.holdToRecord),
+                      // The tooltip's own long press would win the hold on
+                      // touch screens: keep it to mouse hover.
+                      child: TooltipTheme(
+                        data: TooltipTheme.of(context).copyWith(triggerMode: TooltipTriggerMode.manual),
+                        child: _RoundButton(
+                          buttonKey: const Key('mic'),
+                          icon: Icons.mic,
+                          tooltip: l.voiceMessage,
+                          onPressed: () => _snack(l.holdToRecord),
+                        ),
                       ),
                     ),
             ),

@@ -36,6 +36,7 @@ class RecordVoiceRecorder implements VoiceRecorder {
   StreamSubscription<Amplitude>? _amp;
   DateTime? _startedAt;
   String _ext = 'm4a';
+  String? _mime;
 
   @override
   Future<bool> start() async {
@@ -43,7 +44,10 @@ class RecordVoiceRecorder implements VoiceRecorder {
     final opus =
         await _rec.isEncoderSupported(AudioEncoder.opus) &&
         !(defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.macOS);
-    _ext = opus ? 'ogg' : 'm4a';
+    // The web records through MediaRecorder: Opus comes in a WebM container
+    // (Chrome, Firefox), AAC in MP4 (Safari).
+    _ext = opus ? (kIsWeb ? 'webm' : 'ogg') : 'm4a';
+    _mime = kIsWeb ? (opus ? 'audio/webm' : 'audio/mp4') : null;
     final name = 'voz_${DateTime.now().millisecondsSinceEpoch}.$_ext';
     final path = kIsWeb ? '' : p.join((await getTemporaryDirectory()).path, name);
     await _rec.start(
@@ -65,7 +69,7 @@ class RecordVoiceRecorder implements VoiceRecorder {
     final bytes = await XFile(path).readAsBytes();
     return RecordedVoice(
       bytes: bytes,
-      mimeType: lookupMimeType('x.$_ext', headerBytes: bytes) ?? 'audio/ogg',
+      mimeType: _mime ?? lookupMimeType('x.$_ext', headerBytes: bytes) ?? 'audio/ogg',
       durationMs: DateTime.now().difference(started).inMilliseconds,
       waveform: downsampleWaveform(_samples),
     );
@@ -74,9 +78,13 @@ class RecordVoiceRecorder implements VoiceRecorder {
   @override
   Future<void> cancel() async {
     await _amp?.cancel();
+    _startedAt = null;
     await _rec.cancel();
   }
 
   @override
-  void dispose() => _rec.dispose();
+  void dispose() {
+    _amp?.cancel();
+    _rec.dispose();
+  }
 }

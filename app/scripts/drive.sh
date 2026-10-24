@@ -28,8 +28,10 @@ case $TARGET in
     sleep 1
     # web-server + chromedriver: chromedriver starts headless Chrome itself
     # (`-d chrome` waits forever for its own browser when run from a script).
+    # Synthetic taps are no user gesture: let voice notes play without one.
     flutter drive --driver="${TEST_DRIVER:-test_driver/integration_test.dart}" --target="$TEST" \
-      -d web-server --browser-name=chrome --browser-dimension="${WEB_SIZE:-1280x900}" "$@"
+      -d web-server --browser-name=chrome --browser-dimension="${WEB_SIZE:-1280x900}" \
+      --web-browser-flag=--autoplay-policy=no-user-gesture-required "$@"
     ;;
   android)
     if ! adb devices | grep -q '^emulator-'; then

@@ -106,6 +106,7 @@
   "startChat": "Chat",
   "notOnChama": "This number is not on Chama.",
   "download": "Download",
+  "downloadFailed": "Could not download.",
   "errForbidden": "This number is no longer linked to this account. Sign out and sign in again.",
   "errRecoveryKey": "Wrong key. Check it and try again.",
   "recoveryKeyTitle": "Your recovery key",

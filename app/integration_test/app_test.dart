@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
+import 'fakes.dart';
+
 // Set by scripts/e2e.sh: fresh random numbers each run, E.164 digits.
 const appPhone = String.fromEnvironment('CHAMA_TEST_PHONE');
 const peerPhone = String.fromEnvironment('CHAMA_PEER_PHONE');
@@ -14,9 +16,9 @@ const peerPhone = String.fromEnvironment('CHAMA_PEER_PHONE');
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('chat with the peer: ticks turn blue', (tester) async {
+  testWidgets('chat with the peer: ticks turn blue, photo, file and voice note arrive', (tester) async {
     expect(appPhone, isNotEmpty, reason: 'run through scripts/e2e.sh');
-    await tester.pumpWidget(await app.bootstrap());
+    await tester.pumpWidget(await app.bootstrap(newRecorder: FakeRecorder.new, pickFile: fakePickFile));
     final t = _Steps(tester);
 
     // Sign in (country code field already says +55) and set the profile.
@@ -42,6 +44,32 @@ void main() {
     await t.waitFor(find.byKey(const Key('tick_read')));
     await t.waitFor(find.text('eco: Olá, peer!'));
 
+    // Photo (encrypted attachment): the peer decrypts it, and the thumbnail
+    // decrypts and shows here.
+    await t.tap(const Key('attach'));
+    await t.tap(const Key('attach_photo'));
+    await t.waitFor(find.text('recebi: foto criptografada'), timeout: const Duration(seconds: 60));
+    await t.waitFor(_keyPrefix('image_'));
+
+    // File: name and size with a download button.
+    await t.tap(const Key('attach'));
+    await t.tap(const Key('attach_document'));
+    await t.waitFor(find.text('nota.txt'));
+    await t.waitFor(_keyPrefix('download_'));
+
+    // Voice note: hold the mic, release to send.
+    final hold = await tester.startGesture(tester.getCenter(find.byKey(const Key('mic'))));
+    await Future<void>.delayed(const Duration(milliseconds: 1500));
+    await tester.pump();
+    expect(find.byKey(const Key('recording_timer')), findsOneWidget);
+    await hold.up();
+    await t.waitFor(find.text('recebi: voz criptografada'), timeout: const Duration(seconds: 60));
+    await t.waitFor(_keyPrefix('voice_play_'));
+
+    // Play it: download, decrypt, load into the player.
+    await tester.tap(_keyPrefix('voice_play_').last);
+    await t.waitFor(find.byIcon(Icons.pause_rounded));
+
     // Archive the chat, then open it from "Arquivadas". Wide: the archived
     // list closes and the chat shows in the right pane. Phone: the chat was
     // pushed over the list, so go back first; it then opens over "Arquivadas".
@@ -66,6 +94,10 @@ void main() {
     expect(find.byType(ChatScreen), findsOneWidget);
   }, timeout: const Timeout(Duration(minutes: 5)));
 }
+
+/// Widgets whose string key starts with [prefix] (keys that carry a message ID).
+Finder _keyPrefix(String prefix) =>
+    find.byWidgetPredicate((w) => w.key is ValueKey<String> && (w.key! as ValueKey<String>).value.startsWith(prefix));
 
 /// Small helpers in the style of FluffyChat integration_test/utils/fluffy_chat_tester.dart.
 /// No pumpAndSettle: spinners never settle.

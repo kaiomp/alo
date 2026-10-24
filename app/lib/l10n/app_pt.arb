@@ -213,6 +213,7 @@
   "startChat": "Conversar",
   "notOnChama": "Este número não usa o Chama.",
   "download": "Baixar",
+  "downloadFailed": "Não foi possível baixar.",
   "errForbidden": "Este número não está mais ligado a esta conta. Saia e entre de novo.",
   "errRecoveryKey": "Chave incorreta. Confira e tente de novo.",
   "recoveryKeyTitle": "Sua chave de recuperação",

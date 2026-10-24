@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
+import 'fakes.dart';
 import 'wait.dart';
 
 /// Screenshot name prefix, `<platform>-<size>-<theme>` (e.g. web-phone-dark).
@@ -30,7 +31,19 @@ void main() {
         ? Brightness.dark
         : Brightness.light;
     binding.platformDispatcher.localesTestValue = const [Locale('pt', 'BR')];
-    await tester.pumpWidget(await app.bootstrap());
+    final photo = await _photo();
+    await tester.pumpWidget(
+      await app.bootstrap(
+        newRecorder: FakeRecorder.new,
+        pickFile: ({required image}) async => image
+            ? PickedFile(name: 'praia.png', bytes: photo, mimeType: 'image/png')
+            : PickedFile(
+                name: 'Cardápio de domingo.pdf',
+                bytes: [...'%PDF-1.4\n'.codeUnits, ...List.filled(48 * 1024, 32)],
+                mimeType: 'application/pdf',
+              ),
+      ),
+    );
     final t = _Shots(tester, binding);
     try {
       await _walk(tester, t);
@@ -94,15 +107,17 @@ Future<void> _walk(WidgetTester tester, _Shots t) async {
   await t.send('Que bom que você entrou no Chama 🔥');
   await t.waitFor(find.text('eco: Que bom que você entrou no Chama 🔥'));
 
-  // A photo: the composer has no attach button yet, so send it through the service.
-  try {
-    final session = chats.openChat(dmId);
-    await session.sendImage(PickedFile(name: 'praia.png', bytes: await _photo(), mimeType: 'image/png'));
-    session.dispose();
-    await t.waitFor(find.text('recebi: foto criptografada'));
-  } catch (e) {
-    debugPrint('photo skipped: $e');
-  }
+  // A photo, a file and a voice note through the composer.
+  await t.tap(const Key('attach'));
+  await t.tap(const Key('attach_photo'));
+  await t.waitFor(find.text('recebi: foto criptografada'), timeout: const Duration(seconds: 60));
+  await t.tap(const Key('attach'));
+  await t.tap(const Key('attach_document'));
+  await t.waitFor(find.text('Cardápio de domingo.pdf'));
+  await t.holdMic(const Duration(milliseconds: 1500));
+  await t.waitFor(find.text('recebi: voz criptografada'), timeout: const Duration(seconds: 60));
+  await t.ticksRead();
+  await t.shot('chat-media');
 
   // Edit (message actions sheet on my own message).
   await t.send('Chego às 12h30');
@@ -294,6 +309,25 @@ class _Shots {
     })!();
     await settle();
     await waitFor(find.byKey(const Key('actions')));
+  }
+
+  /// Records a voice note: calls the mic's long-press handlers the way a
+  /// hold of [duration] would.
+  Future<void> holdMic(Duration duration) async {
+    final mic = find.ancestor(
+      of: find.byKey(const Key('mic')),
+      matching: find.byWidgetPredicate((w) => w is GestureDetector && w.onLongPressStart != null),
+    );
+    await waitFor(mic);
+    final w = tester.widget<GestureDetector>(mic.first);
+    w.onLongPressStart!(const LongPressStartDetails());
+    final end = DateTime.now().add(duration);
+    while (DateTime.now().isBefore(end)) {
+      await tester.pump(const Duration(milliseconds: 250));
+    }
+    await shot('recording');
+    w.onLongPressEnd!(const LongPressEndDetails());
+    await settle();
   }
 
   /// Picks an item (list tile or reaction) in the open sheet.
