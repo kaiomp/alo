@@ -138,9 +138,14 @@ login_via_existing_session:
 - **Por que sem autenticação interativa.** Por padrão o Synapse pede a senha ou um login SSO
   antes de emitir o token. As contas do Chama entram por JWT e não têm senha nem SSO, então,
   com a confirmação ligada, a rota nunca daria certo.
-- **Por que é seguro.** Só um aparelho já conectado pede o token (com o próprio token de
-  acesso); o token chega à web cifrado para a chave do QR code; vale uma vez e por 2 minutos; e
-  o aparelho novo não recebe chaves de mensagens até o celular assiná-lo. A explicação completa
+- **Por que é seguro.** O pedido exige o token de acesso de um aparelho da conta; o token chega
+  à web cifrado para a chave do QR code; vale uma vez e por 2 minutos; e o aparelho novo não
+  recebe chaves de mensagens até o celular assiná-lo.
+- **O custo.** Um token de acesso roubado vira, por essa rota, um aparelho novo e separado, que
+  continua conectado mesmo depois que o token original é revogado. Ele aparece em "Aparelhos
+  conectados" e não lê conversas sem a assinatura do celular. Ao atender um caso de aparelho
+  perdido ou token vazado, remova todos os aparelhos que a pessoa não reconhece, não só o
+  original. A explicação completa
   está em [Segurança e privacidade](seguranca-e-privacidade.md#2-chaves-só-para-aparelhos-verificados).
 - **Limite.** O próprio Synapse emite no máximo 1 token por minuto por conta (fixo no código,
   sem opção de configuração); um segundo pedido no mesmo minuto recebe `429`.

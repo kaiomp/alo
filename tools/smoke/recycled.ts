@@ -42,6 +42,7 @@ try {
   let phone = newPhone();
   const a = await signIn(NOW, phone);
   const ta = (await matrix(a.login_token)).access_token;
+  expect(a.new_account === true && a.login_token && ta, 'setup: a fresh account signed in on Matrix');
   const b = await signIn(OLD, phone);
   expect(b.new_account === true && b.user_id !== a.user_id, 'inactive account: the number gets a fresh account');
   expect(!(await alive(ta)), "the old account's token is dead (deactivated)");
@@ -50,6 +51,7 @@ try {
   phone = newPhone();
   const c = await signIn(NOW, phone);
   const tc = (await matrix(c.login_token)).access_token;
+  expect(c.new_account === true && c.login_token && tc, 'setup: a fresh account signed in on Matrix');
   expect((await post(NOW, '/id/v1/pin/set', { pin: '246802' }, tc)).status === 200, 'PIN set');
   const d = await signIn(OLD, phone);
   expect(d.pin_required === true, 'inactive account with a PIN: the PIN is asked, nothing retired');
@@ -60,8 +62,10 @@ try {
   // Deactivated another way (an operator): the next sign-in gets a fresh account, even on the normal server.
   phone = newPhone();
   const f = await signIn(NOW, phone);
-  await matrix(f.login_token);
+  const tf = (await matrix(f.login_token)).access_token;
+  expect(f.new_account === true && f.login_token && tf, 'setup: a fresh account signed in on Matrix');
   await admin.deactivate(f.user_id);
+  expect(!(await alive(tf)), "the deactivated account's token is dead");
   const g = await signIn(NOW, phone);
   expect(g.new_account === true && g.user_id !== f.user_id, 'deactivated account: the number gets a fresh account');
   console.log('recycled: OK');

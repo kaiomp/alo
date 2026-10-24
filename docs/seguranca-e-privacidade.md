@@ -109,9 +109,14 @@ um login SSO). As contas do Chama não têm senha nem SSO, então essa confirma�
 ser feita, e o servidor do Chama a desliga (`login_via_existing_session.require_ui_auth: false`).
 Por que isso é seguro:
 
-- **Só um aparelho conectado pede o token.** O pedido exige o token de acesso de um aparelho da
-  conta. Quem já tem esse token já usa a conta por ele; o token de login não dá nenhum poder a
-  mais.
+- **Só um aparelho conectado pede o token, e isso tem um custo.** O pedido exige o token de
+  acesso de um aparelho da conta. Mas o token de login cria uma sessão nova e separada: o aparelho
+  que entra com ele continua conectado mesmo depois que o aparelho original sai ou tem o token
+  revogado. Quem roubar o token de acesso de um aparelho consegue, então, transformá-lo num
+  aparelho próprio que dura. O que limita isso: o aparelho novo aparece em "Aparelhos
+  conectados", de onde pode ser removido, e não lê nenhuma conversa até o celular conferir e
+  assinar a chave dele (veja "Entrar não é ler", abaixo). Por isso, depois de perder um aparelho,
+  não basta removê-lo: confira a lista e remova também qualquer aparelho que você não reconhece.
 - **O token só chega à web cifrado.** Ele viaja dentro da caixa selada para a chave pública que
   está só na tela do computador; o chama-id, que repassa a caixa, não consegue abri-la.
 - **Vale uma vez, por 2 minutos.** O Synapse apaga o token no primeiro uso e o recusa depois de
