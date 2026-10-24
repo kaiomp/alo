@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -28,6 +30,8 @@ class _EncryptionScreenState extends State<EncryptionScreen> {
   bool _resetting = false; // new device, user has no key: SMS code step
   bool _busy = false;
   String? _error;
+  int _resendIn = 0; // seconds until "Reenviar SMS" works again
+  Timer? _timer;
 
   @override
   void initState() {
@@ -37,11 +41,27 @@ class _EncryptionScreenState extends State<EncryptionScreen> {
 
   @override
   void dispose() {
+    _timer?.cancel();
     _input.dispose();
     super.dispose();
   }
 
   ChatService get _chat => Deps.of(context).chat;
+
+  Future<void> _requestCode() => _run(() async {
+    final retryAfter = await _chat.requestResetCode();
+    if (retryAfter == null || !mounted) return; // signed out: back to sign-in
+    _input.clear();
+    _timer?.cancel();
+    setState(() {
+      _resetting = true;
+      _resendIn = retryAfter;
+    });
+    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (_resendIn <= 1) t.cancel();
+      setState(() => _resendIn--);
+    });
+  });
 
   Future<void> _run(Future<void> Function() action, {String Function(L10n)? onError}) async {
     setState(() {
@@ -165,15 +185,15 @@ class _EncryptionScreenState extends State<EncryptionScreen> {
         // On the code step the same button sends a new code (a refused
         // reset spends the code).
         TextButton(
-          key: const Key('no_recovery_key'),
-          onPressed: _busy
-              ? null
-              : () => _run(() async {
-                  await _chat.requestResetCode();
-                  _input.clear();
-                  setState(() => _resetting = true);
-                }),
-          child: Text(_resetting ? l.resendCode : l.noRecoveryKey),
+          key: const Key('request_reset_code'),
+          onPressed: _busy || _resendIn > 0 ? null : _requestCode,
+          child: Text(
+            !_resetting
+                ? l.noRecoveryKey
+                : _resendIn > 0
+                ? l.resendIn(_resendIn)
+                : l.resendCode,
+          ),
         ),
       ],
     );

@@ -149,7 +149,17 @@ class ChatService {
   Future<void> unlockEncryption(String recoveryKey) => client.restoreCryptoIdentity(recoveryKey.trim());
 
   /// Step 1 of a reset when the recovery key is lost: SMS code to the phone.
-  Future<void> requestResetCode() => id.requestCode(phone!);
+  /// Returns the seconds until a new code may be asked, or null when the
+  /// phone is unknown (the app was killed between login and saving it): the
+  /// user is then signed out to sign in again, which saves it.
+  Future<int?> requestResetCode() async {
+    final p = phone;
+    if (p == null) {
+      await signOut();
+      return null;
+    }
+    return (await id.requestCode(p)).retryAfter;
+  }
 
   /// Step 2: new keys are made here and chama-id installs the public half
   /// (and signs out the account's other devices). Old messages stay

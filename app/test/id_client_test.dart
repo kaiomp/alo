@@ -126,9 +126,8 @@ void main() {
       'Não foi possível salvar as novas chaves. Peça um novo código e tente de novo.',
     );
     final texts = {
-      for (final code in ['invalid_keys', 'no_identity', 'forbidden', 'invalid_token', 'something_new'])
-        IdError(code).message(l),
+      for (final code in ['invalid_keys', 'forbidden', 'invalid_token', 'something_new']) IdError(code).message(l),
     };
-    expect(texts, hasLength(5));
+    expect(texts, hasLength(4));
   });
 }

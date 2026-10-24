@@ -84,11 +84,78 @@ void main() {
     expect(service.client.isLogged(), isFalse);
     expect(find.text('Algo deu errado. Tente de novo.'), findsNothing);
   });
+
+  testWidgets('"Reenviar SMS" on the key screen counts down like sign-in', (tester) async {
+    SharedPreferences.setMockInitialValues({'chama.phone': '5511987654321'});
+    final prefs = await SharedPreferences.getInstance();
+    var requests = 0;
+    final idServer = MockClient((req) async {
+      requests++;
+      return http.Response(jsonEncode({'phone': '5511987654321', 'retry_after': 60}), 200);
+    });
+    final service = (await tester.runAsync(
+      () =>
+          _service(prefs, MockClient((_) async => http.Response('{}', 200)), id: IdClient(_base, httpClient: idServer)),
+    ))!;
+    await tester.pumpWidget(_keyScreen(tester, service));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('request_reset_code')));
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await tester.pump();
+    expect(requests, 1);
+    expect(find.text('Reenviar SMS em 60 s'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('request_reset_code')));
+    await tester.pump(const Duration(seconds: 1));
+    expect(requests, 1); // disabled while counting
+    expect(find.text('Reenviar SMS em 59 s'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 59));
+    expect(find.text('Reenviar SMS'), findsOneWidget);
+  });
+
+  testWidgets('a phone lost to a killed sign-in sends the user back to sign in', (tester) async {
+    SharedPreferences.setMockInitialValues({}); // app killed between login and saving the phone
+    final prefs = await SharedPreferences.getInstance();
+    final service = (await tester.runAsync(() => _service(prefs, MockClient((_) async => http.Response('{}', 200)))))!;
+    service.client
+      ..homeserver = _base
+      ..accessToken = 'token';
+    await tester.pumpWidget(_keyScreen(tester, service));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('request_reset_code')));
+    for (var i = 0; i < 50 && service.client.isLogged(); i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+      await tester.pump();
+    }
+    expect(service.client.isLogged(), isFalse);
+    expect(find.text('Algo deu errado. Tente de novo.'), findsNothing);
+  });
+}
+
+/// The new-device key screen on a phone-sized window.
+Widget _keyScreen(WidgetTester tester, ChatService service) {
+  tester.view
+    ..physicalSize = const Size(390, 844)
+    ..devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+  return Deps(
+    chat: service,
+    id: service.id,
+    newRecorder: () => throw UnimplementedError(),
+    pickFile: ({required bool image}) async => null,
+    child: MaterialApp(
+      locale: const Locale('pt'),
+      supportedLocales: L10n.supportedLocales,
+      localizationsDelegates: L10n.localizationsDelegates,
+      home: EncryptionScreen(status: CryptoStatus.unlock, onDone: () {}),
+    ),
+  );
 }
 
 final _base = Uri.parse('http://localhost:8080');
 
-Future<ChatService> _service(SharedPreferences prefs, http.Client server) async {
+Future<ChatService> _service(SharedPreferences prefs, http.Client server, {IdClient? id}) async {
   final db = await MatrixSdkDatabase.init(
     'chat_service_test',
     database: await databaseFactoryFfi.openDatabase(':memory:'),
@@ -100,5 +167,5 @@ Future<ChatService> _service(SharedPreferences prefs, http.Client server) async 
     supportedLoginTypes: {jwtLoginType},
     httpClient: server,
   );
-  return ChatService(client, DeliveryTracker(client, prefs), IdClient(_base), prefs, homeserver: _base);
+  return ChatService(client, DeliveryTracker(client, prefs), id ?? IdClient(_base), prefs, homeserver: _base);
 }

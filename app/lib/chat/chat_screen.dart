@@ -50,7 +50,15 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    _session = Deps.of(context).chat.openChat(widget.roomId)..open();
+    _session = Deps.of(context).chat.openChat(widget.roomId);
+    _session.open().catchError((Object e) {
+      debugPrint('Chat open failed: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(L10n.of(context).errUnknown)));
+      // Nothing to show: close the chat rather than spin forever.
+      final close = widget.onClose;
+      close != null ? close() : Navigator.of(context).maybePop();
+    });
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -120,7 +128,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       case 'delete':
         await _confirmDelete(m);
       default:
-        if (choice.startsWith('react:')) await _session.toggleReaction(m.id, choice.substring(6));
+        if (choice.startsWith('react:')) {
+          await runOrSnack(context, () => _session.toggleReaction(m.id, choice.substring(6)));
+        }
     }
   }
 
@@ -164,8 +174,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         ],
       ),
     );
-    if (choice == 'all') await _session.deleteForEveryone(m.id);
-    if (choice == 'me') await _session.deleteForMe(m.id);
+    if (!mounted || choice == null) return;
+    await runOrSnack(context, () => choice == 'all' ? _session.deleteForEveryone(m.id) : _session.deleteForMe(m.id));
   }
 
   PreferredSizeWidget _header(BuildContext context, L10n l) {

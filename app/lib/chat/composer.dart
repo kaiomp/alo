@@ -422,14 +422,10 @@ class _ContextBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = ChatColors.of(context);
-    final dark = theme.brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.fromLTRB(6, 6, 6, 0),
       clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: (dark ? Colors.white : Colors.black).withValues(alpha: dark ? 0.06 : 0.05),
-        borderRadius: BorderRadius.circular(18),
-      ),
+      decoration: BoxDecoration(color: colors.cardTint, borderRadius: BorderRadius.circular(18)),
       child: IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,

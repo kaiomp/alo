@@ -121,7 +121,6 @@
   "resetExplain": "Without the key, old messages cannot be read on this device and your contacts will see that your security code changed. Enter the code we sent by SMS.",
   "resetConfirm": "Reset and continue",
   "errSessionExpired": "Your session has expired. Sign out and sign in again.",
-  "errNoIdentity": "This account has no keys to reset yet. Try again.",
   "errInvalidKeys": "The new keys could not be saved. Ask for a new code and try again.",
   "wordmark": "chama",
   "countryBrazil": "BR",

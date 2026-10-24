@@ -129,8 +129,7 @@ class GroupInfoScreen extends StatelessWidget {
             destructive: true,
           );
           if (!ok || !context.mounted) return;
-          await session.leave();
-          if (!context.mounted) return;
+          if (!await runOrSnack(context, session.leave) || !context.mounted) return;
           if (onLeft != null) {
             onLeft!();
           } else {
@@ -156,7 +155,7 @@ class GroupInfoScreen extends StatelessWidget {
         ),
       ],
     );
-    await run?.call();
+    if (run != null && tile.mounted) await runOrSnack(tile, run);
   }
 }
 

@@ -20,7 +20,6 @@ class IdError implements Exception {
     'too_many_attempts' => l.errTooManyAttempts,
     'forbidden' => l.errForbidden,
     'invalid_token' => l.errSessionExpired,
-    'no_identity' => l.errNoIdentity,
     'invalid_keys' => l.errInvalidKeys,
     'rate_limited' => l.errRateLimited(retryAfter ?? 60),
     'network' => l.errNetwork,

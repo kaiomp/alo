@@ -2,10 +2,15 @@ import 'package:chama/chat/chat_screen.dart';
 import 'package:chama/chat_list/chat_list_view.dart';
 import 'package:chama/chat_list/chat_tile.dart';
 import 'package:chama/config.dart';
+
+import 'dart:io';
+
 import 'package:chama/main.dart' as app;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'fakes.dart';
 
@@ -67,8 +72,12 @@ void main() {
     await t.waitFor(_keyPrefix('voice_play_'));
 
     // Play it: download, decrypt, load into the player.
-    await tester.tap(_keyPrefix('voice_play_').last);
+    final play = _keyPrefix('voice_play_').last;
+    final voiceId = (tester.widget(play).key! as ValueKey<String>).value.substring('voice_play_'.length);
+    await tester.tap(play);
     await t.waitFor(find.byIcon(Icons.pause_rounded));
+    // Native: the decrypted copy sits in the temp folder while the player lives.
+    if (!kIsWeb) expect(await _voiceTempFiles(voiceId), hasLength(1));
 
     // Archive the chat, then open it from "Arquivadas". Wide: the archived
     // list closes and the chat shows in the right pane. Phone: the chat was
@@ -78,6 +87,13 @@ void main() {
       Navigator.of(tester.element(find.byType(ChatScreen))).pop();
       await Future<void>.delayed(const Duration(milliseconds: 600));
       await tester.pump();
+      // The popped route disposes the player a few frames later.
+      if (!kIsWeb) {
+        for (var i = 0; i < 20 && (await _voiceTempFiles(voiceId)).isNotEmpty; i++) {
+          await tester.pump(const Duration(milliseconds: 250));
+        }
+        expect(await _voiceTempFiles(voiceId), isEmpty, reason: 'decrypted voice note left behind');
+      }
     }
     await tester.longPress(find.byType(ChatTile));
     await Future<void>.delayed(const Duration(milliseconds: 600));
@@ -93,6 +109,13 @@ void main() {
     if (wide) expect(find.byWidgetPredicate((w) => w is ChatListView && w.archived), findsNothing);
     expect(find.byType(ChatScreen), findsOneWidget);
   }, timeout: const Timeout(Duration(minutes: 5)));
+}
+
+/// The player's decrypted copies of voice note [id] (voice_player.dart).
+Future<List<FileSystemEntity>> _voiceTempFiles(String id) async {
+  final prefix = 'voz_${id.hashCode.toUnsigned(32)}.';
+  final dir = await getTemporaryDirectory();
+  return dir.listSync().where((f) => f.uri.pathSegments.last.startsWith(prefix)).toList();
 }
 
 /// Widgets whose string key starts with [prefix] (keys that carry a message ID).

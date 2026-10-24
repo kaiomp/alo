@@ -34,10 +34,26 @@ class _VoicePlayerState extends State<VoicePlayer> {
   StreamSubscription<PlayerState>? _state;
   bool _loading = false;
 
+  /// Native: the decrypted copy the player reads. Deleted with the player so
+  /// no plaintext voice note stays in the temp folder.
+  File? _file;
+
+  void _failed() {
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(L10n.of(context).downloadFailed)));
+  }
+
+  /// Not awaited: play() completes only when playback stops.
+  void _play(AudioPlayer player) => unawaited(
+    player.play().catchError((Object e) {
+      debugPrint('Voice note playback failed: $e');
+      _failed();
+    }),
+  );
+
   Future<void> _toggle() async {
     final existing = _player;
     if (existing != null) {
-      existing.playing ? await existing.pause() : unawaited(existing.play());
+      existing.playing ? await existing.pause() : _play(existing);
       return;
     }
     setState(() => _loading = true);
@@ -51,11 +67,14 @@ class _VoicePlayerState extends State<VoicePlayer> {
         // Only the extension comes from the sender's file name: the name
         // itself could point outside the temp folder.
         final dir = (await getTemporaryDirectory()).path;
-        final file = File(p.join(dir, 'voz_${m.id.hashCode.toUnsigned(32)}${p.extension(m.body)}'));
+        final file = _file = File(p.join(dir, 'voz_${m.id.hashCode.toUnsigned(32)}${p.extension(m.body)}'));
         await file.writeAsBytes(bytes);
         await player.setFilePath(file.path);
       }
-      if (!mounted) return await player.dispose();
+      if (!mounted) {
+        _file?.delete().ignore();
+        return await player.dispose();
+      }
       _state = player.playerStateStream.listen((s) {
         if (s.processingState == ProcessingState.completed) {
           player
@@ -65,12 +84,11 @@ class _VoicePlayerState extends State<VoicePlayer> {
         if (mounted) setState(() {});
       });
       setState(() => _player = player);
-      unawaited(player.play());
-    } catch (_) {
+      _play(player);
+    } catch (e) {
+      debugPrint('Voice note load failed: $e');
       await player.dispose();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(L10n.of(context).downloadFailed)));
-      }
+      _failed();
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -80,6 +98,7 @@ class _VoicePlayerState extends State<VoicePlayer> {
   void dispose() {
     _state?.cancel();
     _player?.dispose();
+    _file?.delete().ignore();
     super.dispose();
   }
 

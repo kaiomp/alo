@@ -164,7 +164,7 @@ class MessageBubble extends StatelessWidget {
                     child: _ReactionPill(
                       key: Key('reaction_${m.id}_${r.key}'),
                       reaction: r,
-                      onTap: () => session.toggleReaction(m.id, r.key),
+                      onTap: () => runOrSnack(context, () => session.toggleReaction(m.id, r.key)),
                     ),
                   ),
               ],
@@ -183,7 +183,7 @@ class MessageBubble extends StatelessWidget {
             key: Key('msg_${m.id}'),
             onLongPress: () => onActions(rectOf(context), false),
             onSecondaryTapDown: (_) => onActions(rectOf(context), true),
-            onTap: m.tick == Tick.failed ? () => session.retry(m.id) : null,
+            onTap: m.tick == Tick.failed ? () => runOrSnack(context, () => session.retry(m.id)) : null,
             child: body,
           ),
         ),
@@ -232,11 +232,11 @@ class MessageBubble extends StatelessWidget {
           width: math.min(maxContent, 280),
           meta: Container(
             padding: const EdgeInsets.fromLTRB(6, 1, 5, 1),
-            decoration: BoxDecoration(color: Colors.black38, borderRadius: BorderRadius.circular(10)),
+            decoration: BoxDecoration(color: colors.photoShade, borderRadius: BorderRadius.circular(10)),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(metaText, style: metaStyle.copyWith(color: Colors.white)),
+                Text(metaText, style: metaStyle.copyWith(color: colors.onPhoto)),
                 if (m.tick != null) ...[const SizedBox(width: 3), TickIcon(m.tick!, onPhoto: true)],
               ],
             ),
@@ -456,7 +456,6 @@ class _ReplyBox extends StatelessWidget {
     final l = L10n.of(context);
     final theme = Theme.of(context);
     final colors = ChatColors.of(context);
-    final dark = theme.brightness == Brightness.dark;
     final body = switch (reply.kind) {
       MessageKind.image => l.photo,
       MessageKind.voice => l.voiceMessage,
@@ -467,10 +466,7 @@ class _ReplyBox extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 4),
       clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: (dark ? Colors.white : Colors.black).withValues(alpha: dark ? 0.06 : 0.05),
-        borderRadius: BorderRadius.circular(6),
-      ),
+      decoration: BoxDecoration(color: colors.cardTint, borderRadius: BorderRadius.circular(6)),
       child: IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -605,7 +601,8 @@ class _FileCardState extends State<_FileCard> {
     try {
       final bytes = await widget.session.download(m.id);
       await FilePicker.saveFile(fileName: m.body, bytes: bytes, mimeType: m.mimeType ?? 'application/octet-stream');
-    } catch (_) {
+    } catch (e) {
+      debugPrint('File save failed: $e');
       messenger.showSnackBar(SnackBar(content: Text(failed)));
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -621,19 +618,14 @@ class _FileCardState extends State<_FileCard> {
   @override
   Widget build(BuildContext context) {
     final m = widget.message;
-    final theme = Theme.of(context);
     final colors = ChatColors.of(context);
-    final dark = theme.brightness == Brightness.dark;
     final dot = m.body.lastIndexOf('.');
     final type = dot > 0 && dot < m.body.length - 1 ? m.body.substring(dot + 1).toUpperCase() : null;
     final details = [if (m.size != null) _size(m.size!), ?type].join(' · ');
     return Container(
       width: widget.width,
       padding: const EdgeInsets.fromLTRB(8, 8, 4, 8),
-      decoration: BoxDecoration(
-        color: (dark ? Colors.white : Colors.black).withValues(alpha: dark ? 0.06 : 0.05),
-        borderRadius: BorderRadius.circular(6),
-      ),
+      decoration: BoxDecoration(color: colors.cardTint, borderRadius: BorderRadius.circular(6)),
       child: Row(
         children: [
           Container(

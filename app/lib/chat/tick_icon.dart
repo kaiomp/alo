@@ -15,13 +15,13 @@ class TickIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = ChatColors.of(context);
-    final meta = onPhoto ? Colors.white : colors.meta;
+    final meta = onPhoto ? colors.onPhoto : colors.meta;
     final (icon, color) = switch (tick) {
       Tick.pending => (Icons.schedule, meta),
       Tick.failed => (Icons.error_outline, Theme.of(context).colorScheme.error),
       Tick.sent => (Icons.done, meta),
       Tick.delivered => (Icons.done_all, meta),
-      Tick.read => (Icons.done_all, onPhoto ? ChatColors.dark.readTick : colors.readTick),
+      Tick.read => (Icons.done_all, onPhoto ? colors.onPhotoRead : colors.readTick),
     };
     return Icon(icon, size: size, color: color, key: Key('tick_${tick.name}'), semanticLabel: tick.name);
   }

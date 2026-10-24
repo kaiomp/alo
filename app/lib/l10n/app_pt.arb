@@ -228,7 +228,6 @@
   "resetExplain": "Sem a chave, as mensagens antigas não podem ser lidas neste aparelho e seus contatos verão que seu código de segurança mudou. Digite o código que enviamos por SMS.",
   "resetConfirm": "Redefinir e continuar",
   "errSessionExpired": "Sua sessão expirou. Saia e entre de novo.",
-  "errNoIdentity": "Esta conta ainda não tem chaves para redefinir. Tente de novo.",
   "errInvalidKeys": "Não foi possível salvar as novas chaves. Peça um novo código e tente de novo.",
   "wordmark": "chama",
   "countryBrazil": "BR",

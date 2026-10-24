@@ -66,7 +66,12 @@ class ChatSession extends ChangeNotifier {
     final other = _room.directChatMatrixID;
     if (other != null) {
       _subs.add(_service.client.onPresenceChanged.stream.where((p) => p.userid == other).listen(_setPresence));
-      unawaited(_service.client.fetchCurrentPresence(other).then(_setPresence));
+      unawaited(
+        _service.client
+            .fetchCurrentPresence(other)
+            .then(_setPresence)
+            .catchError((Object e) => Logs().w('Presence fetch failed', e)),
+      );
     }
     loading = false;
     _rebuild();

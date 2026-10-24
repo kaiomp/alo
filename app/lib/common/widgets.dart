@@ -5,6 +5,22 @@ import '../l10n/app_localizations.dart';
 import 'brand.dart';
 import 'theme.dart';
 
+/// Runs a tapped action whose result the screen does not wait on (react,
+/// retry, delete, group changes). A failure shows the generic error in a
+/// snackbar instead of vanishing. Returns whether it worked.
+Future<bool> runOrSnack(BuildContext context, Future<void> Function() action) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final text = L10n.of(context).errUnknown;
+  try {
+    await action();
+    return true;
+  } catch (e) {
+    debugPrint('Action failed: $e');
+    messenger.showSnackBar(SnackBar(content: Text(text)));
+    return false;
+  }
+}
+
 /// True at WhatsApp Web widths (two panes).
 bool isWide(BuildContext context) => MediaQuery.sizeOf(context).width >= wideLayoutMinWidth;
 

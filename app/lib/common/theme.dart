@@ -54,6 +54,10 @@ class ChatColors extends ThemeExtension<ChatColors> {
     required this.notice,
     required this.onNotice,
     required this.raised,
+    required this.cardTint,
+    required this.photoShade,
+    required this.onPhoto,
+    required this.onPhotoRead,
   });
 
   final Color background;
@@ -85,6 +89,14 @@ class ChatColors extends ThemeExtension<ChatColors> {
   /// Dialogs, menus and sheets in dark mode sit one step above the surface.
   final Color raised;
 
+  /// Reply quote, file card and composer context banner inside a bubble or bar.
+  final Color cardTint;
+
+  /// Dark pill under the time and ticks on a photo, and the marks on it.
+  final Color photoShade;
+  final Color onPhoto;
+  final Color onPhotoRead;
+
   static const light = ChatColors(
     background: Color(0xFFF4EDE6),
     mine: Color(0xFFFFE9DC),
@@ -101,6 +113,10 @@ class ChatColors extends ThemeExtension<ChatColors> {
     notice: Color(0xFFFFF1E3),
     onNotice: Color(0xFF6B4A33),
     raised: Color(0xFFFFFFFF),
+    cardTint: Color(0x0D000000),
+    photoShade: Color(0x61000000),
+    onPhoto: Color(0xFFFFFFFF),
+    onPhotoRead: Color(0xFF53BDEB),
   );
 
   static const dark = ChatColors(
@@ -119,6 +135,10 @@ class ChatColors extends ThemeExtension<ChatColors> {
     notice: Color(0xFF2A211B),
     onNotice: Color(0xFFE3C9B4),
     raised: Color(0xFF26211E),
+    cardTint: Color(0x0FFFFFFF),
+    photoShade: Color(0x61000000),
+    onPhoto: Color(0xFFFFFFFF),
+    onPhotoRead: Color(0xFF53BDEB),
   );
 
   static ChatColors of(BuildContext context) => Theme.of(context).extension<ChatColors>()!;
