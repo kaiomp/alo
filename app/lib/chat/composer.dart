@@ -38,6 +38,9 @@ class ComposerState extends State<Composer> {
   /// first time, Android asks for the microphone).
   bool _holding = false;
 
+  /// A recorder is asking for the mic; a second hold must not start another.
+  bool _starting = false;
+
   void replyTo(Message m) {
     setState(() {
       _editing = null;
@@ -106,9 +109,17 @@ class ComposerState extends State<Composer> {
   // Voice notes: hold the mic, release to send, slide left to cancel
   // (shorter than 0.5 s is dropped).
   Future<void> _startRecording() async {
+    if (_recorder != null || _starting) return;
     _holding = true;
+    _starting = true;
     final recorder = Deps.of(context).newRecorder();
-    if (!await recorder.start()) {
+    final bool started;
+    try {
+      started = await recorder.start();
+    } finally {
+      _starting = false;
+    }
+    if (!started) {
       recorder.dispose();
       if (mounted) _snack(L10n.of(context).micDenied);
       return;
@@ -331,6 +342,9 @@ class ComposerState extends State<Composer> {
                         if (d.offsetFromOrigin.dx < -80) _stopRecording(cancel: true);
                       },
                       onLongPressEnd: (_) => _stopRecording(),
+                      // A system dialog (the mic permission prompt), a call or
+                      // the notification shade cancels the pointer: no end comes.
+                      onLongPressCancel: () => _stopRecording(cancel: true),
                       // The tooltip's own long press would win the hold on
                       // touch screens: keep it to mouse hover.
                       child: TooltipTheme(

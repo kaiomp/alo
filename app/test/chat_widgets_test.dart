@@ -105,9 +105,51 @@ void main() {
     expect(find.byKey(const Key('recording_timer')), findsNothing);
     expect(recorder.cancelled, isTrue);
   });
+
+  testWidgets('a cancelled hold stops the recording', (tester) async {
+    final (service, session) = (await tester.runAsync(_session))!;
+    final recorder = _Recorder();
+    await tester.pumpWidget(_composer(service, session, recorder));
+
+    final hold = await tester.startGesture(tester.getCenter(find.byKey(const Key('mic'))));
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump();
+    expect(find.byKey(const Key('recording_timer')), findsOneWidget);
+
+    await hold.cancel();
+    await tester.pump();
+    expect(find.byKey(const Key('recording_timer')), findsNothing);
+    expect(recorder.cancelled, isTrue);
+  });
+
+  testWidgets('a hold cancelled by the permission prompt never starts recording', (tester) async {
+    final (service, session) = (await tester.runAsync(_session))!;
+    final recorder = _Recorder()..starting = Completer();
+    await tester.pumpWidget(_composer(service, session, recorder));
+
+    final hold = await tester.startGesture(tester.getCenter(find.byKey(const Key('mic'))));
+    await tester.pump(const Duration(milliseconds: 600));
+    await hold.cancel();
+    await tester.pump();
+
+    // A second hold while the first recorder is still asking is ignored.
+    final again = await tester.startGesture(tester.getCenter(find.byKey(const Key('mic'))));
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(recorder.created, 1);
+
+    recorder.starting!.complete(true);
+    await tester.pump();
+    expect(find.byKey(const Key('recording_timer')), findsNothing);
+    expect(recorder.cancelled, isTrue);
+    await again.up();
+    await tester.pump();
+  });
 }
 
 class _Recorder implements VoiceRecorder {
+  /// How many times the composer asked for a recorder.
+  int created = 0;
+
   bool cancelled = false;
 
   /// Completes when the test says so (a permission prompt, say).
@@ -126,10 +168,10 @@ class _Recorder implements VoiceRecorder {
   void dispose() {}
 }
 
-Widget _composer(ChatService service, ChatSession session, VoiceRecorder recorder) => Deps(
+Widget _composer(ChatService service, ChatSession session, _Recorder recorder) => Deps(
   chat: service,
   id: IdClient(Uri.parse('http://localhost:8080')),
-  newRecorder: () => recorder,
+  newRecorder: () => recorder..created += 1,
   pickFile: ({required image}) async => null,
   child: MaterialApp(
     theme: chamaTheme(Brightness.light),
