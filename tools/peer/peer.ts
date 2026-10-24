@@ -41,24 +41,38 @@ await client.setDisplayName(process.env.PEER_NAME ?? 'Peer');
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const joined = new Set<string>();
 
-client.on(sdk.RoomMemberEvent.Membership, async (_ev, member) => {
+// Logs a failed step instead of letting one bad call kill the peer mid-test.
+const step = (what: string, fn: () => Promise<void>) => () =>
+  fn().catch((e) => console.error(`${what} failed:`, e));
+
+client.on(sdk.RoomMemberEvent.Membership, (_ev, member) => {
   if (member.userId !== me || member.membership !== 'invite' || joined.has(member.roomId)) return;
   joined.add(member.roomId);
-  await client.joinRoom(member.roomId);
-  await sleep(1000);
-  await client.sendTextMessage(member.roomId, 'oi, entrei');
-  console.log(`joined ${member.roomId}`);
+  void step(`join ${member.roomId}`, async () => {
+    await client.joinRoom(member.roomId);
+    await sleep(1000);
+    await client.sendTextMessage(member.roomId, 'oi, entrei');
+    console.log(`joined ${member.roomId}`);
+  })();
 });
 
-client.on(sdk.RoomEvent.Timeline, async (ev, room, toStart) => {
-  if (toStart || !room || ev.getSender() === me) return;
-  await client.decryptEventIfNeeded(ev);
-  if (ev.getType() !== 'm.room.message' || !ev.isEncrypted()) return;
+const answered = new Set<string>();
+
+async function answer(ev: sdk.MatrixEvent, roomId: string): Promise<void> {
+  // The room key can arrive after the message: wait for the next decryption
+  // attempt instead of answering an m.bad.encrypted placeholder.
+  if (ev.isDecryptionFailure()) {
+    console.log(`waiting for key of ${ev.getId()}`);
+    ev.once(sdk.MatrixEventEvent.Decrypted, step(`answer ${ev.getId()}`, () => answer(ev, roomId)));
+    return;
+  }
+  if (ev.getType() !== 'm.room.message' || !ev.isEncrypted() || answered.has(ev.getId()!)) return;
+  answered.add(ev.getId()!);
   const sender = ev.getSender()!;
   const content = ev.getContent();
   await client.sendToDevice(
     'chat.chama.delivered',
-    new Map([[sender, new Map([['*', { room_id: room.roomId, event_ids: [ev.getId()], ts: ev.getTs() }]])]]),
+    new Map([[sender, new Map([['*', { room_id: roomId, event_ids: [ev.getId()], ts: ev.getTs() }]])]]),
   );
   await sleep(3000);
   await client.sendReadReceipt(ev, sdk.ReceiptType.Read, true);
@@ -68,8 +82,16 @@ client.on(sdk.RoomEvent.Timeline, async (ev, room, toStart) => {
   if (content.msgtype === 'm.image' && encryptedFile) reply = 'recebi: foto criptografada';
   if (content.msgtype === 'm.audio' && encryptedFile && content['org.matrix.msc3245.voice'] &&
     Array.isArray(content['org.matrix.msc1767.audio']?.waveform)) reply = 'recebi: voz criptografada';
-  if (reply && !content.body?.startsWith('eco: ')) await client.sendTextMessage(room.roomId, reply);
+  if (reply && !content.body?.startsWith('eco: ')) await client.sendTextMessage(roomId, reply);
   console.log(`answered ${content.msgtype} from ${sender}`);
+}
+
+client.on(sdk.RoomEvent.Timeline, (ev, room, toStart) => {
+  if (toStart || !room || ev.getSender() === me) return;
+  void step(`answer ${ev.getId()}`, async () => {
+    await client.decryptEventIfNeeded(ev);
+    await answer(ev, room.roomId);
+  })();
 });
 
 client.once(sdk.ClientEvent.Sync, (state) => {
