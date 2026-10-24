@@ -1,6 +1,7 @@
 import 'package:chama/chat/chat_screen.dart';
 import 'package:chama/chat_list/chat_list_view.dart';
 import 'package:chama/chat_list/chat_tile.dart';
+import 'package:chama/config.dart';
 import 'package:chama/main.dart' as app;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -40,8 +41,15 @@ void main() {
     await t.waitFor(find.byKey(const Key('tick_read')));
     await t.waitFor(find.text('eco: Olá, peer!'));
 
-    // Archive the chat, then open it from "Arquivadas": on the wide layout
-    // the archived list closes and the chat shows in the right pane.
+    // Archive the chat, then open it from "Arquivadas". Wide: the archived
+    // list closes and the chat shows in the right pane. Phone: the chat was
+    // pushed over the list, so go back first; it then opens over "Arquivadas".
+    final wide = tester.view.physicalSize.width / tester.view.devicePixelRatio >= wideLayoutMinWidth;
+    if (!wide) {
+      Navigator.of(tester.element(find.byType(ChatScreen))).pop();
+      await Future<void>.delayed(const Duration(milliseconds: 600));
+      await tester.pump();
+    }
     await tester.longPress(find.byType(ChatTile));
     await Future<void>.delayed(const Duration(milliseconds: 600));
     await tester.pump();
@@ -53,7 +61,7 @@ void main() {
     await tester.tap(find.byType(ChatTile));
     await Future<void>.delayed(const Duration(milliseconds: 600));
     await tester.pump();
-    expect(find.byWidgetPredicate((w) => w is ChatListView && w.archived), findsNothing);
+    if (wide) expect(find.byWidgetPredicate((w) => w is ChatListView && w.archived), findsNothing);
     expect(find.byType(ChatScreen), findsOneWidget);
   }, timeout: const Timeout(Duration(minutes: 5)));
 }
