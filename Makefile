@@ -35,7 +35,7 @@ app-web:
 	cd app && ./scripts/build-vodozemac-web.sh && flutter run -d chrome
 
 app-android:
-	cd app && flutter run -d $$(adb devices | awk '/^emulator-/{print $$1; exit}')
+	cd app && flutter run -d $${ANDROID_SERIAL:-$$(adb devices | awk '/^emulator-/{print $$1; exit}')}
 
 # End-to-end: the app chats with tools/peer (needs make up).
 app-e2e-web:

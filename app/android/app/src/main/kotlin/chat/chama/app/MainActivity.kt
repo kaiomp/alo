@@ -16,7 +16,12 @@ import io.flutter.plugin.common.MethodChannel
  * there is only ever one Matrix client and one open database.
  */
 class MainActivity : FlutterActivity() {
-    override fun provideFlutterEngine(context: Context): FlutterEngine = engine(context)
+    // The flutter tool's engine flags (--start-paused, --trace-startup, ...)
+    // come in the launch intent. MainActivity is exported, so a release build
+    // takes none from another app's intent.
+    @Suppress("DEPRECATION")
+    override fun provideFlutterEngine(context: Context): FlutterEngine =
+        engine(context, if (BuildConfig.BUILD_TYPE == "release") emptyArray() else flutterShellArgs.toArray())
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         // No super call: the engine registers its plugins itself (see
@@ -42,12 +47,12 @@ class MainActivity : FlutterActivity() {
     companion object {
         private var cached: FlutterEngine? = null
 
-        private fun engine(context: Context): FlutterEngine =
-            cached ?: FlutterEngine(context.applicationContext, emptyArray(), true, false).also { cached = it }
+        private fun engine(context: Context, shellArgs: Array<String>): FlutterEngine =
+            cached ?: FlutterEngine(context.applicationContext, shellArgs, true, false).also { cached = it }
 
         /** The app's engine, started without a screen when the app is not running. */
         fun runningEngine(context: Context): FlutterEngine =
-            cached ?: engine(context).apply {
+            cached ?: engine(context, emptyArray()).apply {
                 localizationPlugin.sendLocalesToFlutter(context.resources.configuration)
                 // lib/main.dart backgroundStartArg
                 dartExecutor.executeDartEntrypoint(

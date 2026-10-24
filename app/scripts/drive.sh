@@ -19,8 +19,11 @@ export PATH="$SDK/platform-tools:$SDK/emulator:$PATH"
 PIDS=()
 DEVICE=
 NAMES=()
+# PIDs of steps started inside a pipeline, whose subshell cannot add to PIDS.
+BG_PIDS=$(mktemp)
 cleanup() {
-  for p in "${PIDS[@]:-}"; do kill "$p" 2>/dev/null || true; done
+  for p in "${PIDS[@]:-}" $(cat "$BG_PIDS"); do kill "$p" 2>/dev/null || true; done
+  rm -f "$BG_PIDS"
   if [ ${#NAMES[@]} -gt 0 ]; then ./scripts/seed-contacts.sh "$DEVICE" remove "${NAMES[@]}" || true; fi
 }
 trap cleanup EXIT
@@ -79,16 +82,24 @@ case $TARGET in
     else
       # push_test.dart prints E2E_BACKGROUND: like a user, press Home, wait for
       # the app's notification, then open the app again so the test can check
-      # it (in the background Android freezes the test's own code).
+      # it (in the background Android freezes the test's own code). Only a
+      # notification posted or updated after this step counts, and only a
+      # showing one (dumpsys also lists removed ones, after mArchive=).
       flutter test "$TEST" -d "$DEVICE" "$@" 2>&1 | while IFS= read -r line; do
         printf '%s\n' "$line"
         if [[ $line == *E2E_BACKGROUND* ]]; then
-          (adb -s "$DEVICE" shell input keyevent KEYCODE_HOME
+          (since=$(adb -s "$DEVICE" shell date +%s%3N | tr -d '\r')
+            adb -s "$DEVICE" shell input keyevent KEYCODE_HOME
             for _ in $(seq 90); do
-              adb -s "$DEVICE" shell dumpsys notification | grep -q 'pkg=chat.chama.app' && break
+              adb -s "$DEVICE" shell dumpsys notification | awk -v since="$since" '
+                /mArchive=/ { exit }
+                /NotificationRecord\(/ { ours = /pkg=chat\.chama\.app / }
+                ours && /mUpdateTimeMs=/ { split($0, a, "="); if (a[2] + 0 >= since) { found = 1; exit } }
+                END { exit !found }' && break
               sleep 1
             done
             adb -s "$DEVICE" shell am start -n chat.chama.app/.MainActivity >/dev/null) &
+          echo $! >>"$BG_PIDS"
         fi
       done
     fi

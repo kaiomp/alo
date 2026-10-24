@@ -21,6 +21,10 @@ android {
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
+    // BuildConfig.BUILD_TYPE: MainActivity passes the flutter tool's engine
+    // flags outside release builds only.
+    buildFeatures { buildConfig = true }
+
     compileOptions {
         // flutter_local_notifications uses java.time on old Android versions.
         isCoreLibraryDesugaringEnabled = true

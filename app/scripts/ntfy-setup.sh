@@ -2,11 +2,13 @@
 # Installs ntfy, the UnifiedPush distributor, on the emulator and points it at
 # the dev stack's ntfy (http://10.0.2.2:8081, server/compose.yaml). Run once per
 # emulator; running it again changes nothing.
+# The device: the argument, else ANDROID_SERIAL (as in drive.sh), else the
+# first emulator.
 #   scripts/ntfy-setup.sh [device]
 set -euo pipefail
 SDK=${ANDROID_HOME:-$HOME/Library/Android/sdk}
 export PATH="$SDK/platform-tools:$PATH"
-DEVICE=${1:-$(adb devices | awk '/^emulator-/{print $1; exit}')}
+DEVICE=${1:-${ANDROID_SERIAL:-$(adb devices | awk '/^emulator-/{print $1; exit}')}}
 [ -n "$DEVICE" ] || { echo "No emulator running"; exit 1; }
 SERVER=${NTFY_SERVER:-http://10.0.2.2:8081}
 # ntfy 1.25.2, F-Droid build (versionCode 63).
