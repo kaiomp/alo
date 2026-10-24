@@ -47,6 +47,7 @@
   "unmute": "Unmute",
   "favourite": "Add to favourites",
   "unfavourite": "Remove from favourites",
+  "markRead": "Mark as read",
   "markUnread": "Mark as unread",
   "newChat": "New chat",
   "settings": "Settings",

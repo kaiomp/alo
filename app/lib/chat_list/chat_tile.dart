@@ -88,7 +88,7 @@ class ChatTile extends StatelessWidget {
                                 fontSize: 12,
                                 fontWeight: unread ? FontWeight.w600 : FontWeight.w400,
                                 fontFeatures: tabularFigures,
-                                color: unread ? colors.accent : muted,
+                                color: unread && !chat.isMuted ? colors.accent : muted,
                               ),
                             ),
                           ],
@@ -128,7 +128,15 @@ class ChatTile extends StatelessWidget {
                               const SizedBox(width: 6),
                               Icon(Icons.push_pin, size: 18, color: faint),
                             ],
-                            if (unread) ...[const SizedBox(width: 6), _Badge(count: chat.unread)],
+                            if (unread) ...[
+                              const SizedBox(width: 6),
+                              // Muted: grey, and a dot (the server counts nothing that does not notify).
+                              _Badge(
+                                count: chat.unread,
+                                color: chat.isMuted ? muted : Tokens.flameText,
+                                onColor: chat.isMuted ? scheme.surface : Colors.white,
+                              ),
+                            ],
                           ],
                         ),
                       ],
@@ -145,21 +153,24 @@ class ChatTile extends StatelessWidget {
 }
 
 class _Badge extends StatelessWidget {
-  const _Badge({required this.count});
+  const _Badge({required this.count, required this.color, required this.onColor});
   final int count;
+  final Color color;
+  final Color onColor;
 
   @override
   Widget build(BuildContext context) => Container(
+    key: const Key('unread_badge'),
     constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
     padding: const EdgeInsets.symmetric(horizontal: 6),
     alignment: Alignment.center,
-    decoration: const ShapeDecoration(color: Tokens.flameText, shape: StadiumBorder()),
+    decoration: ShapeDecoration(color: color, shape: const StadiumBorder()),
     child: count > 0
         ? Text(
             '$count',
             textScaler: TextScaler.noScaling,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: onColor,
               fontSize: 12,
               height: 1,
               fontWeight: FontWeight.w700,

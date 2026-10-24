@@ -97,7 +97,14 @@ class ChatService {
       // marks it failed and the user retries by hand (spec section 9).
       sendTimelineEventTimeout: const Duration(seconds: 30),
     );
-    await client.init(waitForFirstSync: false, waitUntilLoadCompletedLoaded: false);
+    return restore(client, id: id, homeserver: homeserver);
+  }
+
+  /// Restores the saved session of [client] from its local database.
+  static Future<ChatService> restore(ChamaClient client, {required IdClient id, required Uri homeserver}) async {
+    // Waits only for the local database (rooms, account data, device keys),
+    // so the chats show at once, also offline. The first sync runs on.
+    await client.init(waitForFirstSync: false);
     final prefs = await SharedPreferences.getInstance();
     return ChatService(client, DeliveryTracker(client, prefs), id, prefs, homeserver: homeserver);
   }
@@ -335,6 +342,7 @@ class ChatService {
       lastTick: mine ? tickOf(room, last, {last.eventId: last.originServerTs.millisecondsSinceEpoch}) : null,
       unread: room.notificationCount,
       markedUnread: room.markedUnread,
+      newMessages: room.hasNewMessages,
       isPinned: room.tags.containsKey(pinnedTag),
       isArchived: room.tags.containsKey(archivedTag),
       isFavourite: room.isFavourite,
@@ -345,19 +353,34 @@ class ChatService {
   /// Tick for my [event]. [knownTs] maps event IDs to server timestamps for
   /// the events the caller has loaded, so a receipt on a later event counts.
   Tick tickOf(Room room, Event event, Map<String, int> knownTs) {
-    final others = room.getParticipants([Membership.join]).map((u) => u.id).where((id) => id != myUserId).toList();
+    final sentAt = event.originServerTs.millisecondsSinceEpoch;
+    final members = room.getParticipants([Membership.join]).map((u) => u.id).where((id) => id != myUserId).toList();
+    // Someone who joined after the message never had it: they do not take
+    // its ticks back. Limit: only the current member event is known, so
+    // someone who joined later and then renamed counts again, and someone
+    // who left no longer counts (a message they never got can go up).
+    final others = members.where((id) => !_joinedAfter(room, id, sentAt)).toList();
     final receipts = {...room.receiptState.global.otherUsers, ...?room.receiptState.mainThread?.otherUsers};
-    final delivered = others.length < deliveryMaxMembers ? delivery.deliveredUpTo(room.id) : const <String, int>{};
+    final delivered = members.length < deliveryMaxMembers ? delivery.deliveredUpTo(room.id) : const <String, int>{};
     return deriveTick(
       failed: event.status.isError,
       sent: event.status.isSent,
-      sentAt: event.originServerTs.millisecondsSinceEpoch,
+      sentAt: sentAt,
       deliveredUpTo: {for (final u in others) u: delivered[u]},
       readUpTo: {
         for (final u in others) u: receipts[u] == null ? null : (knownTs[receipts[u]!.eventId] ?? receipts[u]!.ts),
       },
       showRead: readReceipts,
     );
+  }
+
+  /// [userId]'s join came after [ts]. A later member event that only
+  /// changed the name or photo (it was "join" before too) does not count.
+  bool _joinedAfter(Room room, String userId, int ts) {
+    final state = room.getState(EventTypes.RoomMember, userId);
+    return state is Event &&
+        state.originServerTs.millisecondsSinceEpoch > ts &&
+        state.prevContent?['membership'] != Membership.join.name;
   }
 
   Room _room(String roomId) => client.getRoomById(roomId)!;
@@ -373,7 +396,18 @@ class ChatService {
   Future<void> setMuted(String roomId, bool on) =>
       _room(roomId).setPushRuleState(on ? PushRuleState.dontNotify : PushRuleState.notify);
 
-  Future<void> markUnread(String roomId, bool on) => _room(roomId).markUnread(on);
+  /// On: "Marcar como não lida". Off: "Marcar como lida", which also moves
+  /// my read receipt to the newest message.
+  Future<void> markUnread(String roomId, bool on) async {
+    final room = _room(roomId);
+    await room.markUnread(on);
+    final last = room.lastEvent;
+    if (on || last == null || !last.status.isSynced || (room.notificationCount == 0 && !room.hasNewMessages)) return;
+    // One this device cannot decrypt gets a private receipt only: the
+    // sender sees no blue ticks for a message nobody could read.
+    final public = readReceipts && newestReadable([last]) != null;
+    await room.setReadMarker(last.eventId, mRead: last.eventId, public: public);
+  }
 
   // ---- new chats and groups ----
 

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart' show NumberFormat;
 
 import '../common/actions.dart';
 import '../common/deps.dart';
@@ -263,69 +264,56 @@ class MessageBubble extends StatelessWidget {
       default:
     }
 
-    if (m.kind == MessageKind.text) {
-      final painter = TextPainter(
-        text: TextSpan(text: m.body, style: textStyle),
-        textDirection: direction,
-        textScaler: scaler,
-        textWidthBasis: TextWidthBasis.longestLine,
-      )..layout(maxWidth: maxContent);
-      final lines = painter.computeLineMetrics();
-      final lastLine = lines.isEmpty ? 0.0 : lines.last.width;
-      final inline = lastLine + gap + metaWidth <= maxContent;
-      final width = math.max(painter.width, inline ? lastLine + gap + metaWidth : metaWidth).ceilToDouble();
-      final height = painter.height + (inline ? 0 : metaHeight);
-      final textWidth = painter.width.ceilToDouble();
-      painter.dispose();
-      return SizedBox(
-        width: math.min(width, maxContent),
-        height: height,
-        child: Stack(
-          children: [
-            Positioned(
-              left: 0,
-              top: 0,
-              width: textWidth,
-              child: Text(m.body, style: textStyle, textWidthBasis: TextWidthBasis.longestLine),
-            ),
-            Positioned(right: 0, bottom: 0, child: meta),
-          ],
-        ),
-      );
-    }
-    // Deleted and waiting: one row with room for the meta.
-    return Stack(
-      children: [
-        Padding(
-          padding: EdgeInsets.only(right: metaWidth + gap),
-          child: DefaultTextStyle.merge(style: textStyle, child: _placeholder(context, l)),
-        ),
-        Positioned(right: 0, bottom: 0, child: meta),
-      ],
-    );
-  }
-
-  Widget _placeholder(BuildContext context, L10n l) {
-    final colors = ChatColors.of(context);
-    final muted = TextStyle(fontStyle: FontStyle.italic, color: colors.meta);
-    final m = message;
+    // Text, and the deleted / waiting placeholder (icon and italic text):
+    // the time goes on the last line when it fits there.
     final (icon, text, style) = switch (m.kind) {
-      MessageKind.deleted => (Icons.block, m.isMine ? l.youDeleted : l.deletedMessage, muted),
-      _ => (Icons.schedule, l.waitingMessage, muted),
+      MessageKind.text => (null, m.body, textStyle),
+      MessageKind.deleted => (Icons.block, m.isMine ? l.youDeleted : l.deletedMessage, null),
+      _ => (Icons.schedule, l.waitingMessage, null),
     };
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 18, color: colors.meta),
-        const SizedBox(width: 6),
-        Flexible(
-          child: Text(
-            text,
-            key: m.kind == MessageKind.undecryptable ? const Key('waiting_message') : null,
-            style: style,
+    final bodyStyle = style ?? textStyle.copyWith(fontStyle: FontStyle.italic, color: colors.meta);
+    final lead = icon == null ? 0.0 : 18.0 + 6;
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: bodyStyle),
+      textDirection: direction,
+      textScaler: scaler,
+      textWidthBasis: TextWidthBasis.longestLine,
+    )..layout(maxWidth: maxContent - lead);
+    final lines = painter.computeLineMetrics();
+    final lastLine = lead + (lines.isEmpty ? 0.0 : lines.last.width);
+    final inline = lastLine + gap + metaWidth <= maxContent;
+    final textWidth = painter.width.ceilToDouble();
+    final width = math.max(lead + painter.width, inline ? lastLine + gap + metaWidth : metaWidth).ceilToDouble();
+    final height = painter.height + (inline ? 0 : metaHeight);
+    painter.dispose();
+    final body = Text(
+      text,
+      key: m.kind == MessageKind.undecryptable ? const Key('waiting_message') : null,
+      style: bodyStyle,
+      textWidthBasis: TextWidthBasis.longestLine,
+    );
+    return SizedBox(
+      width: math.min(width, maxContent),
+      height: height,
+      child: Stack(
+        children: [
+          Positioned(
+            left: 0,
+            top: 0,
+            width: lead + textWidth,
+            child: icon == null
+                ? body
+                : Row(
+                    children: [
+                      Icon(icon, size: 18, color: colors.meta),
+                      const SizedBox(width: 6),
+                      Expanded(child: body),
+                    ],
+                  ),
           ),
-        ),
-      ],
+          Positioned(right: 0, bottom: 0, child: meta),
+        ],
+      ),
     );
   }
 }
@@ -502,6 +490,13 @@ class _ReplyBox extends StatelessWidget {
   }
 }
 
+/// "1,5 MB" in Portuguese, "1.5 MB" in English.
+String fileSize(int bytes, String locale) => switch (bytes) {
+  < 1024 => '$bytes B',
+  < 1024 * 1024 => '${(bytes / 1024).ceil()} KB',
+  _ => '${NumberFormat.decimalPatternDigits(locale: locale, decimalDigits: 1).format(bytes / (1024 * 1024))} MB',
+};
+
 /// Encrypted photo: the thumbnail fills the bubble, a tap opens it full size.
 class _Picture extends StatefulWidget {
   const _Picture({required this.message, required this.session, required this.width, required this.meta});
@@ -610,19 +605,13 @@ class _FileCardState extends State<_FileCard> {
     }
   }
 
-  static String _size(int bytes) => switch (bytes) {
-    < 1024 => '$bytes B',
-    < 1024 * 1024 => '${(bytes / 1024).ceil()} KB',
-    _ => '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB',
-  };
-
   @override
   Widget build(BuildContext context) {
     final m = widget.message;
     final colors = ChatColors.of(context);
     final dot = m.body.lastIndexOf('.');
     final type = dot > 0 && dot < m.body.length - 1 ? m.body.substring(dot + 1).toUpperCase() : null;
-    final details = [if (m.size != null) _size(m.size!), ?type].join(' · ');
+    final details = [if (m.size != null) fileSize(m.size!, L10n.of(context).localeName), ?type].join(' · ');
     return Container(
       width: widget.width,
       padding: const EdgeInsets.fromLTRB(8, 8, 4, 8),

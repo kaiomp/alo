@@ -95,7 +95,9 @@ class ChatSession extends ChangeNotifier {
   /// another chat selected). Read receipts go out only while visible.
   set visible(bool v) {
     _visible = v;
-    if (v) unawaited(markRead());
+    if (!v) return;
+    _shown = true;
+    unawaited(markRead());
   }
 
   void _rebuild() {
@@ -226,13 +228,35 @@ class ChatSession extends ChangeNotifier {
     }
   }
 
+  /// The event my last read marker went to. The unread count and my own
+  /// receipt change only with the next sync, so without this every redraw
+  /// until then would send the marker again.
+  String? _readUpTo;
+
+  /// The chat was just opened or the app came back to it: a "não lida" mark
+  /// goes. A mark set while the chat is open holds until then (or until a
+  /// new message is read).
+  bool _shown = true;
+
   Future<void> markRead() async {
     final t = _timeline;
-    if (t == null || t.events.isEmpty) return;
-    if (_room.notificationCount == 0 && !_room.markedUnread && !_room.hasNewMessages) return;
+    if (t == null) return;
+    final shown = _shown;
+    _shown = false;
     final newest = newestReadable(t.events);
-    if (newest == null) return;
-    await t.setReadMarker(eventId: newest.eventId, public: _service.readReceipts);
+    final post =
+        newest != null &&
+        newest.eventId != _readUpTo &&
+        (_room.notificationCount > 0 || _room.hasNewMessages || _room.markedUnread);
+    // Set before any await: redraws come in bursts.
+    if (post) _readUpTo = newest.eventId;
+    try {
+      if (_room.markedUnread && (shown || post)) await _room.markUnread(false);
+      if (post) await t.setReadMarker(eventId: newest.eventId, public: _service.readReceipts);
+    } catch (e) {
+      if (post) _readUpTo = null; // the next update tries again
+      Logs().w('Could not mark the chat read', e);
+    }
   }
 
   /// Spec §5: nothing goes out in clear. The SDK would send plaintext into a

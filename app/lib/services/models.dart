@@ -15,6 +15,7 @@ class ChatSummary {
     this.lastTick,
     this.unread = 0,
     this.markedUnread = false,
+    this.newMessages = false,
     this.isPinned = false,
     this.isArchived = false,
     this.isFavourite = false,
@@ -41,12 +42,16 @@ class ChatSummary {
   final Tick? lastTick;
   final int unread;
   final bool markedUnread;
+
+  /// Messages after my read receipt. The server's [unread] count skips
+  /// messages that do not notify, so a muted chat needs this.
+  final bool newMessages;
   final bool isPinned;
   final bool isArchived;
   final bool isFavourite;
   final bool isMuted;
 
-  bool get isUnread => unread > 0 || markedUnread;
+  bool get isUnread => unread > 0 || markedUnread || (isMuted && newMessages);
 }
 
 enum MessageKind { text, image, file, voice, deleted, undecryptable, system }

@@ -240,7 +240,8 @@ class _ActionTile extends StatelessWidget {
               Icon(icon, size: 24, color: enabled ? colors.accent : scheme.onSurfaceVariant),
               const SizedBox(height: 4),
               Text(label, style: TextStyle(fontSize: 13, color: scheme.onSurface)),
-              if (note != null) Text(note!, style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant)),
+              // Always a note line, empty or not, so the tiles line up.
+              Text(note ?? '', style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant)),
             ],
           ),
         ),

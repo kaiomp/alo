@@ -54,7 +54,9 @@ class _ChatListViewState extends State<ChatListView> {
           Icons.archive_outlined,
           c.isArchived ? l.unarchive : l.archive,
         ),
-        if (!c.isUnread) MenuAction(() => chat.markUnread(c.id, true), Icons.mark_chat_unread_outlined, l.markUnread),
+        c.isUnread
+            ? MenuAction(() => chat.markUnread(c.id, false), Icons.mark_chat_read_outlined, l.markRead)
+            : MenuAction(() => chat.markUnread(c.id, true), Icons.mark_chat_unread_outlined, l.markUnread),
       ],
     );
     await run?.call();
