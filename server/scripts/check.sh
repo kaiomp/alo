@@ -86,13 +86,41 @@ curl -fs -XPOST -H "$AUTH" "$BASE/_matrix/client/v3/logout" -d '{}' >/dev/null |
 admin_check() { dc exec -T -e MXID="$MXID" chama-id node --input-type=module -e "
   import { openDb } from './src/db.ts'; import { HttpSynapseAdmin } from './src/synapse.ts';
   const e = process.env;
-  const a = new HttpSynapseAdmin({ baseUrl: e.SYNAPSE_INTERNAL_URL, sharedSecret: e.REGISTRATION_SHARED_SECRET, db: openDb(e.DB_PATH) });
+  const a = new HttpSynapseAdmin({ baseUrl: e.SYNAPSE_INTERNAL_URL, sharedSecret: e.REGISTRATION_SHARED_SECRET, asToken: e.SYNAPSE_AS_TOKEN, db: openDb(e.DB_PATH) });
   const age = Date.now() - await a.lastActiveMs(e.MXID);
   console.log(age >= 0 && age < 600_000, await a.lastActiveMs('@uzzzzzzzzzzzzzzzz:chama.test'));" | tail -1; }
 # Synapse writes client IPs in batches every few seconds.
 for _ in 1 2 3 4 5 6 7 8 9 10; do out=$(admin_check) || fail "admin client"; [[ $out == 'true null' ]] && break; sleep 2; done
 [[ $out == 'true null' ]] || fail "admin client after logout: want 'true null' (recently active, unknown user), got '$out'"
 ok "admin client: $MXID still recently active after logout, unknown user is null"
+
+# Recycled-number path: chama-id's admin client deactivates an account, and its token stops working.
+PHONE2=119$(printf '%04d%04d' $((RANDOM % 10000)) $((RANDOM % 10000)))
+curl -fs -XPOST "$BASE/id/v1/otp/request" -H 'content-type: application/json' -d "{\"phone\":\"$PHONE2\"}" >/dev/null || fail "otp request for $PHONE2"
+V2=$(curl -fs -XPOST "$BASE/id/v1/otp/verify" -H 'content-type: application/json' -d "{\"phone\":\"$PHONE2\",\"code\":\"000000\"}") || fail "otp verify $PHONE2"
+MXID2=$(json user_id <<<"$V2") || fail "otp verify $PHONE2: no user_id"
+ACCESS2=$(curl -fs -XPOST "$BASE/_matrix/client/v3/login" -H 'content-type: application/json' \
+  -d "{\"type\":\"org.matrix.login.jwt\",\"token\":\"$(json login_token <<<"$V2")\"}" | json access_token) || fail "jwt login $MXID2"
+curl -fs -H "Authorization: Bearer $ACCESS2" "$BASE/_matrix/client/v3/account/whoami" >/dev/null || fail "whoami $MXID2 before deactivate"
+dc exec -T -e MXID="$MXID2" chama-id node --input-type=module -e "
+  import { openDb } from './src/db.ts'; import { HttpSynapseAdmin } from './src/synapse.ts';
+  const e = process.env;
+  await new HttpSynapseAdmin({ baseUrl: e.SYNAPSE_INTERNAL_URL, sharedSecret: e.REGISTRATION_SHARED_SECRET, asToken: e.SYNAPSE_AS_TOKEN, db: openDb(e.DB_PATH) }).deactivate(e.MXID);" \
+  || fail "admin deactivate $MXID2"
+code=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $ACCESS2" "$BASE/_matrix/client/v3/account/whoami")
+[[ $code == 401 ]] || fail "token after deactivate: $code, want 401"
+ok "admin deactivate: $MXID2 token now $code"
+
+# Identity reset (spec §5): bootstrap cross-signing, second device, reset, other device logged out.
+BASE=$BASE node ../tools/smoke/identity.ts || fail "identity reset"
+
+# The application service token works from the internal network and is refused from a public address.
+out=$(dc exec -T chama-id node -e "
+  const w = (xff) => fetch(process.env.SYNAPSE_INTERNAL_URL + '/_matrix/client/v3/account/whoami', { headers:
+    { authorization: 'Bearer ' + process.env.SYNAPSE_AS_TOKEN, ...(xff ? { 'x-forwarded-for': xff } : {}) } }).then((r) => r.status);
+  Promise.all([w(), w('8.8.8.8')]).then((s) => console.log(s.join(' ')));") || fail "app service token check"
+[[ $out == '200 401' ]] || fail "app service token: internal and public got '$out', want '200 401'"
+ok "app service token: internal 200, public address 401"
 
 flows=$(curl -fs "$BASE/_matrix/client/v3/login") || fail "login flows"
 [[ $flows != *m.login.password* ]] || fail "login flows offer password: $flows"
