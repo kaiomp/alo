@@ -31,13 +31,23 @@ Sign in with any Brazilian mobile number (for example `11 91234-5678`) and the c
 - Strings: `lib/l10n/app_pt.arb` (Portuguese, the template) and `app_en.arb`.
 - Colours: `lib/common/theme.dart` only.
 
-## Release APKs
+## Release builds
 
-M2 release APKs are signed with the debug key: they are for development only, not for
-distribution. A store-signed build cannot update them, so a tester would have to uninstall and lose
-keys and chats. Release signing comes with M3.
+Two flavors: `fdroid` (the default, no Google code; push needs a UnifiedPush app such as ntfy) and
+`play` (adds UnifiedPush's embedded FCM distributor, so push works without one).
 
-`make app-apk CHAMA_BASE_URL=https://chama.example` builds one APK per ABI (arm64-v8a,
-armeabi-v7a, x86_64). `CHAMA_BASE_URL` is required and must be `https://`: release and profile
-builds refuse to start without it. Android's `network_security_config.xml` (HTTPS only) does not
-cover Dart's own HTTP client, so this check is what keeps codes and tokens off cleartext HTTP.
+- `make app-apk CHAMA_BASE_URL=https://chama.example`: one fdroid APK per ABI (arm64-v8a,
+  armeabi-v7a, x86_64) in `build/app/outputs/flutter-apk/`.
+- `make app-aab CHAMA_BASE_URL=https://chama.example`: the Play Store bundle,
+  `build/app/outputs/bundle/playRelease/app-play-release.aab`.
+
+`CHAMA_BASE_URL` is required and must be `https://`: release and profile builds refuse to start
+without it. Android's `network_security_config.xml` (HTTPS only) does not cover Dart's own HTTP
+client, so this check is what keeps codes and tokens off cleartext HTTP.
+
+Signing reads the key from the environment, never from the repo: `CHAMA_KEYSTORE` (path to a .jks or
+.p12 file outside the repo), `CHAMA_KEYSTORE_PASSWORD`, `CHAMA_KEY_ALIAS` and `CHAMA_KEY_PASSWORD`.
+Without them a release build stops with an error. For local testing only, `CHAMA_ALLOW_DEBUG_KEY=1`
+signs with the debug key and the version name ends in `-debugkey`; the stores refuse such builds,
+and a store-signed build cannot update them (a tester would have to uninstall and lose keys and
+chats).

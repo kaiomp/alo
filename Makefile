@@ -3,7 +3,7 @@ COMPOSE = docker compose -f server/compose.yaml --env-file server/data/.env
 SYNAPSE_IMAGE := $(shell awk '/image: ghcr.io\/element-hq\/synapse:/ {print $$2; exit}' server/compose.yaml)
 NO_ENV = echo "server/data/.env does not exist yet: run make up first"
 
-.PHONY: up down logs reset test smoke app-test app-web app-android app-e2e-web app-e2e-android app-apk
+.PHONY: up down logs reset test smoke app-test app-web app-android app-e2e-web app-e2e-android app-apk app-aab
 
 up:
 	./server/scripts/init.sh
@@ -45,10 +45,21 @@ app-e2e-android:
 	cd app && ./scripts/e2e.sh android && ./scripts/e2e.sh android integration_test/contacts_test.dart && \
 	  ./scripts/ntfy-setup.sh && ./scripts/e2e.sh android integration_test/push_test.dart
 
-# Release APKs, one per ABI. pub get first: a GeneratedPluginRegistrant left by
-# an integration-test run still names the test-only plugin and breaks javac.
-# CHAMA_BASE_URL (https) is required: release builds refuse anything else.
+# Release builds need CHAMA_BASE_URL (https: release builds refuse anything
+# else) and the signing key in CHAMA_KEYSTORE* (app/README.md). pub get first:
+# a GeneratedPluginRegistrant left by an integration-test run still names the
+# test-only plugin and breaks javac.
+NEED_HTTPS = @case "$(CHAMA_BASE_URL)" in https://?*) ;; *) echo "Set CHAMA_BASE_URL=https://… (make $@ CHAMA_BASE_URL=https://chama.example)"; exit 1 ;; esac
+
+# APKs of the fdroid flavor (no Google code), one per ABI:
+# app/build/app/outputs/flutter-apk/app-<abi>-fdroid-release.apk
 app-apk:
-	@case "$(CHAMA_BASE_URL)" in https://?*) ;; *) echo "Set CHAMA_BASE_URL=https://… (make app-apk CHAMA_BASE_URL=https://chama.example)"; exit 1 ;; esac
+	$(NEED_HTTPS)
 	cd app && flutter pub get && flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64,android-x64 \
 	  --dart-define=CHAMA_BASE_URL=$(CHAMA_BASE_URL)
+
+# Play Store bundle: the play flavor adds FCM through UnifiedPush's embedded
+# distributor. app/build/app/outputs/bundle/playRelease/app-play-release.aab
+app-aab:
+	$(NEED_HTTPS)
+	cd app && flutter pub get && flutter build appbundle --release --flavor play --dart-define=CHAMA_BASE_URL=$(CHAMA_BASE_URL)

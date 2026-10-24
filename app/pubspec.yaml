@@ -1,7 +1,7 @@
 name: chama
 description: Chama, mensageiro livre com criptografia de ponta a ponta.
 publish_to: none
-version: 0.2.0+1
+version: 0.3.0+2
 
 environment:
   sdk: ^3.13.7
@@ -43,6 +43,9 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   generate: true
+  # Product flavors in android/app/build.gradle.kts. fdroid (no Google code) is
+  # what flutter run, test, drive and build use unless --flavor says otherwise.
+  default-flavor: fdroid
   # Inter (text) and JetBrains Mono (recovery key), both SIL OFL 1.1 (licences
   # next to the files). Static weights subset to Latin, built from the
   # variable fonts with fontTools.
