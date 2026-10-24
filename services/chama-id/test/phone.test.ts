@@ -14,3 +14,6 @@ test('rejects garbage', () => {
   assert.throws(() => normalizePhone('123'), /invalid_phone/);
   assert.throws(() => normalizePhone('abc'), /invalid_phone/);
 });
+test('accepts bare national numbers with trunk 0', () => {
+  assert.equal(normalizePhone('011987654321'), '5511987654321');
+});
