@@ -42,6 +42,7 @@ class _NewGroupScreenState extends State<NewGroupScreen> {
   @override
   Widget build(BuildContext context) {
     final l = L10n.of(context);
+    final names = {for (final c in Deps.of(context).contacts.onChama) c.userId: c.name};
     return Scaffold(
       appBar: AppBar(title: Text(l.newGroup)),
       floatingActionButton: FloatingActionButton(
@@ -80,6 +81,7 @@ class _NewGroupScreenState extends State<NewGroupScreen> {
                         key: ValueKey('member_$id'),
                         seed: id,
                         digits: digits,
+                        name: names[id],
                         onRemove: () => setState(() => _members.remove(id)),
                       ),
                   ],
@@ -98,17 +100,22 @@ class _NewGroupScreenState extends State<NewGroupScreen> {
   }
 }
 
-/// A picked member: avatar, phone and a remove mark on the avatar's corner.
+/// A picked member: avatar, saved name (else phone) and a remove mark on the
+/// avatar's corner.
 class MemberChip extends StatelessWidget {
-  const MemberChip({super.key, required this.seed, required this.digits, required this.onRemove});
+  const MemberChip({super.key, required this.seed, required this.digits, this.name, required this.onRemove});
   final String seed;
   final String digits;
+
+  /// The address-book name, when the number is saved.
+  final String? name;
   final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final l = L10n.of(context);
+    final label = name ?? formatPhone(digits);
     return Stack(
       children: [
         Padding(
@@ -117,10 +124,10 @@ class MemberChip extends StatelessWidget {
             width: 72,
             child: Column(
               children: [
-                Avatar(name: '', seed: seed, radius: 28),
+                Avatar(name: name ?? '', seed: seed, radius: 28),
                 const SizedBox(height: 6),
                 Text(
-                  formatPhone(digits),
+                  label,
                   maxLines: 2,
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant),
@@ -136,7 +143,7 @@ class MemberChip extends StatelessWidget {
           top: 25,
           child: Semantics(
             button: true,
-            label: '${l.removeMember} ${formatPhone(digits)}',
+            label: '${l.removeMember} $label',
             onTap: onRemove,
             excludeSemantics: true,
             child: GestureDetector(

@@ -25,7 +25,7 @@ class ChatSession extends ChangeNotifier {
   OnlineStatus? presence;
 
   String get roomId => _room.id;
-  String get name => _room.getLocalizedDisplayname();
+  String get name => _service.chatName(_room);
   Uri? get avatar => _room.avatar;
   bool get isGroup => !_room.isDirectChat;
 
@@ -39,15 +39,14 @@ class ChatSession extends ChangeNotifier {
   bool get moreOnServer => canLoadMore && _room.prev_batch != null;
 
   /// Display names of members typing right now (me excluded).
-  List<String> get typing =>
-      _room.typingUsers.where((u) => u.id != _service.myUserId).map((u) => u.calcDisplayname()).toList();
+  List<String> get typing => _room.typingUsers.where((u) => u.id != _service.myUserId).map(_service.nameOf).toList();
 
   List<Member> get members => _room
       .getParticipants([Membership.join])
       .map(
         (u) => Member(
           userId: u.id,
-          name: u.calcDisplayname(),
+          name: _service.nameOf(u),
           isAdmin: _room.getPowerLevelByUserId(u.id).level >= 100,
           avatar: u.avatarUrl,
         ),
@@ -68,6 +67,7 @@ class ChatSession extends ChangeNotifier {
     );
     _service.delivery.revision.addListener(_rebuild);
     _service.securityCodes.revision.addListener(_rebuild);
+    _service.namesRevision.addListener(_rebuild);
     final other = _room.directChatMatrixID;
     if (other != null) {
       _subs.add(_service.client.onPresenceChanged.stream.where((p) => p.userid == other).listen(_setPresence));
@@ -125,7 +125,7 @@ class ChatSession extends ChangeNotifier {
     return Message(
       id: raw.eventId,
       senderId: raw.senderId,
-      senderName: raw.senderFromMemoryOrFallback.calcDisplayname(),
+      senderName: _service.nameOf(raw.senderFromMemoryOrFallback),
       isMine: mine,
       time: raw.originServerTs,
       kind: kind,
@@ -136,7 +136,7 @@ class ChatSession extends ChangeNotifier {
           ? null
           : ReplyPreview(
               eventId: replyEvent.eventId,
-              senderName: replyEvent.senderFromMemoryOrFallback.calcDisplayname(),
+              senderName: _service.nameOf(replyEvent.senderFromMemoryOrFallback),
               body: _bodyWithoutReplyFallback(replyEvent.getDisplayEvent(timeline)),
               kind: kindOf(replyEvent),
             ),
@@ -150,7 +150,7 @@ class ChatSession extends ChangeNotifier {
       systemKind: kind == MessageKind.system ? systemKindOf(raw) : null,
       systemTarget: switch (raw.type) {
         EventTypes.RoomName => raw.content['name'] as String?,
-        EventTypes.RoomMember => _room.unsafeGetUserFromMemoryOrFallback(raw.stateKey ?? '').calcDisplayname(),
+        EventTypes.RoomMember => _service.nameOf(_room.unsafeGetUserFromMemoryOrFallback(raw.stateKey ?? '')),
         _ => null,
       },
       systemTargetId: raw.type == EventTypes.RoomMember ? raw.stateKey : null,
@@ -173,7 +173,7 @@ class ChatSession extends ChangeNotifier {
         Message(
           id: 'security_${n.userId}_${n.ts}',
           senderId: n.userId,
-          senderName: _room.unsafeGetUserFromMemoryOrFallback(n.userId).calcDisplayname(),
+          senderName: _service.nameOf(_room.unsafeGetUserFromMemoryOrFallback(n.userId)),
           isMine: false,
           time: time,
           kind: MessageKind.system,
@@ -206,7 +206,7 @@ class ChatSession extends ChangeNotifier {
           key,
           events.length,
           mine: events.any((r) => r.senderId == _service.myUserId),
-          senders: [for (final r in events) r.senderFromMemoryOrFallback.calcDisplayname()],
+          senders: [for (final r in events) _service.nameOf(r.senderFromMemoryOrFallback)],
         ),
     ];
   }
@@ -469,6 +469,7 @@ class ChatSession extends ChangeNotifier {
     _disposed = true;
     _service.delivery.revision.removeListener(_rebuild);
     _service.securityCodes.revision.removeListener(_rebuild);
+    _service.namesRevision.removeListener(_rebuild);
     for (final s in _subs) {
       s.cancel();
     }

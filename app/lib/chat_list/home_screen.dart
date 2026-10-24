@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../chat/chat_screen.dart';
@@ -29,6 +31,14 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _selected; // wide layout only
   final _left = GlobalKey<NavigatorState>();
   int _profileVersion = 0; // reloads my avatar after settings
+
+  @override
+  void initState() {
+    super.initState();
+    // Signed in and on screen: the steps that need the user or an activity.
+    final deps = Deps.of(context);
+    WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(deps.contacts.start()));
+  }
 
   NavigatorState _nav(bool wide) => wide ? _left.currentState! : Navigator.of(context);
 

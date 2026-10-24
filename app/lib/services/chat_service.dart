@@ -132,6 +132,26 @@ class ChatService {
 
   String get myUserId => client.userID ?? '';
 
+  // ---- names (spec §4, Privacy: a contact's saved name wins) ----
+
+  Map<String, String> _contactNames = const {};
+
+  /// Bumps when the address-book names change, so open chats redraw.
+  final namesRevision = ValueNotifier<int>(0);
+
+  /// Address-book names by user ID, from ContactsService.
+  set contactNames(Map<String, String> names) {
+    if (mapEquals(names, _contactNames)) return;
+    _contactNames = names;
+    namesRevision.value++;
+    _onSync();
+  }
+
+  String nameOf(User u) => _contactNames[u.id] ?? u.calcDisplayname();
+
+  /// A 1:1 chat is named after the other person as saved in the address book.
+  String chatName(Room room) => _contactNames[room.directChatMatrixID] ?? room.getLocalizedDisplayname();
+
   // ---- sign-in and profile ----
 
   static const _phoneKey = 'chama.phone';
@@ -336,16 +356,14 @@ class ChatService {
     final lastKind = last == null ? MessageKind.system : kindOf(last);
     return ChatSummary(
       id: room.id,
-      name: room.getLocalizedDisplayname(),
+      name: chatName(room),
       isGroup: !room.isDirectChat,
       encrypted: room.encrypted,
       avatar: room.avatar,
       lastTime: room.latestEventReceivedTime,
       preview: last == null || lastKind == MessageKind.system ? null : previewText(last),
       previewKind: lastKind,
-      previewSender: last == null || mine || room.isDirectChat
-          ? null
-          : last.senderFromMemoryOrFallback.calcDisplayname(),
+      previewSender: last == null || mine || room.isDirectChat ? null : nameOf(last.senderFromMemoryOrFallback),
       lastTick: mine ? tickOf(room, last, {last.eventId: last.originServerTs.millisecondsSinceEpoch}) : null,
       unread: room.notificationCount,
       markedUnread: room.markedUnread,
@@ -418,9 +436,12 @@ class ChatService {
 
   // ---- new chats and groups ----
 
+  /// Chama accounts for up to 1000 numbers (E.164 digits), as {digits: user ID}.
+  Future<Map<String, String>> lookupPhones(List<String> phoneDigits) =>
+      id.lookup(phoneDigits, accessToken: client.accessToken!);
+
   /// The Chama account for [phoneDigits], or null when the number has none.
-  Future<String?> findByPhone(String phoneDigits) async =>
-      (await id.lookup([phoneDigits], accessToken: client.accessToken!))[phoneDigits];
+  Future<String?> findByPhone(String phoneDigits) async => (await lookupPhones([phoneDigits]))[phoneDigits];
 
   /// Opens (or creates) the encrypted 1:1 chat with [userId]. An existing
   /// chat without encryption is reused only when I can switch it on; an

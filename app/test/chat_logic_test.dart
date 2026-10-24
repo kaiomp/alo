@@ -6,6 +6,8 @@ import 'package:chama/chat/message_bubble.dart';
 import 'package:chama/chat_list/chat_list_view.dart';
 import 'package:chama/chat_list/chat_tile.dart';
 import 'package:chama/common/deps.dart';
+import 'package:chama/contacts/address_book.dart';
+import 'package:chama/contacts/contacts_service.dart';
 import 'package:chama/common/theme.dart';
 import 'package:chama/group/group_info_screen.dart';
 import 'package:chama/l10n/app_localizations.dart';
@@ -61,7 +63,7 @@ void main() {
 
   Future<ChatService> newService(http.Client server, {String name = 'chat_logic_test'}) async {
     SharedPreferences.setMockInitialValues({});
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = _prefs = await SharedPreferences.getInstance();
     final db = await MatrixSdkDatabase.init(
       name,
       database: await databaseFactoryFfi.openDatabase(':memory:'),
@@ -324,11 +326,15 @@ void main() {
   });
 }
 
+late SharedPreferences _prefs;
+
 Widget _host(ChatService service, Widget child) => Deps(
   chat: service,
   id: service.id,
+  contacts: ContactsService(service, NoAddressBook(), _prefs),
   newRecorder: () => throw UnimplementedError(),
   pickFile: ({required bool image}) async => null,
+  shareText: (_) async {},
   child: MaterialApp(
     theme: chamaTheme(Brightness.light),
     locale: const Locale('pt'),

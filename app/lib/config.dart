@@ -8,7 +8,7 @@ import 'package:flutter/foundation.dart';
 Uri get chamaBaseUrl => baseUrlFor(
   const String.fromEnvironment('CHAMA_BASE_URL'),
   release: !kDebugMode, // profile builds too
-  android: !kIsWeb && defaultTargetPlatform == TargetPlatform.android,
+  android: onAndroid,
 );
 
 /// [chamaBaseUrl] for a given build. Throws [StateError] for a non-debug build
@@ -27,3 +27,7 @@ Uri baseUrlFor(String fromEnv, {required bool release, required bool android}) {
 
 /// Below this width the app uses the phone layout; above it, two panes.
 const wideLayoutMinWidth = 900.0;
+
+/// Push notifications and the address book: Android only for now (spec §7,
+/// M3). The web app has neither.
+bool get onAndroid => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;

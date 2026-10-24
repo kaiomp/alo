@@ -70,4 +70,12 @@ void main() {
     expect(normalizeContactPhone(''), isNull);
     expect(normalizeContactPhone('98765-4321'), isNull); // no area code
   });
+
+  test('a foreign number saved without "+" is misread (known limit)', () {
+    // The leading digits are taken for a carrier code: see the Limit note in
+    // normalizeContactPhone. Saved with '+', the same numbers come out right.
+    expect(normalizeContactPhone('447911123456'), '557911123456');
+    expect(normalizeContactPhone('4917662096183'), isNull);
+    expect(normalizeContactPhone('+44 7911 123456'), '447911123456');
+  });
 }

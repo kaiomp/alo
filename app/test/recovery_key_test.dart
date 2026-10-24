@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:chama/auth/encryption_screen.dart';
 import 'package:chama/auth/id_client.dart';
 import 'package:chama/common/deps.dart';
+import 'package:chama/contacts/address_book.dart';
+import 'package:chama/contacts/contacts_service.dart';
 import 'package:chama/common/theme.dart';
 import 'package:chama/l10n/app_localizations.dart';
 import 'package:chama/services/chama_client.dart';
@@ -91,8 +93,10 @@ void main() {
 Widget _app(ChatService service, Widget home) => Deps(
   chat: service,
   id: service.id,
+  contacts: ContactsService(service, NoAddressBook(), _prefs),
   newRecorder: () => throw UnimplementedError(),
   pickFile: ({required bool image}) async => null,
+  shareText: (_) async {},
   child: MaterialApp(
     theme: chamaTheme(Brightness.light),
     locale: const Locale('pt'),
@@ -103,10 +107,11 @@ Widget _app(ChatService service, Widget home) => Deps(
 );
 
 final _base = Uri.parse('http://localhost:8080');
+late SharedPreferences _prefs;
 
 Future<ChatService> _service(http.Client server, {IdClient? id}) async {
   SharedPreferences.setMockInitialValues({'chama.phone': '5511987654321'});
-  final prefs = await SharedPreferences.getInstance();
+  final prefs = _prefs = await SharedPreferences.getInstance();
   final db = await MatrixSdkDatabase.init(
     'recovery_key_test',
     database: await databaseFactoryFfi.openDatabase(':memory:'),

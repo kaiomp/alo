@@ -4,17 +4,18 @@ import 'package:chama/auth/encryption_screen.dart';
 import 'package:chama/auth/id_client.dart';
 import 'package:chama/auth/sign_in_screen.dart';
 import 'package:chama/common/deps.dart';
+import 'package:chama/contacts/address_book.dart';
+import 'package:chama/contacts/contacts_service.dart';
 import 'package:chama/l10n/app_localizations.dart';
-import 'package:chama/services/chama_client.dart';
 import 'package:chama/services/chat_service.dart';
-import 'package:chama/services/delivery.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:matrix/matrix.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
+import 'fakes.dart';
 
 void main() {
   test('a failed login leaves no phone behind', () async {
@@ -43,7 +44,7 @@ void main() {
       }
       return http.Response(jsonEncode({'errcode': 'M_FORBIDDEN', 'error': 'bad token'}), 403);
     });
-    final service = await _service(prefs, server);
+    final service = await testService(prefs, matrix: server);
 
     const login = IdLogin(phone: '5511987654321', userId: '@u1:chama.test', loginToken: 'jwt', newAccount: false);
     await expectLater(service.signIn(login), throwsA(isA<MatrixException>()));
@@ -57,16 +58,18 @@ void main() {
     final server = MockClient(
       (_) async => http.Response(jsonEncode({'errcode': 'M_UNKNOWN_TOKEN', 'error': 'expired'}), 401),
     );
-    final service = (await tester.runAsync(() => _service(prefs, server)))!;
+    final service = (await tester.runAsync(() => testService(prefs, matrix: server)))!;
     service.client
-      ..homeserver = _base
+      ..homeserver = testBase
       ..accessToken = 'expired';
     await tester.pumpWidget(
       Deps(
         chat: service,
         id: service.id,
+        contacts: ContactsService(service, NoAddressBook(), prefs),
         newRecorder: () => throw UnimplementedError(),
         pickFile: ({required bool image}) async => null,
+        shareText: (_) async {},
         child: MaterialApp(
           locale: const Locale('pt'),
           supportedLocales: L10n.supportedLocales,
@@ -95,10 +98,9 @@ void main() {
       return http.Response(jsonEncode({'phone': '5511987654321', 'retry_after': 60}), 200);
     });
     final service = (await tester.runAsync(
-      () =>
-          _service(prefs, MockClient((_) async => http.Response('{}', 200)), id: IdClient(_base, httpClient: idServer)),
+      () => testService(prefs, matrix: MockClient((_) async => http.Response('{}', 200)), chamaId: idServer),
     ))!;
-    await tester.pumpWidget(_keyScreen(tester, service));
+    await tester.pumpWidget(_keyScreen(tester, service, prefs));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('request_reset_code')));
@@ -124,15 +126,16 @@ void main() {
       (req) async => http.Response(jsonEncode({'phone': '5511987654321', 'retry_after': 60}), 200),
     );
     final service = (await tester.runAsync(
-      () =>
-          _service(prefs, MockClient((_) async => http.Response('{}', 200)), id: IdClient(_base, httpClient: idServer)),
+      () => testService(prefs, matrix: MockClient((_) async => http.Response('{}', 200)), chamaId: idServer),
     ))!;
     await tester.pumpWidget(
       Deps(
         chat: service,
         id: service.id,
+        contacts: ContactsService(service, NoAddressBook(), prefs),
         newRecorder: () => throw UnimplementedError(),
         pickFile: ({required bool image}) async => null,
+        shareText: (_) async {},
         child: MaterialApp(
           locale: const Locale('pt'),
           supportedLocales: L10n.supportedLocales,
@@ -159,11 +162,13 @@ void main() {
   testWidgets('a phone lost to a killed sign-in sends the user back to sign in', (tester) async {
     SharedPreferences.setMockInitialValues({}); // app killed between login and saving the phone
     final prefs = await SharedPreferences.getInstance();
-    final service = (await tester.runAsync(() => _service(prefs, MockClient((_) async => http.Response('{}', 200)))))!;
+    final service = (await tester.runAsync(
+      () => testService(prefs, matrix: MockClient((_) async => http.Response('{}', 200))),
+    ))!;
     service.client
-      ..homeserver = _base
+      ..homeserver = testBase
       ..accessToken = 'token';
-    await tester.pumpWidget(_keyScreen(tester, service));
+    await tester.pumpWidget(_keyScreen(tester, service, prefs));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('request_reset_code')));
@@ -177,7 +182,7 @@ void main() {
 }
 
 /// The new-device key screen on a phone-sized window.
-Widget _keyScreen(WidgetTester tester, ChatService service) {
+Widget _keyScreen(WidgetTester tester, ChatService service, SharedPreferences prefs) {
   tester.view
     ..physicalSize = const Size(390, 844)
     ..devicePixelRatio = 1;
@@ -185,8 +190,10 @@ Widget _keyScreen(WidgetTester tester, ChatService service) {
   return Deps(
     chat: service,
     id: service.id,
+    contacts: ContactsService(service, NoAddressBook(), prefs),
     newRecorder: () => throw UnimplementedError(),
     pickFile: ({required bool image}) async => null,
+    shareText: (_) async {},
     child: MaterialApp(
       locale: const Locale('pt'),
       supportedLocales: L10n.supportedLocales,
@@ -194,21 +201,4 @@ Widget _keyScreen(WidgetTester tester, ChatService service) {
       home: EncryptionScreen(status: CryptoStatus.unlock, onDone: () {}),
     ),
   );
-}
-
-final _base = Uri.parse('http://localhost:8080');
-
-Future<ChatService> _service(SharedPreferences prefs, http.Client server, {IdClient? id}) async {
-  final db = await MatrixSdkDatabase.init(
-    'chat_service_test',
-    database: await databaseFactoryFfi.openDatabase(':memory:'),
-    sqfliteFactory: databaseFactoryFfi,
-  );
-  final client = ChamaClient(
-    'chat_service_test',
-    database: db,
-    supportedLoginTypes: {jwtLoginType},
-    httpClient: server,
-  );
-  return ChatService(client, DeliveryTracker(client, prefs), id ?? IdClient(_base), prefs, homeserver: _base);
 }

@@ -6,6 +6,8 @@ import 'package:chama/chat/message_bubble.dart';
 import 'package:chama/chat/voice/voice_player.dart';
 import 'package:chama/chat/voice/voice_recorder.dart';
 import 'package:chama/common/deps.dart';
+import 'package:chama/contacts/address_book.dart';
+import 'package:chama/contacts/contacts_service.dart';
 import 'package:chama/common/theme.dart';
 import 'package:chama/l10n/app_localizations.dart';
 import 'package:chama/services/chama_client.dart';
@@ -282,7 +284,9 @@ Widget _composer(ChatService service, ChatSession session, _Recorder recorder, {
   chat: service,
   id: IdClient(Uri.parse('http://localhost:8080')),
   newRecorder: () => recorder..created += 1,
+  contacts: ContactsService(service, NoAddressBook(), _prefs),
   pickFile: ({required image}) async => null,
+  shareText: (_) async {},
   child: MaterialApp(
     theme: chamaTheme(Brightness.light),
     locale: const Locale('pt'),
@@ -297,9 +301,11 @@ Widget _composer(ChatService service, ChatSession session, _Recorder recorder, {
   ),
 );
 
+late SharedPreferences _prefs;
+
 Future<(ChatService, ChatSession)> _session() async {
   SharedPreferences.setMockInitialValues({});
-  final prefs = await SharedPreferences.getInstance();
+  final prefs = _prefs = await SharedPreferences.getInstance();
   final db = await MatrixSdkDatabase.init(
     'message_bubble_test',
     database: await databaseFactoryFfi.openDatabase(':memory:'),
