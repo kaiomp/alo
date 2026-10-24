@@ -362,16 +362,16 @@ class ComposerState extends State<Composer> {
                     )
                   : GestureDetector(
                       key: const ValueKey('mic_hold'),
-                      onLongPressStart: screenReader ? null : (_) => _startRecording(),
-                      onLongPressMoveUpdate: screenReader
-                          ? null
-                          : (d) {
-                              if (d.offsetFromOrigin.dx < -80) _stopRecording(cancel: true);
-                            },
-                      onLongPressEnd: screenReader ? null : (_) => _stopRecording(),
+                      // A screen reader's long press ends at once: the
+                      // recording is dropped, and a tap records instead.
+                      onLongPressStart: (_) => _startRecording(),
+                      onLongPressMoveUpdate: (d) {
+                        if (d.offsetFromOrigin.dx < -80) _stopRecording(cancel: true);
+                      },
+                      onLongPressEnd: (_) => _stopRecording(),
                       // A system dialog (the mic permission prompt), a call or
                       // the notification shade cancels the pointer: no end comes.
-                      onLongPressCancel: screenReader ? null : () => _stopRecording(cancel: true),
+                      onLongPressCancel: () => _stopRecording(cancel: true),
                       // The tooltip's own long press would win the hold on
                       // touch screens: keep it to mouse hover.
                       child: TooltipTheme(
