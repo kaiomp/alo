@@ -4,7 +4,7 @@
 //   - says "oi, entrei" after joining a chat,
 //   - acks each message with to-device chat.chama.delivered (grey ✓✓),
 //   - sends a read receipt 3 s later (blue ✓✓),
-//   - replies "eco: <text>" to text, "recebi: foto criptografada" to an
+//   - replies "eco: <text>" to text (not to edits), "recebi: foto criptografada" to an
 //     encrypted image and "recebi: voz criptografada" to an encrypted voice note.
 // Env: PEER_PHONE (E.164 digits, required), CHAMA_BASE_URL (default
 // http://localhost:8080), PEER_NAME (default "Peer").
@@ -78,11 +78,13 @@ async function answer(ev: sdk.MatrixEvent, roomId: string): Promise<void> {
   await client.sendReadReceipt(ev, sdk.ReceiptType.Read, true);
   const encryptedFile = typeof content.file?.url === 'string' && content.url === undefined;
   let reply: string | undefined;
-  if (content.msgtype === 'm.text') reply = `eco: ${content.body}`;
+  // Replies carry the quoted message as "> " lines first (reply fallback): echo only the new text.
+  if (content.msgtype === 'm.text') reply = `eco: ${content.body.replace(/^(> .*\n)+\n/, '')}`;
   if (content.msgtype === 'm.image' && encryptedFile) reply = 'recebi: foto criptografada';
   if (content.msgtype === 'm.audio' && encryptedFile && content['org.matrix.msc3245.voice'] &&
     Array.isArray(content['org.matrix.msc1767.audio']?.waveform)) reply = 'recebi: voz criptografada';
-  if (reply && !content.body?.startsWith('eco: ')) await client.sendTextMessage(roomId, reply);
+  const isEdit = content['m.relates_to']?.rel_type === 'm.replace';
+  if (reply && !isEdit && !content.body?.startsWith('eco: ')) await client.sendTextMessage(roomId, reply);
   console.log(`answered ${content.msgtype} from ${sender}`);
 }
 

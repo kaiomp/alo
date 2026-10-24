@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # End-to-end test against the local stack (`make up`): the app signs in a
 # fresh number and chats with the test peer (tools/peer).
-#   scripts/e2e.sh chrome  [test file]   headless Chrome, wide two-pane layout
-#   scripts/e2e.sh android [test file]   emulator, phone layout
+#   scripts/e2e.sh chrome  [test file] [flutter args]   headless Chrome, wide two-pane layout
+#   scripts/e2e.sh android [test file] [flutter args]   emulator, phone layout
 # Default test file: integration_test/app_test.dart.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 TARGET=${1:?usage: scripts/e2e.sh chrome|android [test file]}
 TEST=${2:-integration_test/app_test.dart}
+shift $(($# < 2 ? $# : 2))
 BASE=http://localhost:8080
 
 curl -fs "$BASE/id/v1/health" >/dev/null || { echo "Stack is down. Run: make up"; exit 1; }
@@ -24,4 +25,4 @@ grep -q 'peer ready' "$PEER_LOG" || { echo "Peer did not start:"; tail -30 "$PEE
 echo "app +$APP_PHONE  peer +$PEER_PHONE  peer log: $PEER_LOG"
 
 ./scripts/drive.sh "$TARGET" "$TEST" \
-  --dart-define=CHAMA_TEST_PHONE="$APP_PHONE" --dart-define=CHAMA_PEER_PHONE="$PEER_PHONE"
+  --dart-define=CHAMA_TEST_PHONE="$APP_PHONE" --dart-define=CHAMA_PEER_PHONE="$PEER_PHONE" "$@"

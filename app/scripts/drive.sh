@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Runs one integration test file on a target, with the browser or emulator
 # set up for you. Extra arguments go to flutter (e.g. --dart-define=...).
+# TEST_DRIVER=<file> runs through that flutter drive driver on both targets;
+# WEB_SIZE=<w>x<h>[@<pixel ratio>] sets the browser size (default 1280x900).
 #   scripts/drive.sh chrome  integration_test/boot_test.dart
 #   scripts/drive.sh android integration_test/boot_test.dart
 set -euo pipefail
@@ -26,8 +28,8 @@ case $TARGET in
     sleep 1
     # web-server + chromedriver: chromedriver starts headless Chrome itself
     # (`-d chrome` waits forever for its own browser when run from a script).
-    flutter drive --driver=test_driver/integration_test.dart --target="$TEST" \
-      -d web-server --browser-name=chrome --browser-dimension=1280x900 "$@"
+    flutter drive --driver="${TEST_DRIVER:-test_driver/integration_test.dart}" --target="$TEST" \
+      -d web-server --browser-name=chrome --browser-dimension="${WEB_SIZE:-1280x900}" "$@"
     ;;
   android)
     if ! adb devices | grep -q '^emulator-'; then
@@ -37,7 +39,11 @@ case $TARGET in
     fi
     DEVICE=$(adb devices | awk '/^emulator-/{print $1; exit}')
     adb -s "$DEVICE" uninstall chat.chama.app >/dev/null 2>&1 || true # fresh app data every run
-    flutter test "$TEST" -d "$DEVICE" "$@"
+    if [ -n "${TEST_DRIVER:-}" ]; then
+      flutter drive --driver="$TEST_DRIVER" --target="$TEST" -d "$DEVICE" "$@"
+    else
+      flutter test "$TEST" -d "$DEVICE" "$@"
+    fi
     ;;
   *) echo "unknown target $TARGET"; exit 2 ;;
 esac
