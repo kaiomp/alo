@@ -117,6 +117,16 @@ ok "admin deactivate: $MXID2 token now $code"
 # Identity reset (spec §5): bootstrap cross-signing, second device, reset, other device logged out.
 BASE=$BASE node ../tools/smoke/identity.ts || fail "identity reset"
 
+# M4 (spec §4, §5): the login token for linking, the link rendezvous, device removal, the account PIN.
+BASE=$BASE node ../tools/smoke/safety.ts || fail "account safety"
+# Recycled numbers over HTTP against the real Synapse, with a PIN and after a deactivation (issue #3).
+dc exec -T chama-id node --input-type=module - <../tools/smoke/recycled.ts || fail "recycled numbers"
+# No Chama account holds an access token without a device: deleting devices would not end it (issue #3).
+n=$(dc exec -T postgres psql -U synapse -tAc \
+  "SELECT count(*) FROM access_tokens WHERE device_id IS NULL AND user_id ~ '^@u[a-z2-7]{16}:'") || fail "token query"
+[[ $n == 0 ]] || fail "$n access tokens without a device"
+ok "no account has an access token without a device"
+
 # The application service token works from the internal network and is refused from a public address.
 out=$(dc exec -T chama-id node -e "
   const w = (xff) => fetch(process.env.SYNAPSE_INTERNAL_URL + '/_matrix/client/v3/account/whoami', { headers:

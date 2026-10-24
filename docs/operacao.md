@@ -122,6 +122,32 @@ um servidor público.
 | `server/scripts/init.sh` | arquivos de configuração renderizados com permissão 0644 dentro de uma pasta 0700 | permissões mais fechadas e segredos num cofre |
 | Mídia | disco local (`server/data/media`) | armazenamento S3 com CDN |
 
+### Configuração que fica igual na produção: token de login para vincular a web
+
+Em `server/synapse/homeserver.yaml.tmpl`, o bloco `login_via_existing_session` liga a rota
+`POST /_matrix/client/v1/login/get_token`, que o celular usa para conectar o app web pelo QR
+code:
+
+```yaml
+login_via_existing_session:
+  enabled: true
+  require_ui_auth: false   # sem pedir senha: as contas do Chama não têm senha
+  token_timeout: 2m        # o token vale 2 minutos, como o ponto de encontro do chama-id
+```
+
+- **Por que sem autenticação interativa.** Por padrão o Synapse pede a senha ou um login SSO
+  antes de emitir o token. As contas do Chama entram por JWT e não têm senha nem SSO, então,
+  com a confirmação ligada, a rota nunca daria certo.
+- **Por que é seguro.** Só um aparelho já conectado pede o token (com o próprio token de
+  acesso); o token chega à web cifrado para a chave do QR code; vale uma vez e por 2 minutos; e
+  o aparelho novo não recebe chaves de mensagens até o celular assiná-lo. A explicação completa
+  está em [Segurança e privacidade](seguranca-e-privacidade.md#2-chaves-só-para-aparelhos-verificados).
+- **Limite.** O próprio Synapse emite no máximo 1 token por minuto por conta (fixo no código,
+  sem opção de configuração); um segundo pedido no mesmo minuto recebe `429`.
+- **Não desligar.** Sem esse bloco a vinculação da web para de funcionar: o Synapse não serve a
+  rota e deixa de anunciar `"get_login_token": true` em `GET /_matrix/client/v3/login`.
+  O `check.sh` confere as duas coisas.
+
 ---
 
 ## 4. Provedor de SMS

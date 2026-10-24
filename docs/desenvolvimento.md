@@ -274,6 +274,8 @@ aleatórios. O que é conferido:
 | Workers | o sync é atendido pelo `sync1` e a mídia pelo `media1`, nunca pelo processo principal |
 | Admin | o cliente admin do chama-id lê a última atividade e desativa uma conta (o token dela para de funcionar) |
 | Identidade | redefinição de identidade completa (`tools/smoke/identity.ts`) |
+| Conta (M4) | token de login de uso único sem pedir senha (1 por minuto, vale uma vez), ponto de encontro da vinculação, desconectar aparelhos, PIN da conta (`tools/smoke/safety.ts`) |
+| Números reciclados | conta parada é aposentada, conta com PIN nunca é, conta desativada pelo operador dá conta nova (`tools/smoke/recycled.ts`, roda dentro do contêiner do chama-id com um segundo chama-id em `127.0.0.1:8099` que trata toda conta como parada); nenhuma conta tem token de acesso sem aparelho |
 | Segurança | token do app service recusado vindo de IP público; login por senha e cadastro aberto recusados; `/_synapse/admin` bloqueado |
 | Push | a mensagem chega ao tópico ntfy como Web Push criptografado; decifrado, só tem IDs (sem texto, sem remetente); conversa silenciada não gera push |
 | Isolamento | o Sygnal não alcança Synapse, chama-id, PostgreSQL nem Redis |

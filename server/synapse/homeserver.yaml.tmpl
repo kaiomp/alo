@@ -55,6 +55,14 @@ url_preview_enabled: false
 user_ips_max_age: 7d
 
 enable_registration: false
+# Linking a web client by QR code (spec §5): a signed-in device asks for a one-time login token
+# (POST /_matrix/client/v1/login/get_token, at most 1 per minute per user). Chama accounts have no
+# password, so Synapse has no user-interactive auth to offer here; the token only reaches the web
+# encrypted to the key in its QR code, and the new device gets no message keys until it is verified.
+login_via_existing_session:
+  enabled: true
+  require_ui_auth: false
+  token_timeout: 2m
 # chama-id's application service, for identity resets (spec §4).
 app_service_config_files: [/data/appservices/chama-id.yaml]
 registration_shared_secret: "${REGISTRATION_SHARED_SECRET}"

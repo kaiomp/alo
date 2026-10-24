@@ -100,6 +100,26 @@ também por outro aparelho do mesmo dono). O app nunca compartilha chaves com ap
 verificados (`ShareKeysWith.crossVerifiedIfEnabled`). Isso vale contra o golpista do SIM swap
 e contra o próprio operador, que controla a entrada e poderia entrar como qualquer pessoa.
 
+**Vincular a web pelo QR code.** Para conectar o app web, o celular já conectado pede ao Synapse
+um **token de login de uso único** (`POST /_matrix/client/v1/login/get_token`) e o entrega à
+página web cifrado para a chave do QR code (o fluxo completo está na
+[API do chama-id](chama-id-api.md#vinculação-do-app-web-por-qr-code)). Por padrão o Synapse pede uma
+confirmação extra antes de emitir esse token (a "autenticação interativa", que pede a senha ou
+um login SSO). As contas do Chama não têm senha nem SSO, então essa confirmação nunca poderia
+ser feita, e o servidor do Chama a desliga (`login_via_existing_session.require_ui_auth: false`).
+Por que isso é seguro:
+
+- **Só um aparelho conectado pede o token.** O pedido exige o token de acesso de um aparelho da
+  conta. Quem já tem esse token já usa a conta por ele; o token de login não dá nenhum poder a
+  mais.
+- **O token só chega à web cifrado.** Ele viaja dentro da caixa selada para a chave pública que
+  está só na tela do computador; o chama-id, que repassa a caixa, não consegue abri-la.
+- **Vale uma vez, por 2 minutos.** O Synapse apaga o token no primeiro uso e o recusa depois de
+  2 minutos, o mesmo prazo do ponto de encontro. Cada conta recebe no máximo 1 token por minuto.
+- **Entrar não é ler.** O aparelho web que entra com o token ainda não recebe nenhuma chave de
+  mensagem. Ele só passa a ler as conversas depois que o celular confere a chave dele e o
+  assina, como qualquer aparelho novo.
+
 ### 3. Aviso de "código de segurança mudou"
 
 Cada app guarda a última chave mestra vista de cada contato. Quando ela muda (por exemplo, num
