@@ -1,0 +1,29 @@
+# Sygnal, the push gateway (spec §6). Synapse's pusher worker posts here; Sygnal
+# sends an encrypted Web Push to the phone's endpoint: a UnifiedPush server such
+# as ntfy, or FCM (the embedded FCM distributor in the Play build).
+log:
+  setup:
+    version: 1
+    formatters:
+      normal: { format: "%(asctime)s %(levelname)s %(name)s %(message)s" }
+    handlers:
+      stderr: { class: logging.StreamHandler, formatter: normal, stream: "ext://sys.stderr" }
+    root: { handlers: [stderr], level: INFO }
+    disable_existing_loggers: false
+http:
+  bind_addresses: ['0.0.0.0']
+  port: 5000
+apps:
+  # app_id of the pushers the app registers (lib/services/push.dart).
+  chat.chama.app:
+    type: webpush
+    vapid_private_key: /sygnal/vapid.pem
+    vapid_contact_email: push@chama.test
+    # Limit: no allowed_endpoints, because UnifiedPush endpoints can be any server,
+    # so the endpoint URL a client registers decides where Sygnal posts. Production
+    # egress rule: Sygnal may open outbound HTTPS (443) to public addresses only;
+    # the firewall drops its traffic to loopback, private (10/8, 172.16/12,
+    # 192.168/16), link-local (169.254/16, incl. cloud metadata), CGNAT (100.64/10)
+    # and ULA/link-local IPv6, and Sygnal shares no network with Synapse's main
+    # process, the workers' replication, chama-id, Postgres or Redis.
+    ttl: 86400

@@ -11,7 +11,7 @@ DATA=server/data
 ENV=$DATA/.env
 SECRETS="POSTGRES_PASSWORD JWT_SECRET OTP_PEPPER REGISTRATION_SHARED_SECRET MACAROON_SECRET FORM_SECRET WORKER_REPLICATION_SECRET AS_TOKEN HS_TOKEN"
 
-mkdir -p "$DATA"/{synapse/workers,synapse/appservices,media,chama-id}
+mkdir -p "$DATA"/{synapse/workers,synapse/appservices,media,chama-id,push}
 # Containers write here as their own users (Synapse uid 991, chama-id user node), and a host user
 # without root cannot chown to them, so these dirs are world-writable. The config files below are
 # world-readable for the same reason. $DATA itself is 700, so other host users cannot reach any of it.
@@ -28,6 +28,16 @@ has PUBLIC_BASEURL || echo "PUBLIC_BASEURL=http://localhost:8080" >> "$ENV"
 for v in $SECRETS; do
   has "$v" || echo "$v=$(openssl rand -hex 32)" >> "$ENV"
 done
+
+# Sygnal's Web Push (VAPID) key pair, made once. The public half goes to the app
+# through Caddy (/push/v1/config); FCM requires it, ntfy ignores it.
+if [[ ! -f $DATA/push/vapid.pem ]]; then
+  openssl ecparam -name prime256v1 -genkey -noout -out "$DATA/push/vapid.pem"
+fi
+vapid=$(openssl ec -in "$DATA/push/vapid.pem" -pubout -outform DER 2>/dev/null | tail -c 65 | base64 | tr '/+' '_-' | tr -d '=\n')
+grep -v '^VAPID_PUBLIC_KEY=' "$ENV" > "$ENV.tmp" || true
+echo "VAPID_PUBLIC_KEY=$vapid" >> "$ENV.tmp"
+mv "$ENV.tmp" "$ENV"
 
 # Render ${VAR} tokens from .env. Fails on any unknown or empty token.
 render() { node -e '
@@ -56,7 +66,7 @@ fi
 # Containers read config at start. A new CONFIG_REV makes `docker compose up`
 # recreate them, so template edits reach the stack on the next `make up`.
 rev=$(cat "$DATA/synapse/homeserver.yaml" "$DATA/synapse/log.yaml" "$DATA"/synapse/{workers,appservices}/*.yaml \
-  server/caddy/Caddyfile | openssl sha256 | awk '{print $NF}')
+  server/caddy/Caddyfile server/sygnal/sygnal.yaml | openssl sha256 | awk '{print $NF}')
 grep -v '^CONFIG_REV=' "$ENV" > "$ENV.tmp" || true
 echo "CONFIG_REV=$rev" >> "$ENV.tmp"
 mv "$ENV.tmp" "$ENV"

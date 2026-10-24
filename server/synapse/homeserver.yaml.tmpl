@@ -70,6 +70,15 @@ jwt_config:
   issuer: chama-id
   audiences: [chama]
 
+# Push (spec §6): the pusher1 worker sends every push to Sygnal. Pushes carry
+# only event and room IDs; the phone fetches and decrypts the message itself.
+pusher_instances: [pusher1]
+push:
+  include_content: false
+# Dev: pushers must reach Sygnal on the Compose push network (10.0.2.0/24),
+# which Synapse blocks by default as a private range.
+ip_range_whitelist: ['10.0.2.0/24']
+
 encryption_enabled_by_default_for_room_type: all
 presence:
   enabled: true

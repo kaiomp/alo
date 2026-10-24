@@ -44,6 +44,37 @@ services:
     depends_on: { synapse: { condition: service_healthy } }
     healthcheck: { test: ["CMD", "curl", "-fs", "http://localhost:8085/health"], interval: 5s, retries: 30 }
 
+  # Sends pushes to Sygnal (spec §12: pusher worker). On the push network to reach Sygnal.
+  pusher1:
+    image: ghcr.io/element-hq/synapse:v1.163.2
+    user: "991:991"
+    entrypoint: ["python", "-m", "synapse.app.generic_worker", "--config-path", "/data/homeserver.yaml", "--config-path", "/data/workers/pusher1.yaml"]
+    environment: { CONFIG_REV: "${CONFIG_REV}" }
+    volumes: ["./data/synapse:/data"]
+    networks: [default, push]
+    depends_on: { synapse: { condition: service_healthy } }
+    healthcheck: { test: ["CMD", "curl", "-fs", "http://localhost:8086/health"], interval: 5s, retries: 30 }
+
+  # Push gateway (spec §6). Only Synapse's pusher calls it; it sends Web Push out.
+  sygnal:
+    image: matrixdotorg/sygnal:v0.17.0
+    # VAPID_PUBLIC_KEY is unused inside; a new key recreates the container, like Caddy.
+    environment: { SYGNAL_CONF: /sygnal/sygnal.yaml, CONFIG_REV: "${CONFIG_REV}", VAPID_PUBLIC_KEY: "${VAPID_PUBLIC_KEY}" }
+    volumes: ["./sygnal/sygnal.yaml:/sygnal/sygnal.yaml:ro", "./data/push/vapid.pem:/sygnal/vapid.pem:ro"]
+    networks: [push]
+    # The image has no curl.
+    healthcheck: { test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:5000/health')"], interval: 5s, retries: 30 }
+
+  # Dev only: the UnifiedPush server the emulator's ntfy app uses (scripts/ntfy-setup.sh).
+  # Its base URL is what the emulator sees; Caddy owns 10.0.2.2 on the push
+  # network, so Sygnal reaches the same URL from inside Compose.
+  ntfy:
+    image: binwiederhier/ntfy:v2.28.0
+    command: ["serve"]
+    environment: { NTFY_BASE_URL: "http://10.0.2.2:8081", NTFY_LISTEN_HTTP: ":80", NTFY_BEHIND_PROXY: "true" }
+    networks: [push]
+    healthcheck: { test: ["CMD-SHELL", "wget -qO- http://localhost/v1/health | grep -q true"], interval: 3s, retries: 20 }
+
   # No published port: chama-id trusts X-Forwarded-For, so only Caddy may reach it.
   chama-id:
     build: { context: .., dockerfile: services/chama-id/Dockerfile }
@@ -65,14 +96,28 @@ services:
     # Localhost only: dev mode accepts code 000000 for any phone. The Android
     # emulator reaches this as 10.0.2.2:8080; a physical phone needs a different
     # setup (for example adb reverse tcp:8080 tcp:8080).
-    ports: ["127.0.0.1:8080:8080"]
-    environment: { CONFIG_REV: "${CONFIG_REV}" }
+    # 8081 is ntfy, for the emulator's push distributor (dev only).
+    ports: ["127.0.0.1:8080:8080", "127.0.0.1:8081:8081"]
+    environment: { CONFIG_REV: "${CONFIG_REV}", VAPID_PUBLIC_KEY: "${VAPID_PUBLIC_KEY}" }
     volumes: ["./caddy/Caddyfile:/etc/caddy/Caddyfile:ro"]
+    networks:
+      default: {}
+      push: { ipv4_address: 10.0.2.2 }
     depends_on:
       synapse: { condition: service_healthy }
       sync1: { condition: service_healthy }
       media1: { condition: service_healthy }
       chama-id: { condition: service_healthy }
+      pusher1: { condition: service_healthy }
+      sygnal: { condition: service_healthy }
+      ntfy: { condition: service_healthy }
+
+networks:
+  # The Android emulator reaches the host as 10.0.2.2. Using the same address for
+  # Caddy here makes one push endpoint URL work for the emulator and for Sygnal.
+  # Other containers get addresses from the upper half, so 10.0.2.2 stays free.
+  push:
+    ipam: { config: [{ subnet: 10.0.2.0/24, ip_range: 10.0.2.128/25 }] }
 
 volumes:
   pgdata:

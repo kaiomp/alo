@@ -1,0 +1,10 @@
+worker_app: synapse.app.generic_worker
+worker_name: pusher1
+# Sends pushes to Sygnal (spec §12). Only /health is served, for the Compose healthcheck.
+worker_listeners:
+  - type: http
+    port: 8086
+    bind_addresses: ['0.0.0.0']
+    resources:
+      - names: [health]
+worker_log_config: /data/log.yaml

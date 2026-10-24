@@ -6,6 +6,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 BASE=${BASE:-http://localhost:8080}
+# Dev ntfy as the host reaches it, and as the emulator does (push endpoints use that one).
+NTFY=${NTFY:-http://localhost:8081}
+NTFY_EMU=${NTFY_EMU:-http://10.0.2.2:8081}
 PHONE=${PHONE:-119$(printf '%04d%04d' $((RANDOM % 10000)) $((RANDOM % 10000)))}
 MARK=check$RANDOM$RANDOM
 dc() { docker compose -f compose.yaml --env-file data/.env "$@"; }
@@ -20,14 +23,14 @@ out=$(curl -fs "$BASE/_matrix/client/versions") || fail "client/versions"
 grep -q '"versions"' <<<"$out" || fail "client/versions body: $out"
 ok "client/versions: ${out:0:80}"
 
-# Only caddy publishes a port, and only on localhost.
+# Only caddy publishes ports, and only on localhost (8081 is the dev ntfy).
 pub=$(dc ps --format json | node -e '
   const t = require("fs").readFileSync(0, "utf8").trim();
   const rows = t.startsWith("[") ? JSON.parse(t) : t.split("\n").map((l) => JSON.parse(l));
   const out = new Set();
   for (const r of rows) for (const p of r.Publishers || []) if (p.PublishedPort) out.add(r.Service + " " + p.URL + ":" + p.PublishedPort);
   console.log([...out].sort().join(", "));')
-[[ $pub == "caddy 127.0.0.1:8080" ]] || fail "published ports: '$pub', want 'caddy 127.0.0.1:8080'"
+[[ $pub == "caddy 127.0.0.1:8080, caddy 127.0.0.1:8081" ]] || fail "published ports: '$pub', want 'caddy 127.0.0.1:8080, caddy 127.0.0.1:8081'"
 ok "published ports: $pub"
 
 out=$(curl -fs "$BASE/id/v1/health") || fail "id health"
@@ -162,5 +165,81 @@ ok "OPTIONS preflight: $code"
 code=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/not-a-route")
 [[ $code == 404 ]] || fail "unknown path: $code"
 ok "unknown path: $code"
+
+# Push (spec §6): Synapse's pusher worker -> Sygnal (Web Push) -> ntfy, as for a phone.
+signin() {
+  local phone=119$(printf '%04d%04d' $((RANDOM % 10000)) $((RANDOM % 10000)))
+  curl -fs -XPOST "$BASE/id/v1/otp/request" -H 'content-type: application/json' -d "{\"phone\":\"$phone\"}" >/dev/null
+  local jwt; jwt=$(curl -fs -XPOST "$BASE/id/v1/otp/verify" -H 'content-type: application/json' \
+    -d "{\"phone\":\"$phone\",\"code\":\"000000\"}" | json login_token)
+  curl -fs -XPOST "$BASE/_matrix/client/v3/login" -H 'content-type: application/json' \
+    -d "{\"type\":\"org.matrix.login.jwt\",\"token\":\"$jwt\"}"
+}
+A=$(signin) || fail "push: sign in A"; B=$(signin) || fail "push: sign in B"
+TA=$(json access_token <<<"$A"); TB=$(json access_token <<<"$B"); UB=$(json user_id <<<"$B")
+CFG=$(curl -fs "$BASE/push/v1/config") || fail "push config"
+GATEWAY=$(json gateway <<<"$CFG"); [[ $(json vapid <<<"$CFG") =~ ^B[A-Za-z0-9_-]{86}$ ]] || fail "push config vapid: $CFG"
+ok "push config: $GATEWAY"
+# A Web Push subscription like the phone's: P-256 key pair + 16-byte auth secret.
+read -r P256DH UA_KEY < <(node -e 'const k = require("crypto").generateKeyPairSync("ec", { namedCurve: "prime256v1" });
+  console.log(k.publicKey.export({ type: "spki", format: "der" }).subarray(-65).toString("base64url"),
+    k.privateKey.export({ type: "pkcs8", format: "der" }).toString("base64"))')
+WP_AUTH=$(node -e 'console.log(require("crypto").randomBytes(16).toString("base64url"))')
+TOPIC=up$(openssl rand -hex 6)
+curl -fs -XPOST "$BASE/_matrix/client/v3/pushers/set" -H "Authorization: Bearer $TA" -H 'content-type: application/json' -d "{
+  \"kind\":\"http\",\"app_id\":\"chat.chama.app\",\"pushkey\":\"$P256DH\",\"app_display_name\":\"Chama\",
+  \"device_display_name\":\"check\",\"lang\":\"pt-BR\",\"data\":{\"url\":\"$GATEWAY\",\"format\":\"event_id_only\",
+  \"endpoint\":\"$NTFY_EMU/$TOPIC?up=1\",\"auth\":\"$WP_AUTH\",\"events_only\":true}}" >/dev/null || fail "pushers/set"
+ROOM=$(curl -fs -XPOST "$BASE/_matrix/client/v3/createRoom" -H "Authorization: Bearer $TA" -H 'content-type: application/json' \
+  -d "{\"invite\":[\"$UB\"],\"is_direct\":true,\"preset\":\"trusted_private_chat\"}" | json room_id) || fail "createRoom"
+curl -fs -XPOST "$BASE/_matrix/client/v3/join/$ROOM" -H "Authorization: Bearer $TB" -d '{}' >/dev/null || fail "B join"
+curl -fs -XPUT "$BASE/_matrix/client/v3/rooms/$ROOM/send/m.room.message/t$RANDOM" -H "Authorization: Bearer $TB" \
+  -H 'content-type: application/json' -d '{"msgtype":"m.text","body":"push check"}' >/dev/null || fail "B send"
+for _ in $(seq 20); do
+  got=$(curl -fs "$NTFY/$TOPIC/json?poll=1" || true)
+  [[ $got == *'"encoding":"base64"'* ]] && break
+  sleep 1
+done
+[[ $got == *'"encoding":"base64"'* ]] || fail "no encrypted push on ntfy topic $TOPIC: '$got'"
+ok "push: B's message reached A's ntfy topic as encrypted Web Push"
+# Decrypt it as the phone does (RFC 8291, aes128gcm): IDs and counts only, no content, no sender.
+body=$(grep -m1 '"encoding":"base64"' <<<"$got" | P256DH=$P256DH UA_KEY=$UA_KEY WP_AUTH=$WP_AUTH node -e '
+  const c = require("crypto"), e = process.env;
+  const m = Buffer.from(JSON.parse(require("fs").readFileSync(0, "utf8")).message, "base64");
+  const salt = m.subarray(0, 16), as = m.subarray(21, 21 + m[20]), ct = m.subarray(21 + m[20]);
+  const ua = Buffer.from(e.P256DH, "base64url");
+  const jwk = { kty: "EC", crv: "P-256", x: as.subarray(1, 33).toString("base64url"), y: as.subarray(33).toString("base64url") };
+  const ecdh = c.diffieHellman({ publicKey: c.createPublicKey({ key: jwk, format: "jwk" }),
+    privateKey: c.createPrivateKey({ key: Buffer.from(e.UA_KEY, "base64"), format: "der", type: "pkcs8" }) });
+  const hkdf = (ikm, s, info, n) => Buffer.from(c.hkdfSync("sha256", ikm, s, info, n));
+  const ikm = hkdf(ecdh, Buffer.from(e.WP_AUTH, "base64url"), Buffer.concat([Buffer.from("WebPush: info\0"), ua, as]), 32);
+  const d = c.createDecipheriv("aes-128-gcm", hkdf(ikm, salt, "Content-Encoding: aes128gcm\0", 16),
+    hkdf(ikm, salt, "Content-Encoding: nonce\0", 12));
+  d.setAuthTag(ct.subarray(-16));
+  const p = Buffer.concat([d.update(ct.subarray(0, -16)), d.final()]);
+  console.log(p.subarray(0, p.lastIndexOf(2)).toString());') || fail "push decrypt"
+[[ $(json room_id <<<"$body") == "$ROOM" ]] && json event_id <<<"$body" >/dev/null || fail "push body: $body"
+[[ $body != *'"content"'* && $body != *'"sender'* && $body != *'push check'* ]] || fail "push carries content: $body"
+ok "push: decrypted body has IDs only: $body"
+# Muted chat: the rule the app's "Silenciar" sets (matrix SDK Room.setPushRuleState(dontNotify)).
+curl -fs -XPUT "$BASE/_matrix/client/v3/pushrules/global/override/$ROOM" -H "Authorization: Bearer $TA" \
+  -H 'content-type: application/json' \
+  -d "{\"actions\":[],\"conditions\":[{\"kind\":\"event_match\",\"key\":\"room_id\",\"pattern\":\"$ROOM\"}]}" \
+  >/dev/null || fail "mute room"
+curl -fs -XPUT "$BASE/_matrix/client/v3/rooms/$ROOM/send/m.room.message/t$RANDOM" -H "Authorization: Bearer $TB" \
+  -H 'content-type: application/json' -d '{"msgtype":"m.text","body":"muted"}' >/dev/null || fail "B send muted"
+sleep 5
+n=$(curl -fs "$NTFY/$TOPIC/json?poll=1" | grep -c '"event":"message"')
+[[ $n == 1 ]] || fail "muted chat still pushed: $n messages on $TOPIC"
+ok "push: a muted chat sends no push"
+
+# Sygnal sits on the push network only: Synapse, chama-id, Postgres and Redis are out of its reach.
+out=$(dc exec -T sygnal python -c "
+import socket
+for h, p in [('synapse', 8008), ('synapse', 9093), ('chama-id', 8090), ('postgres', 5432), ('redis', 6379)]:
+    try: socket.create_connection((h, p), 2).close(); print(h, p, 'reachable')
+    except OSError: pass") || fail "sygnal reach check"
+[[ -z $out ]] || fail "sygnal reaches internal services: $out"
+ok "sygnal cannot reach synapse, chama-id, postgres or redis"
 
 echo "all checks passed"

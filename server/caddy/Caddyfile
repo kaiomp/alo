@@ -8,6 +8,7 @@
 	@sync path_regexp sync ^/_matrix/client/(r0|v3)/sync$|^/_matrix/client/(api/v1|r0|v3)/events$|^/_matrix/client/(api/v1|r0|v3)/initialSync$|^/_matrix/client/(api/v1|r0|v3)/rooms/[^/]+/initialSync$|^/_matrix/client/unstable/org\.matrix\.simplified_msc3575/sync$
 	@media path /_matrix/media/* /_matrix/client/v1/media/*
 	@id path /id/*
+	@pushconfig path /push/v1/config
 	@matrix path /_matrix/*
 
 	# defer: replace upstream CORS headers instead of adding a second copy.
@@ -33,6 +34,12 @@
 	handle @media {
 		reverse_proxy media1:8085
 	}
+	# Push settings for the app (lib/services/push.dart): the gateway URL as
+	# Synapse reaches it, and Sygnal's public VAPID key (Web Push sender ID).
+	handle @pushconfig {
+		header Content-Type application/json
+		respond `{"gateway":"http://sygnal:5000/_matrix/push/v1/notify","vapid":"{$VAPID_PUBLIC_KEY}"}` 200
+	}
 	handle @id {
 		reverse_proxy chama-id:8090
 	}
@@ -41,5 +48,12 @@
 	}
 	handle {
 		respond 404
+	}
+}
+
+# Dev only: ntfy, the emulator's UnifiedPush server.
+:8081 {
+	reverse_proxy ntfy:80 {
+		flush_interval -1
 	}
 }
