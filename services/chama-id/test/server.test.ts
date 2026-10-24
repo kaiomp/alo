@@ -1,23 +1,38 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
 import { openDb } from '../src/db.ts';
 import { OtpService } from '../src/otp.ts';
 import { Directory } from '../src/directory.ts';
+import { Accounts } from '../src/accounts.ts';
+import { AppError } from '../src/errors.ts';
+import type { SynapseAdmin } from '../src/synapse.ts';
 import { verifyJwt } from '../src/jwt.ts';
 import { createServer } from '../src/server.ts';
-import { rateKey, windowLimiter } from '../src/http.ts';
+import { rateKey, windowLimiter, ttlCache } from '../src/http.ts';
 import { connect } from 'node:net';
 
-function make(now?: () => number) {
+// Any token `tok-<x>` belongs to `@<x>:chama.test`.
+class FakeAdmin implements SynapseAdmin {
+  whoamiCalls = 0; resets: string[] = [];
+  async whoami(t: string) { this.whoamiCalls++; if (!t.startsWith('tok-')) throw new AppError('invalid_token'); return `@${t.slice(4)}:chama.test`; }
+  async lastActiveMs() { return null; }
+  async deactivate() {}
+  async allowCrossSigningReset(u: string) { this.resets.push(u); return 4242; }
+}
+function make(o: { now?: () => number; dev?: boolean } = {}) {
   const db = openDb(':memory:');
-  return createServer({
-    otp: new OtpService(db, { pepper: 'p', dev: true, sms: { async send() {} } }),
-    directory: new Directory(db), jwtSecret: 'jwt', serverName: 'chama.test', publicBaseUrl: 'http://localhost:8080', now,
+  const admin = new FakeAdmin();
+  const codes = new Map<string, string>();
+  const server = createServer({
+    otp: new OtpService(db, { pepper: 'p', dev: !!o.dev, now: o.now, sms: { async send(p, t) { codes.set(p, t.match(/\d{6}/)![0]); } } }),
+    directory: new Directory(db, 'chama.test'), accounts: new Accounts(db, admin, { serverName: 'chama.test', now: o.now }), admin,
+    jwtSecret: 'jwt', publicBaseUrl: 'http://localhost:8080', dev: o.dev, now: o.now,
   });
+  return { server, admin, codes };
 }
 const listen = async (s: Server) => {
   await new Promise<void>((r) => s.listen(0, r));
@@ -25,29 +40,56 @@ const listen = async (s: Server) => {
 };
 
 let base = '';
-const server = make();
+const main = make();
+const server = main.server;
 before(async () => { base = await listen(server); });
 after(() => server.close());
 const post = (path: string, body: unknown, headers: Record<string, string> = {}, at = base) =>
   fetch(at + path, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) });
+const bearer = (localpart: string) => ({ authorization: `Bearer tok-${localpart}` });
+const sha = (s: string) => createHash('sha256').update(s).digest('hex');
+// Requests a code and verifies it; returns the verify response body.
+async function signIn(m: ReturnType<typeof make>, at: string, phone: string, ip = '7.7.7.7') {
+  const r1 = await post('/id/v1/otp/request', { phone }, { 'x-forwarded-for': ip }, at);
+  assert.equal(r1.status, 200, await r1.clone().text());
+  const p = (await r1.json()).phone;
+  const r2 = await post('/id/v1/otp/verify', { phone, code: m.codes.get(p) }, {}, at);
+  assert.equal(r2.status, 200);
+  return r2.json();
+}
 
 test('health', async () => {
   assert.deepEqual(await (await fetch(`${base}/id/v1/health`)).json(), { ok: true });
 });
-test('full sign-in flow returns a valid JWT', async () => {
+test('sign-in returns an opaque user_id and a JWT for its localpart', async () => {
   const r1 = await post('/id/v1/otp/request', { phone: '(11) 98765-4321' });
   assert.equal(r1.status, 200);
   assert.deepEqual(await r1.json(), { phone: '5511987654321', retry_after: 60 });
-  const r2 = await post('/id/v1/otp/verify', { phone: '+55 11 98765-4321', code: '000000' });
+  const r2 = await post('/id/v1/otp/verify', { phone: '+55 11 98765-4321', code: main.codes.get('5511987654321') });
   const body = await r2.json();
   assert.equal(r2.status, 200);
-  assert.equal(body.user_id, '@5511987654321:chama.test');
+  assert.deepEqual(Object.keys(body).sort(), ['homeserver', 'login_token', 'new_account', 'phone', 'user_id']);
+  assert.match(body.user_id, /^@u[a-z2-7]{16}:chama\.test$/);
+  assert.equal(body.phone, '5511987654321');
+  assert.equal(body.new_account, true);
   assert.equal(body.homeserver, 'http://localhost:8080');
   const claims = verifyJwt(body.login_token, 'jwt');
-  assert.equal(claims.sub, '5511987654321');
+  assert.equal(`@${claims.sub}:chama.test`, body.user_id);
   assert.equal(claims.iss, 'chama-id');
   assert.equal(claims.aud, 'chama');
   assert.equal(Number(claims.exp) - Number(claims.iat), 120);
+});
+test('signing in again returns the same account with new_account false', async () => {
+  let clock = 1_000_000;
+  const m = make({ now: () => clock });
+  const at = await listen(m.server);
+  try {
+    const a = await signIn(m, at, '11987654321');
+    clock += 61;
+    const b = await signIn(m, at, '11987654321');
+    assert.equal(b.user_id, a.user_id);
+    assert.equal(b.new_account, false);
+  } finally { m.server.close(); }
 });
 test('typed errors', async () => {
   const r = await post('/id/v1/otp/request', { phone: 'nope' });
@@ -81,18 +123,28 @@ test('rate limit carries retry_after', async () => {
   assert.equal(body.error, 'rate_limited');
   assert.equal(typeof body.retry_after, 'number');
 });
-test('directory lookup after verify', async () => {
-  const h = createHash('sha256').update('5511987654321').digest('hex');
-  const r = await post('/id/v1/directory/lookup', { hashes: [h] });
-  assert.deepEqual(await r.json(), { registered: [h] });
+test('directory lookup needs a valid bearer token', async () => {
+  const h = sha('5511987654321');
+  for (const headers of [{}, { authorization: 'Bearer nope' }, { authorization: 'Basic tok-x' }, { authorization: 'Bearer ' }]) {
+    const r = await post('/id/v1/directory/lookup', { hashes: [h] }, headers);
+    assert.equal(r.status, 401, JSON.stringify(headers));
+    assert.deepEqual(await r.json(), { error: 'invalid_token' });
+  }
+});
+test('directory lookup after verify returns hash and user_id', async () => {
+  const me = await signIn(main, base, '11955554444');
+  const r = await post('/id/v1/directory/lookup', { hashes: [sha('5511955554444'), sha('5511900000000')] }, bearer('someone'));
+  assert.equal(r.status, 200);
+  assert.deepEqual(await r.json(), { registered: [{ hash: sha('5511955554444'), user_id: me.user_id }] });
 });
 
 test('directory lookup is capped at 30 per IP per rolling hour', async () => {
   let clock = 1_000_000;
-  const s = make(() => clock);
+  const { server: s } = make({ now: () => clock });
   const at = await listen(s);
   try {
-    const look = (ip: string) => post('/id/v1/directory/lookup', { hashes: [] }, { 'x-forwarded-for': `${ip}, 10.0.0.1` }, at);
+    let n = 0;
+    const look = (ip: string) => post('/id/v1/directory/lookup', { hashes: [] }, { 'x-forwarded-for': `${ip}, 10.0.0.1`, ...bearer(`u${n++}`) }, at);
     for (let i = 0; i < 30; i++) { assert.equal((await look('1.1.1.1')).status, 200); clock += 10; }
     const r = await look('1.1.1.1');
     assert.equal(r.status, 429);
@@ -103,13 +155,113 @@ test('directory lookup is capped at 30 per IP per rolling hour', async () => {
     assert.equal((await look('1.1.1.1')).status, 200, 'oldest call left the window');
   } finally { s.close(); }
 });
+test('directory lookup is capped at 30 per user per rolling hour, across IPs', async () => {
+  let clock = 1_000_000;
+  const { server: s } = make({ now: () => clock });
+  const at = await listen(s);
+  try {
+    const look = (ip: number, who: string) => post('/id/v1/directory/lookup', { hashes: [] }, { 'x-forwarded-for': `3.3.3.${ip}`, ...bearer(who) }, at);
+    for (let i = 0; i < 30; i++) { assert.equal((await look(i, 'alice')).status, 200); clock += 10; }
+    const r = await look(99, 'alice');
+    assert.equal(r.status, 429);
+    assert.deepEqual(await r.json(), { error: 'rate_limited', retry_after: 1_000_000 + 3600 - clock });
+    assert.equal((await look(99, 'bob')).status, 200, 'other users keep their own budget');
+  } finally { s.close(); }
+});
+test('dev mode raises the per-IP and per-user lookup limits 100x', async () => {
+  const m = make({ now: () => 1_000_000, dev: true });
+  const at = await listen(m.server);
+  try {
+    for (let i = 0; i < 3000; i += 50) {
+      const rs = await Promise.all(Array.from({ length: 50 }, () =>
+        post('/id/v1/directory/lookup', { hashes: [] }, { 'x-forwarded-for': '4.4.4.4', ...bearer('alice') }, at)));
+      assert.deepEqual(rs.map((r) => r.status), Array(50).fill(200), `calls ${i}..${i + 49}`);
+    }
+    assert.equal((await post('/id/v1/directory/lookup', { hashes: [] }, { 'x-forwarded-for': '4.4.4.5', ...bearer('alice') }, at)).status, 429, 'per-user');
+    assert.equal((await post('/id/v1/directory/lookup', { hashes: [] }, { 'x-forwarded-for': '4.4.4.4', ...bearer('bob') }, at)).status, 429, 'per-IP');
+  } finally { m.server.close(); }
+});
+test('whoami results are cached for 60 s', async () => {
+  let clock = 1_000_000;
+  const m = make({ now: () => clock });
+  const at = await listen(m.server);
+  try {
+    const look = () => post('/id/v1/directory/lookup', { hashes: [] }, bearer('alice'), at);
+    await look(); await look();
+    assert.equal(m.admin.whoamiCalls, 1);
+    clock += 61;
+    await look();
+    assert.equal(m.admin.whoamiCalls, 2);
+  } finally { m.server.close(); }
+});
+test('ttlCache expires entries and never holds more than maxKeys', () => {
+  let t = 0;
+  const c = ttlCache<string>({ ttl: 60, maxKeys: 2, now: () => t });
+  c.set('a', 'A'); c.set('b', 'B'); c.set('c', 'C');
+  assert.equal(c.size(), 2);
+  assert.equal(c.get('a'), undefined, 'oldest dropped when full');
+  assert.equal(c.get('c'), 'C');
+  t = 60;
+  assert.equal(c.get('c'), undefined, 'expired');
+});
+
+test('reset-identity checks the code and that the token belongs to the phone', async () => {
+  let clock = 1_000_000;
+  const m = make({ now: () => clock });
+  const at = await listen(m.server);
+  try {
+    const me = await signIn(m, at, '11977776666');
+    const lp = me.user_id.slice(1, me.user_id.indexOf(':'));
+    clock += 61;
+    await post('/id/v1/otp/request', { phone: '11977776666' }, {}, at);
+    const code = m.codes.get('5511977776666');
+    const reset = (headers: Record<string, string>, c = code) => post('/id/v1/account/reset-identity', { phone: '11977776666', code: c }, headers, at);
+
+    let r = await reset({});
+    assert.equal(r.status, 401);
+    assert.deepEqual(await r.json(), { error: 'invalid_token' });
+    r = await reset(bearer('someoneelse'));
+    assert.equal(r.status, 403);
+    assert.deepEqual(await r.json(), { error: 'forbidden' });
+    assert.deepEqual(m.admin.resets, []);
+    r = await reset(bearer(lp), code === '000000' ? '111111' : '000000');
+    assert.equal(r.status, 400);
+    assert.deepEqual(await r.json(), { error: 'invalid_code' });
+    r = await reset(bearer(lp));
+    assert.equal(r.status, 200);
+    assert.deepEqual(await r.json(), { updatable_without_uia_before_ms: 4242 });
+    assert.deepEqual(m.admin.resets, [me.user_id]);
+    r = await reset(bearer(lp));
+    assert.equal(r.status, 400, 'the code is single use');
+  } finally { m.server.close(); }
+});
+test('reset-identity is capped at 10 per IP per hour', async () => {
+  const { server: s } = make({ now: () => 1_000_000 });
+  const at = await listen(s);
+  try {
+    const reset = (ip: string) => post('/id/v1/account/reset-identity', { phone: '11933332222', code: '123456' }, { 'x-forwarded-for': ip, ...bearer('x') }, at);
+    for (let i = 0; i < 10; i++) assert.equal((await reset('5.5.5.5')).status, 403);
+    assert.equal((await reset('5.5.5.5')).status, 429);
+    assert.equal((await reset('5.5.5.6')).status, 403, 'other IPs keep their own budget');
+  } finally { s.close(); }
+});
+test('reset-identity for a phone with no account is forbidden', async () => {
+  const m = make();
+  const at = await listen(m.server);
+  try {
+    await post('/id/v1/otp/request', { phone: '11933332222' }, {}, at);
+    const r = await post('/id/v1/account/reset-identity', { phone: '11933332222', code: m.codes.get('5511933332222') }, bearer('x'), at);
+    assert.equal(r.status, 403);
+  } finally { m.server.close(); }
+});
 
 const hex = (i: number) => createHash('sha256').update(String(i)).digest('hex');
 test('lookup validates hashes over HTTP and fits 1000 hashes in one request', async () => {
-  assert.equal((await post('/id/v1/directory/lookup', { hashes: 'abc' })).status, 400);
-  assert.equal((await post('/id/v1/directory/lookup', {})).status, 400);
-  assert.equal((await post('/id/v1/directory/lookup', { hashes: Array.from({ length: 1001 }, (_, i) => hex(i)) })).status, 400);
-  const r = await post('/id/v1/directory/lookup', { hashes: Array.from({ length: 1000 }, (_, i) => hex(i)) });
+  const look = (body: unknown) => post('/id/v1/directory/lookup', body, bearer('validator'));
+  assert.equal((await look({ hashes: 'abc' })).status, 400);
+  assert.equal((await look({})).status, 400);
+  assert.equal((await look({ hashes: Array.from({ length: 1001 }, (_, i) => hex(i)) })).status, 400);
+  const r = await look({ hashes: Array.from({ length: 1000 }, (_, i) => hex(i)) });
   assert.equal(r.status, 200);
   assert.deepEqual(await r.json(), { registered: [] });
 });
@@ -138,10 +290,11 @@ test('rateKey groups IPv6 by /64 and unwraps IPv4-mapped addresses', () => {
   assert.equal(rateKey('unknown'), 'unknown');
 });
 test('two IPv6 addresses in one /64 share the lookup budget; IPv4-mapped equals IPv4', async () => {
-  const s = make(() => 1_000_000);
+  const { server: s } = make({ now: () => 1_000_000 });
   const at = await listen(s);
   try {
-    const look = (ip: string) => post('/id/v1/directory/lookup', { hashes: [] }, { 'x-forwarded-for': ip }, at);
+    let n = 0;
+    const look = (ip: string) => post('/id/v1/directory/lookup', { hashes: [] }, { 'x-forwarded-for': ip, ...bearer(`v6u${n++}`) }, at);
     for (let i = 0; i < 30; i++) assert.equal((await look(`2001:db8:a:b::${(i + 1).toString(16)}`)).status, 200);
     assert.equal((await look('2001:db8:a:b:dead:beef:0:1')).status, 429);
     assert.equal((await look('2001:db8:a:c::1')).status, 200, 'other /64 has its own budget');
@@ -150,7 +303,7 @@ test('two IPv6 addresses in one /64 share the lookup budget; IPv4-mapped equals 
   } finally { s.close(); }
 });
 test('OTP per-IP limit also groups IPv6 by /64', async () => {
-  const s = make();
+  const { server: s } = make();
   const at = await listen(s);
   try {
     const req = (i: number) => post('/id/v1/otp/request', { phone: `1198765${String(4300 + i)}` }, { 'x-forwarded-for': `2001:db8:5:6::${i + 1}` }, at);
@@ -176,12 +329,37 @@ const start = (env: Record<string, string>) => spawnSync(process.execPath, ['src
   cwd: new URL('..', import.meta.url), encoding: 'utf8', timeout: 10_000,
   env: { PATH: process.env.PATH ?? '', DB_PATH: ':memory:', PORT: '0', ...env },
 });
-const secrets = { JWT_SECRET: 'j', OTP_PEPPER: 'p', SERVER_NAME: 'chama.test', PUBLIC_BASEURL: 'http://localhost:8080' };
+const secrets = {
+  JWT_SECRET: 'j', OTP_PEPPER: 'p', SERVER_NAME: 'chama.test', PUBLIC_BASEURL: 'http://localhost:8080',
+  SYNAPSE_INTERNAL_URL: 'http://127.0.0.1:1', REGISTRATION_SHARED_SECRET: 'r',
+};
+// Starts the real server and resolves with its first stdout line, or rejects if it exits first.
+const startsListening = (env: Record<string, string>) => new Promise<string>((resolve, reject) => {
+  const p = spawn(process.execPath, ['src/server.ts'], {
+    cwd: new URL('..', import.meta.url), env: { PATH: process.env.PATH ?? '', DB_PATH: ':memory:', PORT: '0', ...env },
+  });
+  let err = '';
+  p.stderr.on('data', (c) => { err += c; });
+  p.stdout.once('data', (c) => { p.kill(); resolve(String(c)); });
+  p.on('exit', (code) => reject(new Error(`exited ${code}: ${err}`)));
+});
 
 test('refuses to start without an SMS provider outside dev mode', () => {
   const r = start(secrets);
   assert.equal(r.status, 1);
   assert.match(r.stderr, /no SMS provider configured \(set CHAMA_DEV=1 for development\)/);
+});
+test('refuses dev mode unless the server name ends in .test or .localhost', () => {
+  for (const SERVER_NAME of ['chama.chat', 'chama.test.com', 'localhost.chama.chat', 'test']) {
+    const r = start({ ...secrets, CHAMA_DEV: '1', SERVER_NAME });
+    assert.equal(r.status, 1, SERVER_NAME);
+    assert.match(r.stderr, /CHAMA_DEV=1 is only allowed for \.test or \.localhost server names/);
+  }
+});
+test('starts in dev mode for .test and .localhost server names', async () => {
+  for (const SERVER_NAME of ['chama.test', 'chama.localhost']) {
+    assert.match(await startsListening({ ...secrets, CHAMA_DEV: '1', SERVER_NAME }), /chama-id listening/);
+  }
 });
 test('refuses to start when a secret is missing or empty', () => {
   for (const k of Object.keys(secrets)) {

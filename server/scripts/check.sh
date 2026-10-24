@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Acceptance checks for the running dev stack. Stops at the first failure.
 # Each run requests a code for a new random phone, because chama-id allows one code
-# request per phone per minute. chama-id also allows 10 requests per IP per hour.
+# request per phone per minute. In dev mode chama-id allows 1000 code requests per IP per hour.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -36,41 +36,44 @@ ok "id health: $out"
 
 curl -fs -XPOST "$BASE/id/v1/otp/request" -H 'content-type: application/json' \
   -d "{\"phone\":\"$PHONE\"}" >/dev/null || fail "otp request for $PHONE"
-TOKEN=$(curl -fs -XPOST "$BASE/id/v1/otp/verify" -H 'content-type: application/json' \
-  -d "{\"phone\":\"$PHONE\",\"code\":\"000000\"}" | json login_token) || fail "otp verify"
-ok "otp verify: got login token"
+VERIFY=$(curl -fs -XPOST "$BASE/id/v1/otp/verify" -H 'content-type: application/json' \
+  -d "{\"phone\":\"$PHONE\",\"code\":\"000000\"}") || fail "otp verify"
+TOKEN=$(json login_token <<<"$VERIFY") || fail "otp verify: no login_token"
+MXID=$(json user_id <<<"$VERIFY") || fail "otp verify: no user_id"
+E164=$(json phone <<<"$VERIFY") || fail "otp verify: no phone"
+[[ $MXID =~ ^@u[a-z2-7]{16}:chama\.test$ ]] || fail "user_id not opaque: $MXID"
+[[ $MXID != *"${E164: -8}"* ]] || fail "user_id contains phone digits: $MXID"
+[[ $(json new_account <<<"$VERIFY") == true ]] || fail "new phone: new_account not true"
+ok "otp verify: opaque user_id $MXID for +$E164"
 
-# Synapse reserves all-digit localparts for guests, so the phone-number IDs that
-# chama-id issues today cannot log in. Task 5 (opaque u... IDs) changes this
-# step into a full sign-in that ends in an access token.
-out=$(curl -s -XPOST "$BASE/_matrix/client/v3/login" -H 'content-type: application/json' \
-  -d "{\"type\":\"org.matrix.login.jwt\",\"token\":\"$TOKEN\"}")
-[[ $out == *'"M_INVALID_USERNAME"'*'Numeric user IDs are reserved for guest users'* ]] \
-  || fail "jwt login: expected numeric-ID refusal, got: $out"
-ok "jwt login: token accepted, numeric ID refused as expected until Task 5: $out"
-
-# Until then, the worker checks use a user made by shared-secret registration on
-# the internal network (the admin API is blocked at the edge).
-MXUSER=check$RANDOM$RANDOM
-ACCESS=$(dc exec -T -e MXUSER="$MXUSER" synapse python - <<'PY'
-import hashlib, hmac, json, os, secrets, urllib.request, yaml
-key = yaml.safe_load(open('/data/homeserver.yaml'))['registration_shared_secret'].encode()
-url = 'http://localhost:8008/_synapse/admin/v1/register'
-nonce = json.load(urllib.request.urlopen(url))['nonce']
-user, pw = os.environ['MXUSER'], secrets.token_hex(16)
-mac = hmac.new(key, b'\0'.join([nonce.encode(), user.encode(), pw.encode(), b'notadmin']), hashlib.sha1).hexdigest()
-body = json.dumps({'nonce': nonce, 'username': user, 'password': pw, 'admin': False, 'mac': mac}).encode()
-req = urllib.request.Request(url, body, {'content-type': 'application/json'})
-print(json.load(urllib.request.urlopen(req))['access_token'], pw)
-PY
-) || fail "shared-secret registration"
-read -r ACCESS MXPASS <<<"$ACCESS"
+# Full sign-in: the chama-id JWT logs in to Synapse and yields an access token.
+ACCESS=$(curl -fs -XPOST "$BASE/_matrix/client/v3/login" -H 'content-type: application/json' \
+  -d "{\"type\":\"org.matrix.login.jwt\",\"token\":\"$TOKEN\"}" | json access_token) || fail "jwt login"
 AUTH="Authorization: Bearer $ACCESS"
-
-want="@$MXUSER:chama.test"
 got=$(curl -fs -H "$AUTH" "$BASE/_matrix/client/v3/account/whoami" | json user_id) || fail "whoami"
-[[ $got == "$want" ]] || fail "whoami: got $got, want $want"
-ok "whoami: $got"
+[[ $got == "$MXID" ]] || fail "whoami: got $got, want $MXID"
+ok "jwt login + whoami: $got"
+
+HASH=$(printf %s "$E164" | openssl sha256 | awk '{print $NF}')
+code=$(curl -s -o /dev/null -w '%{http_code}' -XPOST "$BASE/id/v1/directory/lookup" -H 'content-type: application/json' \
+  -d "{\"hashes\":[\"$HASH\"]}")
+[[ $code == 401 ]] || fail "lookup without token: $code, want 401"
+ok "lookup without token: $code"
+out=$(curl -fs -XPOST "$BASE/id/v1/directory/lookup" -H "$AUTH" -H 'content-type: application/json' \
+  -d "{\"hashes\":[\"$HASH\"]}") || fail "lookup with token"
+[[ $out == "{\"registered\":[{\"hash\":\"$HASH\",\"user_id\":\"$MXID\"}]}" ]] || fail "lookup body: $out"
+ok "lookup with token: $out"
+
+# chama-id's own admin client against the real Synapse admin API (internal network only).
+out=$(dc exec -T -e MXID="$MXID" chama-id node --input-type=module -e "
+  import { openDb } from './src/db.ts'; import { HttpSynapseAdmin } from './src/synapse.ts';
+  const e = process.env;
+  const a = new HttpSynapseAdmin({ baseUrl: e.SYNAPSE_INTERNAL_URL, sharedSecret: e.REGISTRATION_SHARED_SECRET, db: openDb(e.DB_PATH) });
+  const age = Date.now() - await a.lastActiveMs(e.MXID);
+  console.log(age >= 0 && age < 600_000, await a.lastActiveMs('@uzzzzzzzzzzzzzzzz:chama.test'));" | tail -1) \
+  || fail "admin client"
+[[ $out == 'true null' ]] || fail "admin client: want 'true null' (recently active, unknown user), got '$out'"
+ok "admin client: $MXID recently active, unknown user is null"
 
 out=$(curl -fs -H "$AUTH" "$BASE/_matrix/client/v3/sync?timeout=0&$MARK=1") || fail "sync"
 grep -q '"next_batch"' <<<"$out" || fail "sync body: ${out:0:100}"
@@ -92,7 +95,21 @@ flows=$(curl -fs "$BASE/_matrix/client/v3/login") || fail "login flows"
 [[ $flows != *m.login.password* ]] || fail "login flows offer password: $flows"
 ok "login flows: $flows"
 
-# The real password of a real user must still be refused.
+# The real password of a real user must still be refused. chama-id accounts have no
+# password, so make one by shared-secret registration on the internal network.
+MXUSER=check$RANDOM$RANDOM
+MXPASS=$(dc exec -T -e MXUSER="$MXUSER" synapse python - <<'PY'
+import hashlib, hmac, json, os, secrets, urllib.request, yaml
+key = yaml.safe_load(open('/data/homeserver.yaml'))['registration_shared_secret'].encode()
+url = 'http://localhost:8008/_synapse/admin/v1/register'
+nonce = json.load(urllib.request.urlopen(url))['nonce']
+user, pw = os.environ['MXUSER'], secrets.token_hex(16)
+mac = hmac.new(key, b'\0'.join([nonce.encode(), user.encode(), pw.encode(), b'notadmin']), hashlib.sha1).hexdigest()
+body = json.dumps({'nonce': nonce, 'username': user, 'password': pw, 'admin': False, 'mac': mac}).encode()
+urllib.request.urlopen(urllib.request.Request(url, body, {'content-type': 'application/json'}))
+print(pw)
+PY
+) || fail "shared-secret registration"
 out=$(curl -s -w ' %{http_code}' -XPOST "$BASE/_matrix/client/v3/login" -H 'content-type: application/json' \
   -d "{\"type\":\"m.login.password\",\"identifier\":{\"type\":\"m.id.user\",\"user\":\"$MXUSER\"},\"password\":\"$MXPASS\"}")
 [[ $out == *'Password login has been disabled'*' 400' ]] || fail "password login not disabled: $out"

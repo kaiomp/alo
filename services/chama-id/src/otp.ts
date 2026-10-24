@@ -3,6 +3,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { AppError } from './errors.ts';
 import type { SmsProvider } from './sms.ts';
 
+// Dev mode multiplies IP_LIMIT by 100 so test suites can rerun; per-phone limits stay.
 const TTL = 300, MAX_TRIES = 5, PHONE_GAP = 60, IP_LIMIT = 10, IP_WINDOW = 3600;
 // Daily caps per phone survive new codes, so refreshing the code does not reset them.
 const DAY = 86400, DAILY_REQUESTS = 5, DAILY_FAILS = 10;
@@ -34,7 +35,7 @@ export class OtpService {
     this.checkDaily(phone, 'request', DAILY_REQUESTS, now);
     this.db.prepare('DELETE FROM ip_requests WHERE at <= ?').run(now - IP_WINDOW);
     const { n, oldest } = this.db.prepare('SELECT COUNT(*) AS n, MIN(at) AS oldest FROM ip_requests WHERE ip = ?').get(ip) as { n: number; oldest: number };
-    if (n >= IP_LIMIT) throw new AppError('rate_limited', { retry_after: oldest + IP_WINDOW - now });
+    if (n >= IP_LIMIT * (this.opts.dev ? 100 : 1)) throw new AppError('rate_limited', { retry_after: oldest + IP_WINDOW - now });
     this.db.prepare('DELETE FROM otp WHERE expires_at < ?').run(now - DAY);
     const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
     this.db.prepare(`INSERT INTO otp (phone, code_hash, expires_at, tries, sent_at) VALUES (?, ?, ?, 0, ?)

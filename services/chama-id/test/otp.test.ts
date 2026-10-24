@@ -91,3 +91,12 @@ test('dev code 000000 bypasses the daily failure cap', async () => {
   await svc.request('5511987654321', '1.1.1.1');
   svc.verify('5511987654321', '000000');
 });
+test('dev mode raises the per-IP limit to 1000 per hour but keeps per-phone limits', async () => {
+  const { svc, tick } = setup(true);
+  for (let i = 0; i < 1000; i++) await svc.request(`5511987${String(i).padStart(6, '0')}`, '2.2.2.2');
+  await assert.rejects(svc.request('5511988000000', '2.2.2.2'), /rate_limited/);
+  await assert.rejects(svc.request('5511987000000', '3.3.3.3'), retryAfter(60), 'one request per 60 s per phone');
+  for (let i = 0; i < 4; i++) { tick(61); await svc.request('5511987000000', '3.3.3.3'); }
+  tick(61);
+  await assert.rejects(svc.request('5511987000000', '3.3.3.3'), /rate_limited/, 'daily cap of 5 per phone');
+});

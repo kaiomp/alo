@@ -1,6 +1,6 @@
 const STATUS: Record<string, number> = {
   invalid_phone: 400, invalid_code: 400, expired: 400, bad_request: 400,
-  invalid_token: 401, not_found: 404, too_many_attempts: 429, rate_limited: 429,
+  invalid_token: 401, forbidden: 403, not_found: 404, too_many_attempts: 429, rate_limited: 429,
 };
 export class AppError extends Error {
   code: string; status: number; extra?: Record<string, unknown>;

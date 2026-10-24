@@ -5,22 +5,28 @@ import { openDb } from '../src/db.ts';
 import { Directory } from '../src/directory.ts';
 
 const h = (s: string) => createHash('sha256').update(s).digest('hex');
-test('lookup returns only registered hashes', () => {
-  const d = new Directory(openDb(':memory:'));
-  d.markRegistered('5511987654321');
-  d.markRegistered('5511987654321'); // idempotent
-  assert.deepEqual(d.lookup([h('5511987654321'), h('5511900000000')]), [h('5511987654321')]);
+const dir = () => new Directory(openDb(':memory:'), 'chama.test');
+test('lookup returns the Matrix ID of registered hashes only', () => {
+  const d = dir();
+  d.markRegistered('5511987654321', 'uaaaaaaaaaaaaaaaa');
+  d.markRegistered('5511987654321', 'uaaaaaaaaaaaaaaaa'); // idempotent
+  assert.deepEqual(d.lookup([h('5511987654321'), h('5511900000000')]),
+    [{ hash: h('5511987654321'), user_id: '@uaaaaaaaaaaaaaaaa:chama.test' }]);
+});
+test('lookup returns the current account after a number is recycled', () => {
+  const d = dir();
+  d.markRegistered('5511987654321', 'uaaaaaaaaaaaaaaaa');
+  d.markRegistered('5511987654321', 'ubbbbbbbbbbbbbbbb');
+  assert.deepEqual(d.lookup([h('5511987654321')]), [{ hash: h('5511987654321'), user_id: '@ubbbbbbbbbbbbbbbb:chama.test' }]);
 });
 test('lookup caps input at 1000 hashes', () => {
-  const d = new Directory(openDb(':memory:'));
-  assert.throws(() => d.lookup(Array(1001).fill(h('1'))), /bad_request/);
+  assert.throws(() => dir().lookup(Array(1001).fill(h('1'))), /bad_request/);
 });
 test('lookup rejects non-string hashes', () => {
-  const d = new Directory(openDb(':memory:'));
-  assert.throws(() => d.lookup([[h('1')]] as unknown as string[]), /bad_request/);
+  assert.throws(() => dir().lookup([[h('1')]] as unknown as string[]), /bad_request/);
 });
 test('lookup de-duplicates input', () => {
-  const d = new Directory(openDb(':memory:'));
-  d.markRegistered('5511987654321');
-  assert.deepEqual(d.lookup([h('5511987654321'), h('5511987654321')]), [h('5511987654321')]);
+  const d = dir();
+  d.markRegistered('5511987654321', 'uaaaaaaaaaaaaaaaa');
+  assert.equal(d.lookup([h('5511987654321'), h('5511987654321')]).length, 1);
 });

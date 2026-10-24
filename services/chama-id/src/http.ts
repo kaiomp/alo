@@ -67,6 +67,24 @@ export function windowLimiter(o: { limit: number; window: number; maxKeys: numbe
   };
 }
 
+// Entries live `ttl` seconds; at most `maxKeys` entries, the oldest is dropped when full.
+export function ttlCache<V>(o: { ttl: number; maxKeys: number; now: () => number }) {
+  const m = new Map<string, { v: V; exp: number }>();
+  return {
+    size: () => m.size,
+    get(k: string): V | undefined {
+      const e = m.get(k);
+      if (e && e.exp > o.now()) return e.v;
+      m.delete(k);
+    },
+    set(k: string, v: V) {
+      m.delete(k);
+      if (m.size >= o.maxKeys) m.delete(m.keys().next().value!);
+      m.set(k, { v, exp: o.now() + o.ttl });
+    },
+  };
+}
+
 // `bodyCaps` overrides the 16 KiB body cap per route key.
 export function router(routes: Record<string, Handler>, bodyCaps: Record<string, number> = {}) {
   return async (req: IncomingMessage, res: ServerResponse) => {
