@@ -20,6 +20,11 @@ pnpm install && make up && make smoke
 The local stack is for development only. In dev mode the code `000000` signs in any
 phone number, so the stack listens on localhost only (`http://localhost:8080`).
 
+### App
+
+The Chama app lives in `app/` (Flutter). See [app/README.md](app/README.md).
+Prerequisites: Flutter 3.47, the Android SDK with an emulator, Chrome, and rustup for the web build.
+
 Design: [docs/design/2026-10-24-architecture.md](docs/design/2026-10-24-architecture.md)
 chama-id API: [docs/chama-id-api.md](docs/chama-id-api.md)
 
