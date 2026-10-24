@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:chama/contacts/address_book.dart';
 import 'package:chama/contacts/contact_sync.dart';
 import 'package:chama/contacts/contacts_service.dart';
+import 'package:chama/services/chat_service.dart';
 import 'package:chama/services/chat_session.dart';
 import 'package:chama/services/models.dart';
 import 'package:crypto/crypto.dart';
@@ -170,6 +171,85 @@ void main() {
     service.loggedIn.value = false;
     lookup.complete();
     await running;
+    expect(contacts.onChama, isEmpty);
+    expect(ContactSync(prefs, (_) async => {}).cachedNames(), isEmpty);
+  });
+
+  test('an empty saved name is skipped: the profile name stays', () async {
+    SharedPreferences.setMockInitialValues({});
+    final service = await testService(await SharedPreferences.getInstance());
+    final room = Room(id: '!r:chama.test', client: service.client);
+    final ana = User('@ana:chama.test', displayName: 'ana_profile', room: room);
+
+    service.contactNames = {'@ana:chama.test': '  '};
+    expect(service.nameOf(ana), 'ana_profile');
+  });
+
+  test('a sign-out between batches leaves nothing behind, even when the next batch fails', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    const first = '5511900000000';
+    late final ChatService service;
+    var calls = 0;
+    final chamaId = MockClient((req) async {
+      calls++;
+      // Signed out while the first of two batches is on its way.
+      service.loggedIn.value = false;
+      service.client.accessToken = null;
+      return http.Response(
+        jsonEncode({
+          'registered': [
+            {'hash': sha256.convert(utf8.encode(first)).toString(), 'user_id': '@ana:chama.test'},
+          ],
+        }),
+        200,
+      );
+    });
+    service = await testService(prefs, chamaId: chamaId);
+    service.client.accessToken = 'token';
+    service.loggedIn.value = true;
+    final contacts = ContactsService(
+      service,
+      _Book([
+        for (var i = 0; i < ContactSync.maxBatch + 1; i++) BookContact('C$i', ['+55119${'$i'.padLeft(8, '0')}']),
+      ]),
+      prefs,
+    );
+
+    await contacts.start();
+    expect(calls, 1, reason: 'no lookup without an access token');
+    expect(contacts.onChama, isEmpty);
+    expect(ContactSync(prefs, (_) async => {}).cachedNames(), isEmpty);
+  });
+
+  test('a lookup answered after sign-out and a new sign-in is not kept', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    late final ChatService service;
+    final chamaId = MockClient((req) async {
+      service.loggedIn.value = false; // the old account signs out...
+      service.loggedIn.value = true; // ...and another signs in
+      return http.Response(
+        jsonEncode({
+          'registered': [
+            {'hash': sha256.convert(utf8.encode('5511987654321')).toString(), 'user_id': '@ana:chama.test'},
+          ],
+        }),
+        200,
+      );
+    });
+    service = await testService(prefs, chamaId: chamaId);
+    service.client.accessToken = 'token';
+    service.loggedIn.value = true;
+    final contacts = ContactsService(
+      service,
+      _Book(const [
+        BookContact('Ana (trabalho)', ['(11) 98765-4321']),
+      ]),
+      prefs,
+    );
+
+    await contacts.start();
     expect(contacts.onChama, isEmpty);
     expect(ContactSync(prefs, (_) async => {}).cachedNames(), isEmpty);
   });

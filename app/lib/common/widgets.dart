@@ -72,9 +72,47 @@ class SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-    child: Text(
-      text,
-      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: color ?? ChatColors.of(context).accent),
+    child: Semantics(
+      header: true,
+      child: Text(
+        text,
+        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: color ?? ChatColors.of(context).accent),
+      ),
+    ),
+  );
+}
+
+/// Rounded, borderless search field (chat list, new chat).
+class SearchBox extends StatelessWidget {
+  const SearchBox({super.key, this.fieldKey, required this.controller, required this.hint, required this.onChanged});
+  final Key? fieldKey;
+  final TextEditingController controller;
+  final String hint;
+  final ValueChanged<String> onChanged;
+
+  static const _pill = OutlineInputBorder(
+    borderRadius: BorderRadius.all(Radius.circular(22)),
+    borderSide: BorderSide.none,
+  );
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: 44,
+    child: TextField(
+      key: fieldKey,
+      controller: controller,
+      onChanged: onChanged,
+      style: const TextStyle(fontSize: 16),
+      textAlignVertical: TextAlignVertical.center,
+      decoration: InputDecoration(
+        hintText: hint,
+        prefixIcon: const Icon(Icons.search, size: 20),
+        fillColor: Theme.of(context).colorScheme.surfaceContainer,
+        contentPadding: EdgeInsets.zero,
+        border: _pill,
+        enabledBorder: _pill,
+        focusedBorder: _pill,
+      ),
     ),
   );
 }

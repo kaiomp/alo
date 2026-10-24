@@ -13,6 +13,7 @@ import 'package:integration_test/integration_test.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'fakes.dart';
+import 'steps.dart';
 
 // Set by scripts/e2e.sh: fresh random numbers each run, E.164 digits.
 const appPhone = String.fromEnvironment('CHAMA_TEST_PHONE');
@@ -24,17 +25,8 @@ void main() {
   testWidgets('chat with the peer: ticks turn blue, photo, file and voice note arrive', (tester) async {
     expect(appPhone, isNotEmpty, reason: 'run through scripts/e2e.sh');
     await tester.pumpWidget(await app.bootstrap(newRecorder: FakeRecorder.new, pickFile: fakePickFile));
-    final t = _Steps(tester);
-
-    // Sign in (country code field already says +55) and set the profile.
-    await t.enter(const Key('phone_number'), appPhone.substring(2));
-    await t.tap(const Key('sign_in_next'));
-    await t.enter(const Key('sms_code'), '000000'); // 6 digits submit on their own
-    await t.waitFor(find.byKey(const Key('recovery_key')), timeout: const Duration(seconds: 60));
-    await t.tap(const Key('recovery_key_saved'));
-    await t.tap(const Key('recovery_key_done'));
-    await t.enter(const Key('profile_name'), 'Ana Teste');
-    await t.tap(const Key('profile_done'));
+    final t = Steps(tester);
+    await t.signIn(appPhone, 'Ana Teste');
 
     // New chat by phone number.
     await t.tap(const Key('new_chat'));
@@ -123,37 +115,3 @@ Future<List<FileSystemEntity>> _voiceTempFiles(String id) async {
 /// Widgets whose string key starts with [prefix] (keys that carry a message ID).
 Finder _keyPrefix(String prefix) =>
     find.byWidgetPredicate((w) => w.key is ValueKey<String> && (w.key! as ValueKey<String>).value.startsWith(prefix));
-
-/// Small helpers in the style of FluffyChat integration_test/utils/fluffy_chat_tester.dart.
-/// No pumpAndSettle: spinners never settle.
-class _Steps {
-  _Steps(this.tester);
-  final WidgetTester tester;
-
-  Future<void> waitFor(Finder finder, {Duration timeout = const Duration(seconds: 30)}) =>
-      until(() => finder.evaluate().isNotEmpty, '$finder', timeout: timeout);
-
-  /// Pumps until [done] holds (real time: the app runs live against the server).
-  Future<void> until(bool Function() done, String what, {Duration timeout = const Duration(seconds: 30)}) async {
-    final end = DateTime.now().add(timeout);
-    while (!done()) {
-      if (DateTime.now().isAfter(end)) throw TestFailure('Timed out waiting for $what');
-      await tester.pump(const Duration(milliseconds: 250));
-    }
-  }
-
-  /// Taps once the widget can take the tap: built, on screen, and no page or
-  /// sheet animation covering it.
-  Future<void> tap(Key key) async {
-    final target = find.byKey(key).hitTestable();
-    await waitFor(target);
-    await tester.tap(target);
-    await tester.pump();
-  }
-
-  Future<void> enter(Key key, String text) async {
-    await waitFor(find.byKey(key));
-    await tester.enterText(find.byKey(key), text);
-    await tester.pump();
-  }
-}

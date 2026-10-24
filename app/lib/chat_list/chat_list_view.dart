@@ -72,35 +72,13 @@ class _ChatListViewState extends State<ChatListView> {
     ),
   );
 
-  Widget _searchBox(L10n l, ColorScheme scheme) => Padding(
+  Widget _searchBox(L10n l) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-    child: SizedBox(
-      height: 44,
-      child: TextField(
-        key: const Key('chat_search'),
-        controller: _search,
-        onChanged: (_) => setState(() {}),
-        style: const TextStyle(fontSize: 16),
-        textAlignVertical: TextAlignVertical.center,
-        decoration: InputDecoration(
-          hintText: l.search,
-          prefixIcon: const Icon(Icons.search, size: 20),
-          fillColor: scheme.surfaceContainer,
-          contentPadding: EdgeInsets.zero,
-          border: const OutlineInputBorder(
-            borderRadius: BorderRadius.all(Radius.circular(22)),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: const OutlineInputBorder(
-            borderRadius: BorderRadius.all(Radius.circular(22)),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: const OutlineInputBorder(
-            borderRadius: BorderRadius.all(Radius.circular(22)),
-            borderSide: BorderSide.none,
-          ),
-        ),
-      ),
+    child: SearchBox(
+      fieldKey: const Key('chat_search'),
+      controller: _search,
+      hint: l.search,
+      onChanged: (_) => setState(() {}),
     ),
   );
 
@@ -167,7 +145,7 @@ class _ChatListViewState extends State<ChatListView> {
         final archivedCount = widget.archived ? 0 : all.where((c) => c.isArchived).length;
         return CustomScrollView(
           slivers: [
-            SliverToBoxAdapter(child: _searchBox(l, scheme)),
+            SliverToBoxAdapter(child: _searchBox(l)),
             if (!widget.archived) SliverToBoxAdapter(child: _chips(l, scheme, colors)),
             if (archivedCount > 0)
               SliverToBoxAdapter(

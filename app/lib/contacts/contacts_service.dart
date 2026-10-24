@@ -22,6 +22,9 @@ class ContactsService extends ChangeNotifier {
   StreamSubscription<void>? _changes;
   bool _running = false;
 
+  /// Counts sign-outs, so a lookup that outlived its account is dropped.
+  int _signOuts = 0;
+
   ContactsAccess access = ContactsAccess.notGranted;
   List<ChamaContact> onChama = const [];
   List<InviteContact> invite = const [];
@@ -48,24 +51,25 @@ class ContactsService extends ChangeNotifier {
   Future<void> refresh() async {
     if (_running || access != ContactsAccess.granted || !_chat.loggedIn.value) return;
     _running = true;
+    final signOuts = _signOuts;
     try {
       final r = await _sync.run(await _book.read());
-      // Signed out while the lookup ran: that account's answers must not stay.
-      if (!_chat.loggedIn.value) {
-        await _sync.clear();
-        return;
-      }
+      if (signOuts != _signOuts) return;
       onChama = r.onChama;
       invite = r.invite;
       _chat.contactNames = {for (final c in r.onChama) c.userId: c.name};
       notifyListeners();
     } finally {
+      // Signed out while the lookup ran, or it failed half-way: that
+      // account's answers must not stay.
+      if (signOuts != _signOuts) await _sync.clear();
       _running = false;
     }
   }
 
   void _onLoginChanged() {
     if (_chat.loggedIn.value) return;
+    _signOuts++;
     unawaited(_sync.clear());
     onChama = const [];
     invite = const [];

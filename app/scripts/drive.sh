@@ -3,6 +3,8 @@
 # set up for you. Extra arguments go to flutter (e.g. --dart-define=...).
 # TEST_DRIVER=<file> runs through that flutter drive driver on both targets;
 # WEB_SIZE=<w>x<h>[@<pixel ratio>] sets the browser size (default 1280x900).
+# Android: ANDROID_SERIAL picks the emulator (default: the first one);
+# E2E_CONTACTS="Name=number,..." saves contacts in its address book for the run.
 # CHAMA_AVD=<name> picks the emulator (default: the first AVD). CHROME=<path>
 # points at the Chrome binary (default: the macOS app path).
 #   scripts/drive.sh chrome  integration_test/boot_test.dart
@@ -15,7 +17,12 @@ shift 2
 SDK=${ANDROID_HOME:-$HOME/Library/Android/sdk}
 export PATH="$SDK/platform-tools:$SDK/emulator:$PATH"
 PIDS=()
-cleanup() { for p in "${PIDS[@]:-}"; do kill "$p" 2>/dev/null || true; done; }
+DEVICE=
+NAMES=()
+cleanup() {
+  for p in "${PIDS[@]:-}"; do kill "$p" 2>/dev/null || true; done
+  if [ ${#NAMES[@]} -gt 0 ]; then ./scripts/seed-contacts.sh "$DEVICE" remove "${NAMES[@]}" || true; fi
+}
 trap cleanup EXIT
 
 case $TARGET in
@@ -53,8 +60,20 @@ case $TARGET in
       [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ] ||
         { echo "Emulator did not boot in 5 minutes:"; tail -20 "$EMU_LOG"; exit 1; }
     fi
-    DEVICE=$(adb devices | awk '/^emulator-/{print $1; exit}')
+    DEVICE=${ANDROID_SERIAL:-$(adb devices | awk '/^emulator-/{print $1; exit}')}
     adb -s "$DEVICE" uninstall chat.chama.app >/dev/null 2>&1 || true # fresh app data every run
+    # Grant contacts and notifications as soon as flutter installs the app, so
+    # no system dialog covers the test.
+    (until adb -s "$DEVICE" shell pm path chat.chama.app >/dev/null 2>&1; do sleep 1; done
+      for p in READ_CONTACTS POST_NOTIFICATIONS; do adb -s "$DEVICE" shell pm grant chat.chama.app android.permission.$p; done) &
+    PIDS+=($!)
+    if [ -n "${E2E_CONTACTS:-}" ]; then
+      IFS=, read -ra PAIRS <<<"$E2E_CONTACTS"
+      ARGS=()
+      for p in "${PAIRS[@]}"; do NAMES+=("${p%%=*}"); ARGS+=("${p%%=*}" "${p#*=}"); done
+      ./scripts/seed-contacts.sh "$DEVICE" remove "${NAMES[@]}" # left over from a failed run
+      ./scripts/seed-contacts.sh "$DEVICE" add "${ARGS[@]}"
+    fi
     if [ -n "${TEST_DRIVER:-}" ]; then
       flutter drive --driver="$TEST_DRIVER" --target="$TEST" -d "$DEVICE" "$@"
     else

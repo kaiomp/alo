@@ -71,11 +71,18 @@ void main() {
     expect(normalizeContactPhone('98765-4321'), isNull); // no area code
   });
 
-  test('a foreign number saved without "+" is misread (known limit)', () {
-    // The leading digits are taken for a carrier code: see the Limit note in
-    // normalizeContactPhone. Saved with '+', the same numbers come out right.
-    expect(normalizeContactPhone('447911123456'), '557911123456');
+  test('a foreign number saved without "+" is no number, never a guessed Brazilian one', () {
+    // Without the 0 of a carrier code in front, 12 or 13 digits not starting
+    // with 55 cannot be read as Brazilian: a wrong guess would show a
+    // stranger under this contact's name.
+    expect(normalizeContactPhone('447911123456'), isNull);
     expect(normalizeContactPhone('4917662096183'), isNull);
+    expect(normalizeContactPhone('2111987654321'), isNull);
+    expect(normalizeContactPhone('00 44 7911 123456'), isNull); // 00: international prefix, not a carrier
     expect(normalizeContactPhone('+44 7911 123456'), '447911123456');
+    // The carrier code habit keeps working.
+    expect(normalizeContactPhone('0 21 11 98765-4321'), '5511987654321');
+    expect(normalizeContactPhone('021 11 3456-7890'), '551134567890');
+    expect(normalizeContactPhone('55 11 98765-4321'), '5511987654321');
   });
 }

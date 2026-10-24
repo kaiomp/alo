@@ -204,5 +204,14 @@
   "pause": "Pause",
   "recordVoice": "Record voice message",
   "sendVoice": "Send voice message",
-  "cancelRecording": "Cancel recording"
+  "cancelRecording": "Cancel recording",
+  "searchContacts": "Search name or number",
+  "contactsOnChama": "Contacts on Chama",
+  "inviteToChama": "Invite to Chama",
+  "invite": "Invite",
+  "inviteText": "Let's talk on Chama! It's free and end-to-end encrypted. Get it at {url}",
+  "contactsRationaleTitle": "Find your contacts on Chama",
+  "contactsRationale": "To show who in your address book already uses Chama, the app sends each number to the server in coded form (a hash). Names and other details never leave your phone, and the server does not keep the list. Without this, you can still chat by typing a number.",
+  "contactsAllow": "Allow access to contacts",
+  "contactsOpenSettings": "Open settings"
 }

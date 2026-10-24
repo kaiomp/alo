@@ -42,7 +42,7 @@ app-e2e-web:
 	cd app && ./scripts/e2e.sh chrome
 
 app-e2e-android:
-	cd app && ./scripts/e2e.sh android
+	cd app && ./scripts/e2e.sh android && ./scripts/e2e.sh android integration_test/contacts_test.dart
 
 # Release APKs, one per ABI. pub get first: a GeneratedPluginRegistrant left by
 # an integration-test run still names the test-only plugin and breaks javac.

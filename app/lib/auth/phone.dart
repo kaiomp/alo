@@ -38,15 +38,18 @@ String? normalizeContactPhone(String raw) {
   if (s.startsWith('+')) {
     digits = normalizePhone('', s);
   } else {
-    var national = s.replaceAll(RegExp(r'\D'), '').replaceFirst(RegExp(r'^0+'), '');
-    // 0 + carrier (2 digits) + area code + number. 55 in front is the country code instead.
-    // Limit: a foreign number saved without '+' (12 or 13 digits, e.g. UK
-    // 447911123456) is read as carrier + Brazilian number: it comes out as a
-    // wrong Brazilian number (557911123456) or as none at all. Its hash then
-    // matches nobody, or at worst a stranger's account gets this contact's
-    // name. Upgrade: a phone-number library with the SIM's country, or check
-    // the remainder against Brazil's numbering plan.
+    final all = s.replaceAll(RegExp(r'\D'), '');
+    var national = all.replaceFirst(RegExp(r'^0+'), '');
+    // 0 + carrier (2 digits, never starting with 0) + area code + number. 55
+    // in front is the country code instead. Anything else this long is no
+    // Brazilian number we can read (a foreign one saved without '+', like UK
+    // 447911123456, or after 00): no guess, or a stranger's account could get
+    // this contact's name.
+    // Limit: a foreign number short enough to pass as Brazilian (10 or 11
+    // digits, saved without '+') is still read as one. Upgrade: a phone-number
+    // library with the SIM's country.
     if ((national.length == 12 || national.length == 13) && !national.startsWith('55')) {
+      if (!all.startsWith('0') || all.startsWith('00')) return null;
       national = national.substring(2);
     }
     digits = normalizePhone('55', national);

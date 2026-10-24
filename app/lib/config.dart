@@ -31,3 +31,7 @@ const wideLayoutMinWidth = 900.0;
 /// Push notifications and the address book: Android only for now (spec §7,
 /// M3). The web app has neither.
 bool get onAndroid => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
+/// Link in the "Convidar para o Chama" text. Override with
+/// `--dart-define=CHAMA_INVITE_URL=https://…`.
+const chamaInviteUrl = String.fromEnvironment('CHAMA_INVITE_URL', defaultValue: 'https://chama.chat');

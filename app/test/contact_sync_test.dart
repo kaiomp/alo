@@ -149,4 +149,14 @@ void main() {
     await sync(f).clear();
     expect(sync(f).cachedNames(), isEmpty);
   });
+
+  test('a number saved once without a name takes the name it has elsewhere', () async {
+    final f = FakeLookup({mobile(1): '@u1:chama.test'});
+    final r = await sync(f).run([
+      BookContact('', [mobile(1)]),
+      BookContact('Ana', ['+${mobile(1)}']),
+    ]);
+    expect([for (final c in r.onChama) c.name], ['Ana']);
+    expect(sync(f).cachedNames(), {'@u1:chama.test': 'Ana'});
+  });
 }

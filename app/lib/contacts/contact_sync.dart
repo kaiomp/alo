@@ -95,7 +95,8 @@ class ContactSync {
     for (final c in book) {
       for (final n in c.numbers) {
         final digits = normalizeContactPhone(n);
-        if (digits != null) names.putIfAbsent(digits, () => c.name);
+        // An entry saved without a name does not hide the name it has elsewhere.
+        if (digits != null && (names[digits] ?? '').trim().isEmpty) names[digits] = c.name;
       }
     }
     final now = _now().millisecondsSinceEpoch;
@@ -141,7 +142,8 @@ class ContactSync {
       if (digits.isEmpty) continue;
       final registered = digits.where((d) => cache[d]?.userId != null).toList();
       for (final d in registered) {
-        onChama.putIfAbsent(cache[d]!.userId!, () => ChamaContact(name: c.name, phone: d, userId: cache[d]!.userId!));
+        final e = cache[d]!;
+        onChama.putIfAbsent(e.userId!, () => ChamaContact(name: e.name, phone: d, userId: e.userId!));
       }
       // Only numbers already checked: an unchecked one may still have an account.
       if (registered.isEmpty && digits.every(cache.containsKey)) {

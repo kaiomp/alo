@@ -140,7 +140,12 @@ class ChatService {
   final namesRevision = ValueNotifier<int>(0);
 
   /// Address-book names by user ID, from ContactsService.
-  set contactNames(Map<String, String> names) {
+  /// Names saved empty are left out: the profile name stays.
+  set contactNames(Map<String, String> all) {
+    final names = {
+      for (final MapEntry(:key, :value) in all.entries)
+        if (value.trim().isNotEmpty) key: value,
+    };
     if (mapEquals(names, _contactNames)) return;
     _contactNames = names;
     namesRevision.value++;
@@ -437,8 +442,12 @@ class ChatService {
   // ---- new chats and groups ----
 
   /// Chama accounts for up to 1000 numbers (E.164 digits), as {digits: user ID}.
-  Future<Map<String, String>> lookupPhones(List<String> phoneDigits) =>
-      id.lookup(phoneDigits, accessToken: client.accessToken!);
+  /// Signed out (no access token): [IdError] `invalid_token`.
+  Future<Map<String, String>> lookupPhones(List<String> phoneDigits) async {
+    final token = client.accessToken;
+    if (token == null) throw const IdError('invalid_token');
+    return id.lookup(phoneDigits, accessToken: token);
+  }
 
   /// The Chama account for [phoneDigits], or null when the number has none.
   Future<String?> findByPhone(String phoneDigits) async => (await lookupPhones([phoneDigits]))[phoneDigits];

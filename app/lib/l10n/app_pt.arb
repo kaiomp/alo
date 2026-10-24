@@ -398,5 +398,21 @@
   "pause": "Pausar",
   "recordVoice": "Gravar mensagem de voz",
   "sendVoice": "Enviar mensagem de voz",
-  "cancelRecording": "Cancelar gravação"
+  "cancelRecording": "Cancelar gravação",
+  "searchContacts": "Pesquisar nome ou número",
+  "contactsOnChama": "Contatos no Chama",
+  "inviteToChama": "Convidar para o Chama",
+  "invite": "Convidar",
+  "inviteText": "Vamos conversar no Chama? É gratuito e tem criptografia de ponta a ponta. Baixe em {url}",
+  "@inviteText": {
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "contactsRationaleTitle": "Encontre seus contatos no Chama",
+  "contactsRationale": "Para mostrar quem da sua agenda já usa o Chama, o app envia ao servidor cada número da agenda em forma codificada (hash). Nomes e outros dados não saem do seu celular, e o servidor não guarda a lista. Sem isso, você ainda pode conversar digitando o número.",
+  "contactsAllow": "Permitir acesso aos contatos",
+  "contactsOpenSettings": "Abrir configurações"
 }

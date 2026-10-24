@@ -42,7 +42,10 @@ class _NewGroupScreenState extends State<NewGroupScreen> {
   @override
   Widget build(BuildContext context) {
     final l = L10n.of(context);
-    final names = {for (final c in Deps.of(context).contacts.onChama) c.userId: c.name};
+    final names = {
+      for (final c in Deps.of(context).contacts.onChama)
+        if (c.name.trim().isNotEmpty) c.userId: c.name,
+    };
     return Scaffold(
       appBar: AppBar(title: Text(l.newGroup)),
       floatingActionButton: FloatingActionButton(
