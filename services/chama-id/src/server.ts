@@ -3,9 +3,10 @@ import { openDb } from './db.ts';
 import { OtpService } from './otp.ts';
 import { Directory, DAILY_HASHES } from './directory.ts';
 import { Accounts } from './accounts.ts';
+import { Pins } from './pin.ts';
 import { HttpSynapseAdmin, type SynapseAdmin, type CrossSigningKeys } from './synapse.ts';
 import { ConsoleSms } from './sms.ts';
-import { signJwt } from './jwt.ts';
+import { signJwt, verifyJwt } from './jwt.ts';
 import { normalizePhone } from './phone.ts';
 import { AppError } from './errors.ts';
 import { router, clientIp, rateKey, windowLimiter, ttlCache } from './http.ts';
@@ -35,8 +36,12 @@ const bearer = (req: IncomingMessage) => {
   return m[1];
 };
 
+// Audience of the token that carries a sign-in from the SMS code to the PIN step. Synapse accepts
+// only the audience `chama`, so this token can never log in to Matrix.
+const PIN_AUD = 'chama-pin';
+
 export function createServer(d: {
-  otp: OtpService; directory: Directory; accounts: Accounts; admin: SynapseAdmin;
+  otp: OtpService; directory: Directory; accounts: Accounts; admin: SynapseAdmin; pins: Pins;
   jwtSecret: string; publicBaseUrl: string; dev?: boolean; now?: () => number;
 }) {
   const now = d.now ?? (() => Math.floor(Date.now() / 1000));
@@ -55,22 +60,51 @@ export function createServer(d: {
   // counted while its whoami runs (so a burst of parallel calls cannot slip past) and taken back
   // when it turns out valid, so many valid users behind one carrier IP (CGNAT) are never blocked.
   const badTokens = windowLimiter({ limit: 100 * scale, window: 3600, maxKeys: 100_000, now });
-  const whoamiCache = ttlCache<string>({ ttl: 60, maxKeys: 10_000, now });
-  const cachedWhoami = async (token: string, req: IncomingMessage) => {
-    const hit = whoamiCache.get(token);
+  const whoamiCache = ttlCache<{ userId: string; deviceId?: string }>({ ttl: 60, maxKeys: 10_000, now });
+  // `fresh` skips the cache, so a token logged out a moment ago fails at once.
+  const whoami = async (req: IncomingMessage, o: { fresh?: boolean } = {}) => {
+    const token = bearer(req);
+    const hit = o.fresh ? undefined : whoamiCache.get(token);
     if (hit) return hit;
     const ip = rateKey(clientIp(req));
     badTokens.hit(ip);
-    let userId: string;
+    let me: { userId: string; deviceId?: string };
     try {
-      ({ userId } = await d.admin.whoami(token));
+      me = await d.admin.whoami(token);
     } catch (e) {
       if (!(e instanceof AppError && e.code === 'invalid_token')) badTokens.undo(ip); // Synapse down: not the client's fault
       throw e;
     }
     badTokens.undo(ip);
-    whoamiCache.set(token, userId);
-    return userId;
+    whoamiCache.set(token, me);
+    return me;
+  };
+  // Changes to the account come from a fresh token of a real device (an admin "log in as" token has
+  // none), at most 20 per account per hour. Counted per account, not per IP (CGNAT).
+  const accountActions = windowLimiter({ limit: 20 * scale, window: 3600, maxKeys: 100_000, now });
+  const owner = async (req: IncomingMessage) => {
+    const me = await whoami(req, { fresh: true });
+    if (!me.deviceId) throw new AppError('forbidden');
+    accountActions.hit(me.userId);
+    return { userId: me.userId, deviceId: me.deviceId, localpart: me.userId.slice(1, me.userId.indexOf(':')) };
+  };
+  // Second factor on a signed-in device: the PIN when the account has one, or a fresh SMS code.
+  const proof = async (localpart: string, b: Record<string, unknown>) => {
+    if (b.pin !== undefined && d.pins.state(localpart) !== 'none') return d.pins.check(localpart, b.pin);
+    const phone = d.accounts.phoneOf(localpart);
+    if (!phone) throw new AppError('forbidden'); // the number now belongs to another account
+    d.otp.verify(phone, str(b.code));
+  };
+  const login = (phone: string, account: { localpart: string; userId: string; created: boolean }) => ({
+    // `homeserver` is the public URL, for production clients. Dev clients use their own configured
+    // base URL instead (the Android emulator reaches the host stack at http://10.0.2.2:8080).
+    phone, user_id: account.userId, homeserver: d.publicBaseUrl, new_account: account.created,
+    login_token: signJwt({ sub: account.localpart, iss: 'chama-id', aud: 'chama' }, d.jwtSecret, 120),
+  });
+  const pinClaims = (token: unknown) => {
+    const c = verifyJwt(str(token), d.jwtSecret, now());
+    if (c.aud !== PIN_AUD || c.iss !== 'chama-id' || typeof c.sub !== 'string' || typeof c.phone !== 'string') throw new AppError('invalid_token');
+    return { localpart: c.sub, phone: c.phone };
   };
 
   return http.createServer(router({
@@ -80,20 +114,63 @@ export function createServer(d: {
       const { retryAfter } = await d.otp.request(phone, rateKey(clientIp(req)));
       return { phone, retry_after: retryAfter };
     },
+    // With a PIN set, the SMS code alone gets a 5-minute pin_token, not a login: POST /id/v1/pin/login.
     'POST /id/v1/otp/verify': async (b) => {
       const phone = normalizePhone(str(b.phone));
       d.otp.verify(phone, str(b.code));
-      const account = await d.accounts.resolve(phone);
+      const cur = d.accounts.current(phone);
+      const pin = cur ? d.pins.state(cur.localpart) : 'none';
+      // A forgotten PIN whose 7-day wait is over: the sign-in goes on as if there never was one.
+      if (pin === 'reset_due') d.pins.remove(cur!.localpart);
+      const account = await d.accounts.resolve(phone, { keep: pin === 'set' });
       d.directory.markRegistered(phone, account.localpart);
-      // `homeserver` is the public URL, for production clients. Dev clients use their own configured
-      // base URL instead (the Android emulator reaches the host stack at http://10.0.2.2:8080).
+      if (pin !== 'set' || account.created) return login(phone, account);
       return {
-        phone, user_id: account.userId, homeserver: d.publicBaseUrl, new_account: account.created,
-        login_token: signJwt({ sub: account.localpart, iss: 'chama-id', aud: 'chama' }, d.jwtSecret, 120),
+        phone, pin_required: true, reset_at: d.pins.status(account.localpart).reset_at,
+        pin_token: signJwt({ sub: account.localpart, phone, iss: 'chama-id', aud: PIN_AUD }, d.jwtSecret, 300, now()),
       };
     },
+    'POST /id/v1/pin/login': async (b) => {
+      const { localpart, phone } = pinClaims(b.pin_token);
+      await d.pins.check(localpart, b.pin);
+      const account = d.accounts.current(phone);
+      if (account?.localpart !== localpart) throw new AppError('forbidden');
+      d.accounts.touch(phone);
+      return login(phone, { ...account, created: false });
+    },
+    // "Esqueci meu PIN": after 7 days a sign-in with the SMS code alone goes on. The account's
+    // devices see the date (pin/status) and can cancel it.
+    'POST /id/v1/pin/forgot': (b) => ({ reset_at: d.pins.requestReset(pinClaims(b.pin_token).localpart) }),
+    'POST /id/v1/pin/status': async (_b, req) => {
+      const { userId } = await whoami(req);
+      return d.pins.status(userId.slice(1, userId.indexOf(':')));
+    },
+    // A new PIN; changing one needs the current PIN or a fresh SMS code.
+    'POST /id/v1/pin/set': async (b, req) => {
+      const me = await owner(req);
+      if (d.pins.state(me.localpart) !== 'none') await proof(me.localpart, { pin: b.current_pin, code: b.code });
+      await d.pins.set(me.localpart, str(b.pin));
+      return {};
+    },
+    'POST /id/v1/pin/remove': async (b, req) => {
+      const me = await owner(req);
+      await proof(me.localpart, b);
+      d.pins.remove(me.localpart);
+      return {};
+    },
+    // The app's periodic reminder; wrong tries count toward the lock like any other.
+    'POST /id/v1/pin/check': async (b, req) => {
+      const me = await owner(req);
+      if (d.pins.state(me.localpart) === 'none') throw new AppError('bad_request');
+      await d.pins.check(me.localpart, b.pin);
+      return {};
+    },
+    'POST /id/v1/pin/cancel-reset': async (_b, req) => {
+      d.pins.cancelReset((await owner(req)).localpart);
+      return {};
+    },
     'POST /id/v1/directory/lookup': async (b, req) => {
-      const userId = await cachedWhoami(bearer(req), req);
+      const { userId } = await whoami(req);
       userLookups.hit(userId);
       return { registered: d.directory.lookup(b.hashes, userId, { now: now(), quota: DAILY_HASHES * scale }) };
     },
@@ -111,6 +188,7 @@ export function createServer(d: {
       const keys = crossSigningKeys(b.keys, userId);
       // No master key yet: the client uploads its first keys itself, which needs no UIA.
       if (!await d.admin.hasMasterKey(token, userId)) throw new AppError('no_identity');
+      await d.pins.check(userId.slice(1, userId.indexOf(':')), b.pin); // spec §5: the PIN also gates resets
       d.otp.verify(phone, code);
       // Logout first: a reset must never leave another device signed in.
       const loggedOut = await d.admin.logoutOtherDevices(userId, deviceId);
@@ -145,7 +223,7 @@ if (import.meta.main) {
   const db = openDb(env('DB_PATH', '/data/chama-id.sqlite'));
   const admin = new HttpSynapseAdmin({ baseUrl: secrets.synapseUrl, sharedSecret: secrets.sharedSecret, asToken: secrets.asToken, db });
   const server = createServer({
-    otp: new OtpService(db, { pepper: secrets.pepper, dev, sms: new ConsoleSms() }),
+    otp: new OtpService(db, { pepper: secrets.pepper, dev, sms: new ConsoleSms() }), pins: new Pins(db, { pepper: secrets.pepper }),
     directory: new Directory(db, secrets.serverName), accounts: new Accounts(db, admin, { serverName: secrets.serverName }), admin,
     jwtSecret: secrets.jwtSecret, publicBaseUrl: secrets.publicBaseUrl, dev,
   });

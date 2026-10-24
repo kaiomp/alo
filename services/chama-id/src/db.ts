@@ -19,6 +19,9 @@ export function openDb(path: string): DatabaseSync {
       phone TEXT PRIMARY KEY, localpart TEXT NOT NULL UNIQUE, last_signin_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS retired_accounts (phone TEXT NOT NULL, localpart TEXT NOT NULL, retired_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS admin_token (id INTEGER PRIMARY KEY CHECK (id = 1), token TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS pins (
+      localpart TEXT PRIMARY KEY, hash TEXT NOT NULL, salt TEXT NOT NULL,
+      fails INTEGER NOT NULL DEFAULT 0, locked_until INTEGER NOT NULL DEFAULT 0, reset_at INTEGER);
   `);
   return db;
 }

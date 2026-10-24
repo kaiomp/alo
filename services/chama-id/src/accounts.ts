@@ -25,8 +25,19 @@ export class Accounts {
     return row ? { localpart: row.localpart, userId: this.userId(row.localpart) } : null;
   }
 
-  // Call only after the phone proved ownership (OTP verified).
-  async resolve(phone: string): Promise<{ localpart: string; userId: string; created: boolean }> {
+  phoneOf(localpart: string): string | null {
+    const row = this.db.prepare('SELECT phone FROM accounts WHERE localpart = ?').get(localpart) as { phone: string } | undefined;
+    return row?.phone ?? null;
+  }
+
+  // Counts a sign-in that `resolve(phone, { keep: true })` held back until the PIN was right.
+  touch(phone: string) {
+    this.db.prepare('UPDATE accounts SET last_signin_at = MAX(last_signin_at, ?) WHERE phone = ?').run(this.o.now(), phone);
+  }
+
+  // Call only after the phone proved ownership (OTP verified). `keep`: the account has a PIN, so it is
+  // never retired for inactivity (issue #3), and this sign-in does not count until the PIN is right.
+  async resolve(phone: string, o: { keep?: boolean } = {}): Promise<{ localpart: string; userId: string; created: boolean }> {
     const now = this.o.now();
     const row = this.db.prepare('SELECT localpart, last_signin_at FROM accounts WHERE phone = ?').get(phone) as
       { localpart: string; last_signin_at: number } | undefined;
@@ -37,11 +48,12 @@ export class Accounts {
       if (changes) return { localpart, userId: this.userId(localpart), created: true };
       return { ...this.current(phone)!, created: false };
     }
+    if (o.keep) return { ...this.current(phone)!, created: false };
     const old = row.localpart;
     const ms = await this.admin.lastActiveMs(this.userId(old));
     // Activity = newest of: current devices, user-level last_seen (Synapse keeps IP logs 7 days), and the
     // PREVIOUS sign-in through chama-id (logout deletes devices). Known gap: logged out, then away 8-45 days,
-    // with the last sign-in over 45 days ago → fresh account. M4's account PIN blocks auto-retire for PIN users.
+    // with the last sign-in over 45 days ago → fresh account, unless the account has a PIN (`keep`).
     const lastActive = Math.max(ms ?? Infinity, row.last_signin_at * 1000);
     if (ms === null || lastActive > (now - this.o.inactiveDays * 86400) * 1000) {
       this.db.prepare('UPDATE accounts SET last_signin_at = MAX(last_signin_at, ?) WHERE phone = ?').run(now, phone);

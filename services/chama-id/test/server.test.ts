@@ -8,6 +8,7 @@ import { openDb } from '../src/db.ts';
 import { OtpService } from '../src/otp.ts';
 import { Directory } from '../src/directory.ts';
 import { Accounts } from '../src/accounts.ts';
+import { Pins } from '../src/pin.ts';
 import { AppError } from '../src/errors.ts';
 import type { SynapseAdmin } from '../src/synapse.ts';
 import { verifyJwt } from '../src/jwt.ts';
@@ -15,11 +16,12 @@ import { createServer } from '../src/server.ts';
 import { rateKey, windowLimiter, ttlCache } from '../src/http.ts';
 import { connect } from 'node:net';
 
-// Any token `tok-<x>` belongs to `@<x>:chama.test`, on device DEV-<x>.
+// Any token `tok-<x>` belongs to `@<x>:chama.test`, on device DEV-<x>; `nodev-<x>` too, without a device.
 class FakeAdmin implements SynapseAdmin {
   whoamiCalls = 0; uploads: [string, unknown][] = []; logouts: [string, string][] = []; noMasterKey = new Set<string>();
   async whoami(t: string) {
     this.whoamiCalls++;
+    if (t.startsWith('nodev-')) return { userId: `@${t.slice(6)}:chama.test` }; // e.g. an admin "log in as" token
     if (!t.startsWith('tok-')) throw new AppError('invalid_token');
     return { userId: `@${t.slice(4)}:chama.test`, deviceId: `DEV-${t.slice(4)}` };
   }
@@ -39,6 +41,7 @@ function make(o: { now?: () => number; dev?: boolean } = {}) {
   const server = createServer({
     otp: new OtpService(db, { pepper: 'p', dev: !!o.dev, now: o.now, sms: { async send(p, t) { codes.set(p, t.match(/\d{6}/)![0]); } } }),
     directory: new Directory(db, 'chama.test'), accounts: new Accounts(db, admin, { serverName: 'chama.test', now: o.now }), admin,
+    pins: new Pins(db, { pepper: 'p', now: o.now }),
     jwtSecret: 'jwt', publicBaseUrl: 'http://localhost:8080', dev: o.dev, now: o.now,
   });
   return { server, admin, codes };
@@ -333,6 +336,139 @@ test('reset-identity for a phone with no account is forbidden', async () => {
     await post('/id/v1/otp/request', { phone: '11933332222' }, {}, at);
     const r = await post('/id/v1/account/reset-identity', { phone: '11933332222', code: m.codes.get('5511933332222') }, bearer('x'), at);
     assert.equal(r.status, 403);
+  } finally { m.server.close(); }
+});
+
+// Signs `phone` in and sets `pin`; returns the account's localpart. The clock must allow a new code.
+async function withPin(m: ReturnType<typeof make>, at: string, phone: string, pin = '123456') {
+  const me = await signIn(m, at, phone);
+  const lp = me.user_id.slice(1, me.user_id.indexOf(':'));
+  const r = await post('/id/v1/pin/set', { pin }, bearer(lp), at);
+  assert.equal(r.status, 200, await r.clone().text());
+  return { lp, userId: me.user_id as string };
+}
+const json = async (r: Response) => ({ status: r.status, body: await r.json() });
+test('with a PIN, the SMS code gives a pin_token instead of a login; the right PIN logs in', async () => {
+  let clock = 1_000_000;
+  const m = make({ now: () => clock });
+  const at = await listen(m.server);
+  try {
+    const { userId } = await withPin(m, at, '11955550001');
+    clock += 61;
+    await post('/id/v1/otp/request', { phone: '11955550001' }, {}, at);
+    const v = await (await post('/id/v1/otp/verify', { phone: '11955550001', code: m.codes.get('5511955550001') }, {}, at)).json();
+    assert.deepEqual(Object.keys(v).sort(), ['phone', 'pin_required', 'pin_token', 'reset_at']);
+    assert.equal(v.pin_required, true);
+    assert.equal(v.reset_at, null);
+    const claims = verifyJwt(v.pin_token, 'jwt', clock);
+    assert.equal(claims.aud, 'chama-pin', 'Synapse accepts only aud chama, so this never logs in to Matrix');
+    assert.equal(Number(claims.exp) - Number(claims.iat), 300);
+    const pinLogin = (body: Record<string, unknown>) => post('/id/v1/pin/login', body, {}, at);
+    assert.deepEqual(await json(await pinLogin({ pin_token: v.pin_token })), { status: 403, body: { error: 'pin_required' } });
+    assert.deepEqual(await json(await pinLogin({ pin_token: v.pin_token, pin: '000000' })), { status: 400, body: { error: 'invalid_pin' } });
+    assert.deepEqual(await json(await pinLogin({ pin_token: 'nope', pin: '123456' })), { status: 401, body: { error: 'invalid_token' } });
+    const ok = await pinLogin({ pin_token: v.pin_token, pin: '123456' });
+    assert.equal(ok.status, 200);
+    const body = await ok.json();
+    assert.deepEqual(Object.keys(body).sort(), ['homeserver', 'login_token', 'new_account', 'phone', 'user_id']);
+    assert.equal(body.user_id, userId);
+    assert.equal(body.new_account, false);
+    assert.equal(verifyJwt(body.login_token, 'jwt', clock).aud, 'chama');
+    // A Matrix login token is no pin_token.
+    assert.equal((await pinLogin({ pin_token: body.login_token, pin: '123456' })).status, 401);
+    clock += 301;
+    assert.equal((await pinLogin({ pin_token: v.pin_token, pin: '123456' })).status, 401, 'expired after 5 minutes');
+  } finally { m.server.close(); }
+});
+test('pin/set: the first PIN needs nothing more; a change needs the current PIN or a fresh SMS code', async () => {
+  let clock = 1_000_000;
+  const m = make({ now: () => clock });
+  const at = await listen(m.server);
+  try {
+    const { lp } = await withPin(m, at, '11955550002');
+    const set = (body: Record<string, unknown>) => post('/id/v1/pin/set', body, bearer(lp), at);
+    assert.deepEqual(await json(await set({ pin: '222222' })), { status: 400, body: { error: 'bad_request' } }, 'no proof');
+    assert.deepEqual(await json(await set({ pin: '222222', current_pin: '999999' })), { status: 400, body: { error: 'invalid_pin' } });
+    assert.equal((await set({ pin: '222222', current_pin: '123456' })).status, 200);
+    clock += 61;
+    await post('/id/v1/otp/request', { phone: '11955550002' }, {}, at);
+    assert.equal((await set({ pin: '333333', code: m.codes.get('5511955550002') })).status, 200, 'forgot it, on a signed-in phone');
+    assert.deepEqual(await json(await post('/id/v1/pin/status', {}, bearer(lp), at)), { status: 200, body: { set: true, reset_at: null } });
+    assert.equal((await post('/id/v1/pin/check', { pin: '333333' }, bearer(lp), at)).status, 200);
+    assert.equal((await post('/id/v1/pin/check', { pin: '222222' }, bearer(lp), at)).status, 400);
+    assert.equal((await set({ pin: '12345', current_pin: '333333' })).status, 400, 'six digits');
+  } finally { m.server.close(); }
+});
+test('pin/remove needs the PIN or a fresh SMS code; account changes refuse tokens without a device', async () => {
+  let clock = 1_000_000;
+  const m = make({ now: () => clock });
+  const at = await listen(m.server);
+  try {
+    const { lp } = await withPin(m, at, '11955550003');
+    assert.deepEqual(await json(await post('/id/v1/pin/remove', { pin: '123456' }, { authorization: `Bearer nodev-${lp}` }, at)),
+      { status: 403, body: { error: 'forbidden' } });
+    assert.deepEqual(await json(await post('/id/v1/pin/set', { pin: '111111' }, { authorization: `Bearer nodev-${lp}` }, at)),
+      { status: 403, body: { error: 'forbidden' } });
+    assert.equal((await post('/id/v1/pin/remove', { pin: '000000' }, bearer(lp), at)).status, 400);
+    assert.equal((await post('/id/v1/pin/remove', { pin: '123456' }, bearer(lp), at)).status, 200);
+    assert.deepEqual((await json(await post('/id/v1/pin/status', {}, bearer(lp), at))).body, { set: false, reset_at: null });
+    assert.equal((await post('/id/v1/pin/check', { pin: '123456' }, bearer(lp), at)).status, 400, 'nothing to check');
+    clock += 61;
+    const v = await signIn(m, at, '11955550003');
+    assert.ok(v.login_token, 'no PIN: the SMS code signs in again');
+  } finally { m.server.close(); }
+});
+test('account changes are capped at 20 per account per hour', async () => {
+  const m = make({ now: () => 1_000_000 });
+  const at = await listen(m.server);
+  try {
+    for (let i = 0; i < 20; i++) assert.equal((await post('/id/v1/pin/set', { pin: 'x' }, bearer('busy'), at)).status, 400);
+    assert.equal((await post('/id/v1/pin/set', { pin: 'x' }, bearer('busy'), at)).status, 429);
+    assert.equal((await post('/id/v1/pin/set', { pin: 'x' }, bearer('calm'), at)).status, 400, 'per account');
+  } finally { m.server.close(); }
+});
+test('forgotten PIN: after 7 days the SMS code alone signs in and the PIN is gone; a device can cancel the wait', async () => {
+  let clock = 1_000_000;
+  const m = make({ now: () => clock });
+  const at = await listen(m.server);
+  try {
+    const { lp, userId } = await withPin(m, at, '11955550004');
+    const verify = async () => {
+      clock += 61;
+      await post('/id/v1/otp/request', { phone: '11955550004' }, {}, at);
+      return (await post('/id/v1/otp/verify', { phone: '11955550004', code: m.codes.get('5511955550004') }, {}, at)).json();
+    };
+    let v = await verify();
+    const forgot = await json(await post('/id/v1/pin/forgot', { pin_token: v.pin_token }, {}, at));
+    assert.deepEqual(forgot, { status: 200, body: { reset_at: clock + 7 * 86400 } });
+    assert.deepEqual((await json(await post('/id/v1/pin/status', {}, bearer(lp), at))).body, { set: true, reset_at: forgot.body.reset_at },
+      'the account\'s devices see the request');
+    assert.equal((await post('/id/v1/pin/cancel-reset', {}, bearer(lp), at)).status, 200);
+    clock += 8 * 86400;
+    v = await verify();
+    assert.equal(v.pin_required, true, 'cancelled: the PIN still holds');
+    await post('/id/v1/pin/forgot', { pin_token: v.pin_token }, {}, at);
+    clock += 7 * 86400;
+    v = await verify();
+    assert.equal(v.user_id, userId, 'the wait is over: same account, signed in without the PIN');
+    assert.ok(v.login_token);
+    assert.deepEqual((await json(await post('/id/v1/pin/status', {}, bearer(lp), at))).body, { set: false, reset_at: null });
+  } finally { m.server.close(); }
+});
+test('reset-identity also needs the PIN when one is set, before the code is spent', async () => {
+  let clock = 1_000_000;
+  const m = make({ now: () => clock });
+  const at = await listen(m.server);
+  try {
+    const { lp, userId } = await withPin(m, at, '11955550005');
+    clock += 61;
+    await post('/id/v1/otp/request', { phone: '11955550005' }, {}, at);
+    const code = m.codes.get('5511955550005');
+    const reset = (pin?: string) => post('/id/v1/account/reset-identity', { phone: '11955550005', code, keys: bundle(userId), pin }, bearer(lp), at);
+    assert.deepEqual(await json(await reset()), { status: 403, body: { error: 'pin_required' } });
+    assert.deepEqual(await json(await reset('000000')), { status: 400, body: { error: 'invalid_pin' } });
+    assert.deepEqual(m.admin.logouts, []);
+    assert.deepEqual(await json(await reset('123456')), { status: 200, body: { logged_out_devices: 2 } }, 'the code was not spent');
   } finally { m.server.close(); }
 });
 

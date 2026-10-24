@@ -113,3 +113,19 @@ test('concurrent sign-ins for a recycled number agree on one new account', async
   assert.equal([b.created, c.created].filter(Boolean).length, 1);
   assert.equal((db.prepare('SELECT COUNT(*) AS n FROM retired_accounts').get() as { n: number }).n, 1);
 });
+test('keep (the account has a PIN): never retired for inactivity, and the sign-in counts only on touch', async () => {
+  const { db, accounts, admin, tick } = setup();
+  const a = await accounts.resolve(PHONE);
+  tick(100 * DAY);
+  admin.active.set(a.userId, 0);
+  assert.deepEqual(await accounts.resolve(PHONE, { keep: true }), { ...a, created: false });
+  assert.deepEqual(admin.deactivated, []);
+  const at = () => (db.prepare('SELECT last_signin_at AS t FROM accounts').get() as { t: number }).t;
+  const before = at();
+  await accounts.resolve(PHONE, { keep: true });
+  assert.equal(at(), before, 'a wrong PIN later must not keep a recycled number alive');
+  accounts.touch(PHONE);
+  assert.equal(at(), before + 100 * DAY);
+  assert.equal(accounts.phoneOf(a.localpart), PHONE);
+  assert.equal(accounts.phoneOf('unobody'), null);
+});

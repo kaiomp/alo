@@ -7,8 +7,8 @@ os limites**. Foi escrito para quem vai operar, financiar ou apoiar o Chama (ins
 órgãos públicos, financiadores) e também para desenvolvedores. Os detalhes técnicos estão na
 [arquitetura](design/2026-10-24-architecture.md) e na [API do chama-id](chama-id-api.md).
 
-Situação: reflete o código depois da etapa M3 (2026-10-24). Onde algo ainda é plano, o texto diz em
-qual marco ele entra.
+Situação: reflete o código depois da etapa M3 (2026-10-24), mais o PIN da conta da etapa M4.
+Onde algo ainda é plano, o texto diz em qual marco ele entra.
 
 ## Resumo em uma frase
 
@@ -131,7 +131,55 @@ flowchart TD
     nokeys --> notif["Mensagens enviadas desse aparelho<br/>aparecem na notificação só como<br/>'Nova mensagem', sem nome"]
 ```
 
-### 5. Números reciclados
+Com o PIN da conta (próxima seção), o golpista nem chega a esse ponto: o código SMS sozinho não
+entra, e a redefinição de identidade também pede o PIN.
+
+### 5. PIN da conta (confirmação em duas etapas)
+
+A pessoa pode criar um PIN de 6 dígitos para a conta. Com o PIN, **o código SMS sozinho não
+entra mais num aparelho novo**: depois do código, o chama-id pede o PIN. Isso fecha o golpe do
+SIM swap, em que alguém consegue um chip com o número da vítima.
+
+- **Entrada:** o código SMS certo só rende um bilhete de 5 minutos para o passo do PIN, que não
+  serve como login no servidor Matrix. O login só sai com o PIN certo.
+- **Redefinição de identidade:** também exige o PIN, conferido antes de o código SMS ser gasto.
+- **Tentativa e erro:** 4 erros livres; depois, cada erro bloqueia novas tentativas por 1 min,
+  5 min, 1 h e 24 h (e 24 h dali em diante). O bloqueio é da conta, então pedir outro código SMS
+  não ajuda. Cada tentativa é contada antes da conferência, então tentativas em paralelo não
+  furam o bloqueio. Com isso, adivinhar um PIN de 6 dígitos (1 milhão de possibilidades) pela
+  internet é inviável.
+- **"Esqueci meu PIN":** quem esqueceu o PIN e não tem outro aparelho conectado pede a
+  redefinição, e o chama-id espera **7 dias** antes de deixar entrar só com o SMS. Durante a
+  espera, os aparelhos já conectados da conta veem o pedido e podem cancelá-lo. Um golpista que
+  pedir a redefinição é barrado pelo dono, que ainda está com o celular.
+- **Números reciclados:** uma conta com PIN nunca é aposentada por inatividade. O PIN pertence à
+  conta, não ao número, então a conta nova de um número reciclado não herda o PIN de ninguém.
+- **Mudanças no PIN:** criar, trocar ou remover o PIN só vale de um aparelho conectado da conta,
+  com o token conferido na hora, no máximo 20 mudanças por hora. Trocar ou remover pede o PIN
+  atual ou um código SMS novo.
+- **Guarda:** o chama-id guarda só um hash argon2id do PIN, com um sal aleatório por conta e um
+  segredo do servidor (o *pepper*). O PIN nunca vai para o log.
+
+```mermaid
+flowchart TD
+    g["Golpista com o chip da vítima"] --> sms["Código SMS certo"]
+    sms --> haspin{"A conta tem PIN?"}
+    haspin -- "não" --> in["Entra (seção 4: sem as chaves,<br/>não lê nada)"]
+    haspin -- "sim" --> pin["Passo do PIN"]
+    pin -- "tenta adivinhar" --> lock["4 erros livres, depois bloqueios<br/>de até 24 h por erro"]
+    pin -- "Esqueci meu PIN" --> wait["Espera de 7 dias"]
+    wait --> seen["Os aparelhos da vítima<br/>veem o pedido"]
+    seen -- "a vítima cancela" --> stop["O PIN continua valendo"]
+    seen -- "ninguém cancela" --> in
+```
+
+Limite: o PIN protege contra quem tem o chip, **não contra o operador**. O operador guarda o
+banco e o *pepper*, então poderia tentar todos os PINs fora do ar (cerca de 5 horas num núcleo
+de processador), e de qualquer forma ele já controla a entrada. As telas do app para criar,
+digitar e lembrar o PIN chegam nesta mesma etapa M4; a API está na
+[API do chama-id](chama-id-api.md#pin-da-conta-confirmação-em-duas-etapas).
+
+### 6. Números reciclados
 
 O ID da conta é aleatório (`@u` + 16 caracteres) e não contém o número. Se um número entra e a
 conta ligada a ele está parada há 45 dias, o chama-id desativa a conta antiga e cria uma nova:
@@ -139,7 +187,7 @@ quem recebeu o número da operadora não herda as conversas e os grupos do dono 
 celulares dos contatos, o nome salvo não passa para a conta nova, e as conversas com a conta
 antiga avisam "O número de {nome} agora é de outra conta".
 
-### 6. Notificações sem conteúdo
+### 7. Notificações sem conteúdo
 
 O servidor manda ao Sygnal só os IDs da sala e do evento. O Sygnal cifra esse aviso com Web Push
 para as chaves do aparelho. O distribuidor (ntfy, ou o Google no build da Play Store) vê só dados
@@ -147,32 +195,35 @@ cifrados e o horário. O celular busca e decifra a mensagem e só então mostra 
 se a mensagem veio cifrada de um aparelho que o remetente verificou. Caso contrário, a
 notificação diz apenas "Nova mensagem". Conversas silenciadas não geram push.
 
-### 7. Dados guardados no celular
+### 8. Dados guardados no celular
 
 No Android, o banco local do app é cifrado (SQLCipher), com a chave no armazenamento seguro do
 sistema. O mapa número → conta da agenda também fica no armazenamento seguro.
 
-### 8. Pouca retenção no servidor
+### 9. Pouca retenção no servidor
 
 - Registros de IP: apagados depois de 7 dias (configurado).
 - Hashes enviados na busca de contatos: não são guardados nem registrados; o chama-id guarda só
   uma contagem por conta para o limite diário.
 - Códigos SMS: guardados só como hash; valem 5 minutos e são apagados quando usados (um código
   não usado pode ficar no banco por mais de 24 horas).
+- PIN da conta: guardado só como hash argon2id, com sal e *pepper*; apagado quando a pessoa
+  remove o PIN ou quando um "Esqueci meu PIN" termina.
 - Mensagens e mídia: **decidido** guardar só até a entrega, no máximo 30 dias, com o histórico
   vivendo nos celulares ([issue #12](https://github.com/kaiomp/chama/issues/12), M5). **Ainda não
   está configurado:** hoje o servidor guarda as mensagens cifradas sem prazo.
 
-### 9. Defesas da entrada
+### 10. Defesas da entrada
 
 - Sem senhas: só o chama-id emite logins, com um bilhete (JWT) que vale 120 segundos.
 - Limites contra tentativa e erro: 5 tentativas por código, 10 erros por número por dia,
   5 códigos por número por dia, 10 pedidos de código por IP por hora.
+- Com o PIN da conta, o código SMS sozinho não entra (seção 5).
 - O modo de desenvolvimento, que aceita o código `000000`, só liga em servidores com nome
   `.test` ou `.localhost`.
 - A API de administração do Synapse é bloqueada para quem vem de fora.
 
-### 10. Transparência
+### 11. Transparência
 
 Código aberto sob AGPL-3.0 (inclusive os forks continuam abertos). Estão previstos auditorias
 independentes, builds Android reproduzíveis e relatórios de transparência.
@@ -186,14 +237,14 @@ reduz cada risco e o plano.
 |---|---|---|---|
 | **Metadados visíveis** | O operador sabe quem tem conta, quem conversa com quem, em quais grupos e quando. Nomes e fotos de perfil e de grupos não são cifrados. | Registros de IP por 7 dias; retenção curta decidida. | Retenção de 30 dias (M5). Metadados são inerentes ao modelo com servidor; a federação (seção 13 da arquitetura) evita que um único operador veja tudo. |
 | **Hashes de contatos podem ser revertidos** | Há poucos números de celular possíveis, então um hash SHA-256 pode ser revertido testando todos. O operador pode ver quais números estão na agenda de um usuário durante a consulta. Quem tiver muitas contas verificadas pode testar 10.000 números por conta por dia para descobrir quem usa o Chama. | Consultas exigem conta verificada por SMS; 30 consultas por hora e 10.000 hashes por dia por conta; os hashes não são guardados. Listar todos os celulares do Brasil exigiria centenas de milhares de contas-dia, cada uma com seu próprio chip. | Descoberta privada de contatos (por exemplo, enclave seguro ou interseção privada de conjuntos), [issue #7](https://github.com/kaiomp/chama/issues/7), M7. |
-| **SIM swap até o PIN da etapa M4** | Com o chip da vítima, um golpista entra na conta. Sem a chave de recuperação ele não lê nada, mas pode fazer a redefinição de identidade e passar a falar em nome da vítima dali em diante. | A redefinição derruba os aparelhos da vítima e mostra "código de segurança mudou" aos contatos; mensagens antigas continuam protegidas. | PIN da conta (verificação em duas etapas, que também bloqueia o novo registro do número por 7 dias), [issue #3](https://github.com/kaiomp/chama/issues/3), M4. |
+| **SIM swap em conta sem PIN** | Sem o PIN da conta, o chip da vítima basta para entrar. Sem a chave de recuperação o golpista não lê nada, mas pode fazer a redefinição de identidade e passar a falar em nome da vítima dali em diante. Com PIN, quem perdeu todos os aparelhos e pede "Esqueci meu PIN" deixa uma brecha: se ninguém cancelar em 7 dias, o SMS volta a bastar. | Com PIN (seção 5), o código SMS sozinho não entra nem redefine a identidade; o "Esqueci meu PIN" espera 7 dias e os aparelhos conectados podem cancelá-lo. Sem PIN, a redefinição derruba os aparelhos da vítima e mostra "código de segurança mudou" aos contatos; mensagens antigas continuam protegidas. | Telas do PIN no app, com lembrete periódico, [issue #3](https://github.com/kaiomp/chama/issues/3), M4. |
 | **Mensagens de aparelho não verificado aparecem normalmente na conversa** | Um aparelho que entrou só com SMS (SIM swap ou operador) não lê nada, mas pode enviar mensagens. A notificação já esconde nome e texto, mas dentro da conversa a mensagem aparece como as outras. Hoje o dono também não recebe aviso de "aparelho novo". | Notificação genérica "Nova mensagem" para esses casos. | Aviso na conversa ("Enviada por um aparelho não verificado"), [issue #11](https://github.com/kaiomp/chama/issues/11), e avisos de aparelho novo, M4. |
-| **O operador controla a entrada** | Quem roda o chama-id pode emitir logins e, mexendo no próprio servidor, instalar chaves novas numa conta ou incluir um participante falso num grupo. | Esses ataques deixam rastro que o servidor não esconde: "código de segurança mudou" (comparação local) e o aviso de "entrou" no grupo. O operador também pode bloquear usuários. | Avisos de aparelho novo e PIN (M4); federação para não depender de um único operador. |
+| **O operador controla a entrada** | Quem roda o chama-id pode emitir logins e, mexendo no próprio servidor, instalar chaves novas numa conta ou incluir um participante falso num grupo. | Esses ataques deixam rastro que o servidor não esconde: "código de segurança mudou" (comparação local) e o aviso de "entrou" no grupo. O operador também pode bloquear usuários. | Avisos de aparelho novo (M4); federação para não depender de um único operador. O PIN não protege contra o operador (seção 5). |
 | **Lei de outro país, se hospedado em nuvem dos EUA** | O CLOUD Act (lei dos EUA de 2018) permite que autoridades dos EUA exijam dados de empresas americanas, mesmo guardados fora dos EUA. Num servidor em AWS, Google Cloud ou Azure, inclusive na região de São Paulo, os metadados e as mensagens cifradas podem ser entregues. O conteúdo continua cifrado. | A criptografia de ponta a ponta protege o conteúdo em qualquer hospedagem. | Recomendação para operadores: hospedar em infraestrutura própria ou de provedores sob jurisdição brasileira. |
 | **Retenção ainda não configurada** | Hoje o servidor guarda as mensagens cifradas sem prazo. Se um dia uma chave vazar, mais histórico estaria exposto. | Conteúdo cifrado; registros de IP por 7 dias. | Retenção de 30 dias, [issue #12](https://github.com/kaiomp/chama/issues/12), M5. |
 | **Web: dados locais sem cifra própria** | Na web, o app guarda dados e chaves no IndexedDB do navegador, sem a cifra extra que o Android tem (SQLCipher). | A proteção é a do perfil do navegador e do computador. | Vinculação da web pelo QR (M4). Para computadores compartilhados, sair da conta ao terminar. |
 | **Push no build da Play Store passa pelo Google** | O Google não vê o conteúdo (vai cifrado), mas vê quando um aparelho recebe notificações. | Conteúdo cifrado; o build F-Droid não usa nenhum serviço do Google. | — |
-| **Reciclagem de número: caso raro** | Quem saiu da conta e ficou de 8 a 45 dias sem abrir o app, com a última entrada há mais de 45 dias, pode ganhar uma conta nova ao voltar. | A regra protege o caso comum (número repassado pela operadora). | O PIN da etapa M4 impede a troca automática para quem tiver PIN. |
+| **Reciclagem de número: caso raro** | Quem saiu da conta e ficou de 8 a 45 dias sem abrir o app, com a última entrada há mais de 45 dias, pode ganhar uma conta nova ao voltar. | A regra protege o caso comum (número repassado pela operadora). Uma conta com PIN nunca é aposentada por inatividade (seção 5). | — |
 | **Registros de acesso e a lei brasileira** | O Marco Civil da Internet (art. 15) exige que provedores de aplicação com fins econômicos guardem registros de acesso por 6 meses. Um operador sem fins lucrativos pode não se enquadrar, mas isso precisa ser confirmado. | — | Cada operador deve confirmar com sua assessoria jurídica antes do lançamento. |
 
 ## O que cada pessoa pode fazer
@@ -202,6 +253,9 @@ reduz cada risco e o plano.
 
 - Guarde a chave de recuperação fora do celular (papel, gerenciador de senhas). Sem ela, um
   celular novo não recupera as conversas antigas.
+- Crie o PIN da conta. Com ele, quem pegar um chip com o seu número não entra na sua conta.
+- Se o app avisar de um pedido de "Esqueci meu PIN" que você não fez, cancele: é alguém tentando
+  entrar com o seu número.
 - Se aparecer "O código de segurança de {nome} mudou" e logo depois um pedido de dinheiro,
   confirme por outro meio (ligação, pessoalmente) antes de qualquer PIX.
 - Se você for desconectado do Chama sem ter feito nada, alguém pode ter entrado com o seu

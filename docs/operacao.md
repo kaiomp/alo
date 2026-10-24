@@ -373,7 +373,7 @@ segredos e faça backup criptografado (seção 7).
 | `POSTGRES_PASSWORD` | Synapse para acessar o PostgreSQL | acesso ao banco, se a rede permitir |
 | `MACAROON_SECRET`, `FORM_SECRET` | Synapse (tokens internos e formulários) | falsificação de tokens internos do Synapse |
 | `WORKER_REPLICATION_SECRET` | comunicação entre o Synapse principal e os workers | um intruso na rede interna se passa por worker |
-| `OTP_PEPPER` | o chama-id guarda os códigos SMS só como hash com esse valor | facilita descobrir códigos pendentes a partir de uma cópia do banco |
+| `OTP_PEPPER` | o chama-id guarda os códigos SMS e os PINs das contas só como hash com esse valor | com uma cópia do banco, facilita descobrir códigos pendentes e PINs. Trocar este valor invalida todos os PINs: um aparelho novo só entra depois do "Esqueci meu PIN" (7 dias); os aparelhos já conectados criam um PIN novo com um código SMS |
 | `HS_TOKEN` | Synapse → application service (sem uso real: `url: null`) | baixo |
 | `server/data/push/vapid.pem` | Sygnal assina os Web Push | permite enviar pushes em nome do servidor |
 | `server/data/synapse/signing.key` | Synapse assina eventos para a federação | outro servidor pode se passar por este na federação |
