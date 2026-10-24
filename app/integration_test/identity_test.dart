@@ -26,6 +26,11 @@ void main() {
     final second = await device('second');
     expect(await second.cryptoStatus(), CryptoStatus.unlock);
     await second.requestResetCode();
+    // A refused reset reaches the app as the chama-id error, not as the SDK's wrapper.
+    await expectLater(
+      second.resetEncryption('111111'),
+      throwsA(isA<IdError>().having((e) => e.code, 'code', 'invalid_code')),
+    );
     final key = await second.resetEncryption('000000');
     expect(await second.cryptoStatus(), CryptoStatus.ready);
     // chama-id signed out the first device.

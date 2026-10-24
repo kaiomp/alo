@@ -105,12 +105,13 @@ class ChatService {
 
   Future<void> signIn(IdLogin login) async {
     await client.checkHomeserver(homeserver, checkWellKnown: false, fetchAuthMetadata: false);
-    await _prefs.setString(_phoneKey, login.phone);
     await client.login(
       jwtLoginType,
       token: login.loginToken,
       initialDeviceDisplayName: kIsWeb ? 'Chama Web' : 'Chama ${defaultTargetPlatform.name}',
     );
+    // Only once signed in: a failed login must not leave a phone behind.
+    await _prefs.setString(_phoneKey, login.phone);
   }
 
   Future<void> signOut() async {
@@ -147,10 +148,25 @@ class ChatService {
   /// Step 2: new keys are made here and chama-id installs the public half
   /// (and signs out the account's other devices). Old messages stay
   /// unreadable on this device. Returns the new recovery key.
+  /// A chama-id refusal is thrown as its [IdError] so the screen can say why.
   Future<String> resetEncryption(String code) async {
-    client.resetUpload = (keys) => id.resetIdentity(phone!, code, keys, accessToken: client.accessToken!);
+    IdError? refused;
+    client.resetUpload = (keys) async {
+      try {
+        await id.resetIdentity(phone!, code, keys, accessToken: client.accessToken!);
+      } on IdError catch (e) {
+        refused = e;
+        rethrow;
+      }
+    };
     try {
       return await client.initCryptoIdentity();
+    } catch (_) {
+      // The SDK's bootstrap wraps the upload error; ChamaClient recovers
+      // from no_identity by itself.
+      final e = refused;
+      if (e != null && e.code != 'no_identity') throw e;
+      rethrow;
     } finally {
       client.resetUpload = null;
     }

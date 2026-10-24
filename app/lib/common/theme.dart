@@ -6,6 +6,9 @@ abstract final class Tokens {
   static const flameLight = Color(0xFFFF8A4C);
   static const readTick = Color(0xFF3D8BFD);
   static const warning = Color(0xFFF2C94C);
+
+  /// Text and icons on flame orange: white there is only 3.6:1, this is 5:1 (WCAG AA).
+  static const ink = Color(0xFF1C1714);
 }
 
 /// Chat-specific colours that Material's ColorScheme has no slot for.
@@ -60,7 +63,8 @@ ThemeData chamaTheme(Brightness brightness) {
     seedColor: Tokens.flame,
     brightness: brightness,
     primary: dark ? Tokens.flameLight : Tokens.flame,
-    surface: dark ? const Color(0xFF1C1714) : const Color(0xFFFFFBF8),
+    onPrimary: dark ? null : Tokens.ink,
+    surface: dark ? Tokens.ink : const Color(0xFFFFFBF8),
   );
   return ThemeData(
     colorScheme: scheme,

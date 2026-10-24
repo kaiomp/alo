@@ -13,6 +13,13 @@ import 'composer.dart';
 import 'message_bubble.dart';
 import 'timeline_items.dart';
 
+/// Group header subtitle: the other members, then [you] (WhatsApp shows "Você").
+String memberNames(List<Member> members, {required String me, required String you}) => [
+  for (final m in members)
+    if (m.userId != me) m.name,
+  if (members.any((m) => m.userId == me)) you,
+].join(', ');
+
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key, required this.roomId, this.onClose});
 
@@ -49,7 +56,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   String _subtitle(L10n l) {
     final typing = _session.typing;
     if (typing.isNotEmpty) return _session.isGroup ? l.userTyping(typing.first) : l.typing;
-    if (_session.isGroup) return _session.members.map((m) => m.name).join(', ');
+    if (_session.isGroup) return memberNames(_session.members, me: Deps.of(context).chat.myUserId, you: l.you);
     final p = _session.presence;
     if (p == null) return '';
     if (p.online) return l.online;

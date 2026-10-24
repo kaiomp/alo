@@ -118,4 +118,17 @@ void main() {
     expect(const IdError('network').message(l), 'Sem conexão com o servidor. Verifique sua internet.');
     expect(const IdError('something_new').message(l), 'Algo deu errado. Tente de novo.');
   });
+
+  test('identity reset errors each have their own text', () async {
+    final l = await L10n.delegate.load(const Locale('pt'));
+    expect(
+      const IdError('invalid_keys').message(l),
+      'Não foi possível salvar as novas chaves. Peça um novo código e tente de novo.',
+    );
+    final texts = {
+      for (final code in ['invalid_keys', 'no_identity', 'forbidden', 'invalid_token', 'something_new'])
+        IdError(code).message(l),
+    };
+    expect(texts, hasLength(5));
+  });
 }

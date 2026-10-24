@@ -14,6 +14,7 @@ class ChamaClient extends Client {
     super.nativeImplementations,
     super.shareKeysWith,
     super.sendTimelineEventTimeout,
+    super.httpClient,
   });
 
   /// Set for the length of one reset; receives the upload body.

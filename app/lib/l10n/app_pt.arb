@@ -215,7 +215,7 @@
   "startChat": "Conversar",
   "notOnChama": "Este número não usa o Chama.",
   "download": "Baixar",
-  "errForbidden": "Esta ação não é permitida para esta conta.",
+  "errForbidden": "Este número não está mais ligado a esta conta. Saia e entre de novo.",
   "errRecoveryKey": "Chave incorreta. Confira e tente de novo.",
   "recoveryKeyTitle": "Sua chave de recuperação",
   "recoveryKeyExplain": "Guarde esta chave em um lugar seguro. Com ela você lê suas conversas se trocar de aparelho. O Chama não consegue recuperá-la.",
@@ -227,5 +227,8 @@
   "recoveryKey": "Chave de recuperação",
   "noRecoveryKey": "Não tenho a chave",
   "resetExplain": "Sem a chave, as mensagens antigas não podem ser lidas neste aparelho e seus contatos verão que seu código de segurança mudou. Digite o código que enviamos por SMS.",
-  "resetConfirm": "Redefinir e continuar"
+  "resetConfirm": "Redefinir e continuar",
+  "errSessionExpired": "Sua sessão expirou. Saia e entre de novo.",
+  "errNoIdentity": "Esta conta ainda não tem chaves para redefinir. Tente de novo.",
+  "errInvalidKeys": "Não foi possível salvar as novas chaves. Peça um novo código e tente de novo."
 }
