@@ -296,7 +296,12 @@ class ComposerState extends State<Composer> {
             const SizedBox(width: 6),
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 150),
-              transitionBuilder: (child, a) => ScaleTransition(scale: a, child: child),
+              // From 0.6, not 0: a button at scale 0 cannot be hit, and a quick
+              // tap right after typing would be lost.
+              transitionBuilder: (child, a) => FadeTransition(
+                opacity: a,
+                child: ScaleTransition(scale: Tween(begin: 0.6, end: 1.0).animate(a), child: child),
+              ),
               child: send
                   ? _RoundButton(
                       key: const ValueKey('send_switch'),

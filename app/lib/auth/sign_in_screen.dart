@@ -132,7 +132,7 @@ class _SignInScreenState extends State<SignInScreen> {
             keyboardType: TextInputType.phone,
             autofillHints: const [AutofillHints.telephoneNumberNational],
             inputFormatters: [if (_brazil) BrPhoneFormatter()],
-            style: const TextStyle(fontSize: 18, fontFeatures: tabularFigures),
+            style: const TextStyle(fontSize: 18),
             decoration: InputDecoration(
               hintText: '(11) 98765-4321',
               prefixIcon: Padding(
