@@ -55,6 +55,8 @@ url_preview_enabled: false
 user_ips_max_age: 7d
 
 enable_registration: false
+# chama-id's application service, for identity resets (spec §4).
+app_service_config_files: [/data/appservices/chama-id.yaml]
 registration_shared_secret: "${REGISTRATION_SHARED_SECRET}"
 macaroon_secret_key: "${MACAROON_SECRET}"
 form_secret: "${FORM_SECRET}"

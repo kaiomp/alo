@@ -9,10 +9,12 @@ class FakeAdmin implements SynapseAdmin {
   active = new Map<string, number | null>();
   deactivated: string[] = [];
   failDeactivate = false;
-  async whoami(): Promise<string> { throw new Error('unused'); }
+  async whoami(): Promise<never> { throw new Error('unused'); }
+  async hasMasterKey(): Promise<never> { throw new Error('unused'); }
+  async logoutOtherDevices(): Promise<never> { throw new Error('unused'); }
   async lastActiveMs(u: string) { return this.active.get(u) ?? null; }
   async deactivate(u: string) { if (this.failDeactivate) throw new Error('synapse down'); this.deactivated.push(u); }
-  async allowCrossSigningReset() { return 0; }
+  async uploadCrossSigningKeys(): Promise<never> { throw new Error('unused'); }
 }
 function setup() {
   let clock = 1_000_000_000;

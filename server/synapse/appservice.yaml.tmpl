@@ -1,0 +1,17 @@
+# chama-id acts as a user only to upload that user's new PUBLIC cross-signing keys on an
+# identity reset (spec §4). url is null, so Synapse pushes no events to chama-id.
+id: chama-id
+url: null
+as_token: "${AS_TOKEN}"
+hs_token: "${HS_TOKEN}"
+sender_localpart: chama-id-as
+namespaces:
+  users:
+    - exclusive: false
+      regex: '^@u[a-z2-7]{16}:${SERVER_NAME}$'
+  aliases: []
+  rooms: []
+# The token works on the client API, so it is refused from public addresses. Synapse checks
+# the client address after X-Forwarded-For. Limit: in dev, localhost clients also arrive
+# from a private Docker address, so this only protects a deployment with public clients.
+ip_range_whitelist: ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8"]

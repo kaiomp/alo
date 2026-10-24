@@ -56,6 +56,7 @@ services:
       DB_PATH: /data/chama-id.sqlite
       SYNAPSE_INTERNAL_URL: http://synapse:8008
       REGISTRATION_SHARED_SECRET: ${REGISTRATION_SHARED_SECRET}
+      SYNAPSE_AS_TOKEN: ${AS_TOKEN}
     volumes: ["./data/chama-id:/data"]
     depends_on: { synapse: { condition: service_healthy } }
 

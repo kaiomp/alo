@@ -4,20 +4,26 @@ import { AppError } from './errors.ts';
 
 // Actions that need Matrix user-interactive auth, which password-less accounts cannot do (spec §4).
 export interface SynapseAdmin {
-  whoami(accessToken: string): Promise<string>;
+  whoami(accessToken: string): Promise<{ userId: string; deviceId?: string }>;
+  /** True when the user has a master cross-signing key. Asked with the user's own token. */
+  hasMasterKey(accessToken: string, userId: string): Promise<boolean>;
+  /** Deletes every device of the user except `keepDeviceId` (this also kills their access tokens); returns how many. */
+  logoutOtherDevices(userId: string, keepDeviceId: string): Promise<number>;
   /** Last activity in ms (devices and user-level last_seen); 0 when none is left; null when Synapse does not know the user. */
   lastActiveMs(userId: string): Promise<number | null>;
   deactivate(userId: string): Promise<void>;
-  /** Returns updatable_without_uia_before_ms. */
-  allowCrossSigningReset(userId: string): Promise<number>;
+  /** Uploads public cross-signing keys as the user, through the application service, so no UIA is asked. */
+  uploadCrossSigningKeys(userId: string, keys: CrossSigningKeys): Promise<void>;
 }
+export type CrossSigningKeys = Record<'master_key' | 'self_signing_key' | 'user_signing_key', object>;
 
 // Talks to Synapse on the internal network. Registers its own admin user with the shared secret
-// on first use and keeps the token in the `admin_token` table. The token is never logged.
+// on first use and keeps the token in the `admin_token` table. `asToken` is the application
+// service token (server/synapse/appservice.yaml.tmpl). No token is ever logged.
 export class HttpSynapseAdmin implements SynapseAdmin {
-  private o: { baseUrl: string; sharedSecret: string; db: DatabaseSync; fetch: typeof fetch };
+  private o: { baseUrl: string; sharedSecret: string; asToken: string; db: DatabaseSync; fetch: typeof fetch };
   private registering?: Promise<string>;
-  constructor(opts: { baseUrl: string; sharedSecret: string; db: DatabaseSync; fetch?: typeof fetch }) {
+  constructor(opts: { baseUrl: string; sharedSecret: string; asToken: string; db: DatabaseSync; fetch?: typeof fetch }) {
     this.o = { ...opts, baseUrl: opts.baseUrl.replace(/\/$/, ''), fetch: opts.fetch ?? fetch };
   }
 
@@ -73,12 +79,27 @@ export class HttpSynapseAdmin implements SynapseAdmin {
     return r.json() as Promise<any>;
   }
 
-  async whoami(accessToken: string): Promise<string> {
+  async whoami(accessToken: string): Promise<{ userId: string; deviceId?: string }> {
     const r = await this.req('/_matrix/client/v3/account/whoami', accessToken);
     if (r.status === 401) throw new AppError('invalid_token');
     const b = await this.ok(r, 'whoami');
     if (typeof b.user_id !== 'string') throw new Error('synapse whoami: no user_id');
-    return b.user_id;
+    return { userId: b.user_id, deviceId: typeof b.device_id === 'string' ? b.device_id : undefined };
+  }
+
+  async hasMasterKey(accessToken: string, userId: string): Promise<boolean> {
+    const r = await this.req('/_matrix/client/v3/keys/query', accessToken, 'POST', { device_keys: { [userId]: [] } });
+    if (r.status === 401) throw new AppError('invalid_token');
+    const b = await this.ok(r, 'keys query');
+    return !!b.master_keys?.[userId];
+  }
+
+  async logoutOtherDevices(userId: string, keepDeviceId: string): Promise<number> {
+    const id = encodeURIComponent(userId);
+    const { devices } = await this.ok(await this.admin(`/_synapse/admin/v2/users/${id}/devices`), 'devices') as { devices: { device_id: string }[] };
+    const others = devices.map((d) => d.device_id).filter((d) => d !== keepDeviceId);
+    if (others.length) await this.ok(await this.admin(`/_synapse/admin/v2/users/${id}/delete_devices`, 'POST', { devices: others }), 'delete devices');
+    return others.length;
   }
 
   // Newest of: any current device's last_seen_ts, and the user-level last_seen_ts (MAX over user_ips,
@@ -98,10 +119,11 @@ export class HttpSynapseAdmin implements SynapseAdmin {
     await this.ok(await this.admin(`/_synapse/admin/v1/deactivate/${encodeURIComponent(userId)}`, 'POST', { erase: false }), 'deactivate');
   }
 
-  async allowCrossSigningReset(userId: string): Promise<number> {
-    const r = await this.admin(`/_synapse/admin/v1/users/${encodeURIComponent(userId)}/_allow_cross_signing_replacement_without_uia`, 'POST', {});
-    if (r.status === 404) throw new AppError('not_found'); // user has no cross-signing keys yet
-    const b = await this.ok(r, 'cross-signing reset');
-    return b.updatable_without_uia_before_ms;
+  // Synapse skips UIA for application services (it honours the admin "replace without UIA"
+  // flag only with MAS). It still checks that the sub-keys are signed by the new master key.
+  async uploadCrossSigningKeys(userId: string, keys: CrossSigningKeys): Promise<void> {
+    const r = await this.req(`/_matrix/client/v3/keys/device_signing/upload?user_id=${encodeURIComponent(userId)}`, this.o.asToken, 'POST', keys);
+    if (r.status === 400) throw new AppError('invalid_keys');
+    await this.ok(r, 'cross-signing upload');
   }
 }

@@ -15,14 +15,23 @@ import { createServer } from '../src/server.ts';
 import { rateKey, windowLimiter, ttlCache } from '../src/http.ts';
 import { connect } from 'node:net';
 
-// Any token `tok-<x>` belongs to `@<x>:chama.test`.
+// Any token `tok-<x>` belongs to `@<x>:chama.test`, on device DEV-<x>.
 class FakeAdmin implements SynapseAdmin {
-  whoamiCalls = 0; resets: string[] = [];
-  async whoami(t: string) { this.whoamiCalls++; if (!t.startsWith('tok-')) throw new AppError('invalid_token'); return `@${t.slice(4)}:chama.test`; }
+  whoamiCalls = 0; uploads: [string, unknown][] = []; logouts: [string, string][] = []; noMasterKey = new Set<string>();
+  async whoami(t: string) {
+    this.whoamiCalls++;
+    if (!t.startsWith('tok-')) throw new AppError('invalid_token');
+    return { userId: `@${t.slice(4)}:chama.test`, deviceId: `DEV-${t.slice(4)}` };
+  }
+  async hasMasterKey(_t: string, u: string) { return !this.noMasterKey.has(u); }
+  async logoutOtherDevices(u: string, keep: string) { this.logouts.push([u, keep]); return 2; }
   async lastActiveMs() { return null; }
   async deactivate() {}
-  async allowCrossSigningReset(u: string) { this.resets.push(u); return 4242; }
+  async uploadCrossSigningKeys(u: string, keys: unknown) { this.uploads.push([u, keys]); }
 }
+// A public cross-signing bundle as the client sends it (signatures are Synapse's job).
+const bundle = (userId: string) => Object.fromEntries((['master', 'self_signing', 'user_signing'] as const).map((u) =>
+  [`${u}_key`, { user_id: userId, usage: [u], keys: { [`ed25519:${u}`]: u } }]));
 function make(o: { now?: () => number; dev?: boolean } = {}) {
   const db = openDb(':memory:');
   const admin = new FakeAdmin();
@@ -215,7 +224,9 @@ test('reset-identity checks the code and that the token belongs to the phone', a
     clock += 61;
     await post('/id/v1/otp/request', { phone: '11977776666' }, {}, at);
     const code = m.codes.get('5511977776666');
-    const reset = (headers: Record<string, string>, c = code) => post('/id/v1/account/reset-identity', { phone: '11977776666', code: c }, headers, at);
+    const keys = bundle(me.user_id);
+    const reset = (headers: Record<string, string>, c = code, k: unknown = keys) =>
+      post('/id/v1/account/reset-identity', { phone: '11977776666', code: c, keys: k }, headers, at);
 
     let r = await reset({});
     assert.equal(r.status, 401);
@@ -223,16 +234,47 @@ test('reset-identity checks the code and that the token belongs to the phone', a
     r = await reset(bearer('someoneelse'));
     assert.equal(r.status, 403);
     assert.deepEqual(await r.json(), { error: 'forbidden' });
-    assert.deepEqual(m.admin.resets, []);
+    assert.deepEqual(m.admin.uploads, []);
+    const bad = [null, [], 'x', { ...keys, master_key: undefined }, bundle('@uother:chama.test'),
+      { ...keys, self_signing_key: { ...keys.self_signing_key, usage: ['master'] } }, { ...keys, user_signing_key: { ...keys.user_signing_key, keys: {} } }];
+    for (const [i, k] of bad.entries()) {
+      r = await reset({ ...bearer(lp), 'x-forwarded-for': `8.8.8.${i}` }, code, k); // own IP: the reset limit is 10 per IP
+      assert.equal(r.status, 400, JSON.stringify(k));
+      assert.equal(r.status, 400, JSON.stringify(bad));
+      assert.deepEqual(await r.json(), { error: 'bad_request' });
+    }
     r = await reset(bearer(lp), code === '000000' ? '111111' : '000000');
     assert.equal(r.status, 400);
     assert.deepEqual(await r.json(), { error: 'invalid_code' });
-    r = await reset(bearer(lp));
+    assert.deepEqual(m.admin.logouts, [], 'no logout before the code is checked');
+    r = await reset(bearer(lp), code, { ...keys, auth: { type: 'm.login.dummy' } });
     assert.equal(r.status, 200);
-    assert.deepEqual(await r.json(), { updatable_without_uia_before_ms: 4242 });
-    assert.deepEqual(m.admin.resets, [me.user_id]);
+    assert.deepEqual(await r.json(), { logged_out_devices: 2 });
+    assert.deepEqual(m.admin.uploads, [[me.user_id, keys]], 'only the three keys are uploaded, as the user');
+    assert.deepEqual(m.admin.logouts, [[me.user_id, `DEV-${lp}`]], 'every device but the caller is logged out');
     r = await reset(bearer(lp));
     assert.equal(r.status, 400, 'the code is single use');
+  } finally { m.server.close(); }
+});
+test('reset-identity without a master key is no_identity (409) and keeps the code', async () => {
+  let clock = 1_000_000;
+  const m = make({ now: () => clock });
+  const at = await listen(m.server);
+  try {
+    const me = await signIn(m, at, '11966665555');
+    const lp = me.user_id.slice(1, me.user_id.indexOf(':'));
+    clock += 61;
+    await post('/id/v1/otp/request', { phone: '11966665555' }, {}, at);
+    const code = m.codes.get('5511966665555');
+    const reset = () => post('/id/v1/account/reset-identity', { phone: '11966665555', code, keys: bundle(me.user_id) }, bearer(lp), at);
+    m.admin.noMasterKey.add(me.user_id);
+    const r = await reset();
+    assert.equal(r.status, 409);
+    assert.deepEqual(await r.json(), { error: 'no_identity' });
+    assert.deepEqual(m.admin.logouts, []);
+    assert.deepEqual(m.admin.uploads, []);
+    m.admin.noMasterKey.clear();
+    assert.equal((await reset()).status, 200, 'the code was not spent');
   } finally { m.server.close(); }
 });
 test('reset-identity is capped at 10 per IP per hour', async () => {
@@ -331,7 +373,7 @@ const start = (env: Record<string, string>) => spawnSync(process.execPath, ['src
 });
 const secrets = {
   JWT_SECRET: 'j', OTP_PEPPER: 'p', SERVER_NAME: 'chama.test', PUBLIC_BASEURL: 'http://localhost:8080',
-  SYNAPSE_INTERNAL_URL: 'http://127.0.0.1:1', REGISTRATION_SHARED_SECRET: 'r',
+  SYNAPSE_INTERNAL_URL: 'http://127.0.0.1:1', REGISTRATION_SHARED_SECRET: 'r', SYNAPSE_AS_TOKEN: 'a',
 };
 // Starts the real server and resolves with its first stdout line, or rejects if it exits first.
 const startsListening = (env: Record<string, string>) => new Promise<string>((resolve, reject) => {

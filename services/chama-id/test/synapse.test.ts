@@ -7,7 +7,7 @@ import { openDb } from '../src/db.ts';
 import { HttpSynapseAdmin } from '../src/synapse.ts';
 import { Accounts } from '../src/accounts.ts';
 
-const SECRET = 'shared-secret';
+const SECRET = 'shared-secret', AS_TOKEN = 'as-token';
 type Device = { device_id: string; last_seen_ts: number | null };
 
 // Mimics the Synapse endpoints chama-id uses, and checks the registration HMAC.
@@ -15,7 +15,7 @@ async function stub() {
   const s = {
     nonces: new Set<string>(), taken: new Set<string>(), registered: [] as string[],
     adminTokens: new Set<string>(), users: new Map<string, Device[]>(), userLastSeen: new Map<string, number | null>(),
-    deactivated: [] as { user: string; body: unknown }[], resets: [] as string[],
+    deactivated: [] as { user: string; body: unknown }[], uploads: [] as { user: string; body: unknown }[], masterKeys: new Set<string>(),
     badMacs: 0, base: '', close: () => {},
   };
   const server = http.createServer(async (req, res) => {
@@ -40,6 +40,17 @@ async function stub() {
       return bearer === 'good' ? send(200, { user_id: '@ualice:chama.test', device_id: 'D' })
         : send(401, { errcode: 'M_UNKNOWN_TOKEN', error: 'Unknown access token' });
     }
+    if (p === '/_matrix/client/v3/keys/query' && req.method === 'POST') {
+      if (bearer !== 'good') return send(401, { errcode: 'M_UNKNOWN_TOKEN', error: 'Unknown access token' });
+      const master_keys = Object.fromEntries(Object.keys(body.device_keys).filter((u) => s.masterKeys.has(u)).map((u) => [u, { user_id: u }]));
+      return send(200, { device_keys: {}, master_keys });
+    }
+    if (p === '/_matrix/client/v3/keys/device_signing/upload' && req.method === 'POST') {
+      if (bearer !== AS_TOKEN) return send(401, { errcode: 'M_UNKNOWN_TOKEN', error: 'Unknown access token' });
+      if (body.bad) return send(400, { errcode: 'M_INVALID_SIGNATURE', error: 'Invalid signature' });
+      s.uploads.push({ user: url.searchParams.get('user_id')!, body });
+      return send(200, {});
+    }
     if (!bearer || !s.adminTokens.has(bearer)) return send(401, { errcode: 'M_UNKNOWN_TOKEN', error: 'Unknown access token' });
     let m;
     if (req.method === 'GET' && (m = p.match(/^\/_synapse\/admin\/v2\/users\/([^/]+)$/))) {
@@ -51,15 +62,14 @@ async function stub() {
       const devices = s.users.get(decodeURIComponent(m[1]));
       return devices ? send(200, { devices, total: devices.length }) : send(404, { errcode: 'M_NOT_FOUND', error: 'Unknown user' });
     }
+    if (req.method === 'POST' && (m = p.match(/^\/_synapse\/admin\/v2\/users\/([^/]+)\/delete_devices$/))) {
+      const user = decodeURIComponent(m[1]);
+      s.users.set(user, (s.users.get(user) ?? []).filter((d) => !body.devices.includes(d.device_id)));
+      return send(200, {});
+    }
     if (req.method === 'POST' && (m = p.match(/^\/_synapse\/admin\/v1\/deactivate\/([^/]+)$/))) {
       s.deactivated.push({ user: decodeURIComponent(m[1]), body });
       return send(200, { id_server_unbind_result: 'success' });
-    }
-    if (req.method === 'POST' && (m = p.match(/^\/_synapse\/admin\/v1\/users\/([^/]+)\/_allow_cross_signing_replacement_without_uia$/))) {
-      const user = decodeURIComponent(m[1]);
-      if (!s.users.has(user)) return send(404, { errcode: 'M_NOT_FOUND', error: 'No master key found' });
-      s.resets.push(user);
-      return send(200, { updatable_without_uia_before_ms: 1_700_000_600_000 });
     }
     send(404, { errcode: 'M_UNRECOGNIZED' });
   });
@@ -70,7 +80,7 @@ async function stub() {
 }
 function setup(s: Awaited<ReturnType<typeof stub>>) {
   const db = openDb(':memory:');
-  return { db, admin: new HttpSynapseAdmin({ baseUrl: s.base, sharedSecret: SECRET, db }) };
+  return { db, admin: new HttpSynapseAdmin({ baseUrl: s.base, sharedSecret: SECRET, asToken: AS_TOKEN, db }) };
 }
 const storedTokens = (db: ReturnType<typeof openDb>) => db.prepare('SELECT token FROM admin_token').all().map((r: any) => r.token);
 
@@ -85,7 +95,7 @@ test('registers an admin with a correct HMAC once, stores and reuses its token',
     assert.equal(s.badMacs, 0);
     assert.deepEqual(storedTokens(db), ['admin-chama-admin']);
     // A new instance on the same DB (a restart) reuses the stored token.
-    await new HttpSynapseAdmin({ baseUrl: s.base, sharedSecret: SECRET, db }).lastActiveMs('@ua:chama.test');
+    await new HttpSynapseAdmin({ baseUrl: s.base, sharedSecret: SECRET, asToken: AS_TOKEN, db }).lastActiveMs('@ua:chama.test');
     assert.deepEqual(s.registered, ['chama-admin']);
   } finally { s.close(); }
 });
@@ -123,7 +133,7 @@ test('a stored token that gets 401 is discarded and a new admin registered', asy
 test('wrong shared secret fails instead of looping', async () => {
   const s = await stub();
   try {
-    const admin = new HttpSynapseAdmin({ baseUrl: s.base, sharedSecret: 'wrong', db: openDb(':memory:') });
+    const admin = new HttpSynapseAdmin({ baseUrl: s.base, sharedSecret: 'wrong', asToken: AS_TOKEN, db: openDb(':memory:') });
     await assert.rejects(admin.deactivate('@ua:chama.test'), /register/);
     assert.equal(s.badMacs, 1);
   } finally { s.close(); }
@@ -139,23 +149,31 @@ test('lastActiveMs is the newest device last_seen_ts; unknown user is null', asy
     assert.equal(await admin.lastActiveMs('@nobody:chama.test'), null);
   } finally { s.close(); }
 });
-test('deactivate does not erase; cross-signing reset returns the deadline', async () => {
+test('deactivate does not erase', async () => {
   const s = await stub();
   try {
     const { admin } = setup(s);
     s.users.set('@ua:chama.test', []);
     await admin.deactivate('@ua:chama.test');
     assert.deepEqual(s.deactivated, [{ user: '@ua:chama.test', body: { erase: false } }]);
-    assert.equal(await admin.allowCrossSigningReset('@ua:chama.test'), 1_700_000_600_000);
-    assert.deepEqual(s.resets, ['@ua:chama.test']);
-    await assert.rejects(admin.allowCrossSigningReset('@nokeys:chama.test'), /not_found/);
+  } finally { s.close(); }
+});
+test('uploadCrossSigningKeys posts as the user with the application service token', async () => {
+  const s = await stub();
+  try {
+    const { admin } = setup(s);
+    const keys = { master_key: { k: 1 }, self_signing_key: { k: 2 }, user_signing_key: { k: 3 } };
+    await admin.uploadCrossSigningKeys('@ua:chama.test', keys);
+    assert.deepEqual(s.uploads, [{ user: '@ua:chama.test', body: keys }]);
+    await assert.rejects(admin.uploadCrossSigningKeys('@ua:chama.test', { ...keys, bad: 1 } as any), (e: any) => e.code === 'invalid_keys' && e.status === 400);
+    assert.deepEqual(s.registered, [], 'needs no admin token');
   } finally { s.close(); }
 });
 test('whoami returns the user id; 401 is invalid_token', async () => {
   const s = await stub();
   try {
     const { admin } = setup(s);
-    assert.equal(await admin.whoami('good'), '@ualice:chama.test');
+    assert.deepEqual(await admin.whoami('good'), { userId: '@ualice:chama.test', deviceId: 'D' });
     await assert.rejects(admin.whoami('bad'), (e: any) => e.code === 'invalid_token' && e.status === 401);
     assert.deepEqual(s.registered, [], 'whoami needs no admin token');
   } finally { s.close(); }
@@ -186,5 +204,26 @@ test('active 100 days, logged out to switch phones, signs in 2 days later: same 
     s.userLastSeen.set(a.userId, (clock - 2 * DAY) * 1000);
     assert.deepEqual(await accounts.resolve('5511987654321'), { ...a, created: false });
     assert.deepEqual(s.deactivated, []);
+  } finally { s.close(); }
+});
+test('hasMasterKey asks keys/query with the user token', async () => {
+  const s = await stub();
+  try {
+    const { admin } = setup(s);
+    assert.equal(await admin.hasMasterKey('good', '@ualice:chama.test'), false);
+    s.masterKeys.add('@ualice:chama.test');
+    assert.equal(await admin.hasMasterKey('good', '@ualice:chama.test'), true);
+    await assert.rejects(admin.hasMasterKey('bad', '@ualice:chama.test'), (e: any) => e.code === 'invalid_token');
+    assert.deepEqual(s.registered, [], 'needs no admin token');
+  } finally { s.close(); }
+});
+test('logoutOtherDevices deletes every device but the kept one', async () => {
+  const s = await stub();
+  try {
+    const { admin } = setup(s);
+    s.users.set('@ua:chama.test', [{ device_id: 'A', last_seen_ts: 1 }, { device_id: 'B', last_seen_ts: 2 }, { device_id: 'C', last_seen_ts: null }]);
+    assert.equal(await admin.logoutOtherDevices('@ua:chama.test', 'B'), 2);
+    assert.deepEqual(s.users.get('@ua:chama.test')!.map((d) => d.device_id), ['B']);
+    assert.equal(await admin.logoutOtherDevices('@ua:chama.test', 'B'), 0, 'nothing left to delete');
   } finally { s.close(); }
 });

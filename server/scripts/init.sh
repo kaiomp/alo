@@ -9,9 +9,9 @@ cd "$(dirname "$0")/../.."
 SYNAPSE_IMAGE=ghcr.io/element-hq/synapse:v1.163.2
 DATA=server/data
 ENV=$DATA/.env
-SECRETS="POSTGRES_PASSWORD JWT_SECRET OTP_PEPPER REGISTRATION_SHARED_SECRET MACAROON_SECRET FORM_SECRET WORKER_REPLICATION_SECRET"
+SECRETS="POSTGRES_PASSWORD JWT_SECRET OTP_PEPPER REGISTRATION_SHARED_SECRET MACAROON_SECRET FORM_SECRET WORKER_REPLICATION_SECRET AS_TOKEN HS_TOKEN"
 
-mkdir -p "$DATA"/{synapse/workers,media,chama-id}
+mkdir -p "$DATA"/{synapse/workers,synapse/appservices,media,chama-id}
 # Containers write here as their own users (Synapse uid 991, chama-id user node), and a host user
 # without root cannot chown to them, so these dirs are world-writable. The config files below are
 # world-readable for the same reason. $DATA itself is 700, so other host users cannot reach any of it.
@@ -30,7 +30,7 @@ for v in $SECRETS; do
 done
 
 # Render ${VAR} tokens from .env. Fails on any unknown or empty token.
-node -e '
+render() { node -e '
   const fs = require("fs");
   const [envFile, src, dst] = process.argv.slice(1);
   const env = Object.fromEntries(fs.readFileSync(envFile, "utf8").split("\n")
@@ -40,11 +40,13 @@ node -e '
     return env[k];
   });
   fs.writeFileSync(dst, out);
-' "$ENV" server/synapse/homeserver.yaml.tmpl "$DATA/synapse/homeserver.yaml"
+' "$ENV" "$1" "$2"; }
+render server/synapse/homeserver.yaml.tmpl "$DATA/synapse/homeserver.yaml"
+render server/synapse/appservice.yaml.tmpl "$DATA/synapse/appservices/chama-id.yaml"
 cp server/synapse/log.yaml "$DATA/synapse/"
 cp server/synapse/workers/*.yaml "$DATA/synapse/workers/"
-chmod 755 "$DATA/synapse/workers"
-chmod 644 "$DATA/synapse/homeserver.yaml" "$DATA/synapse/log.yaml" "$DATA"/synapse/workers/*.yaml
+chmod 755 "$DATA/synapse/workers" "$DATA/synapse/appservices"
+chmod 644 "$DATA/synapse/homeserver.yaml" "$DATA/synapse/log.yaml" "$DATA"/synapse/{workers,appservices}/*.yaml
 
 if [[ ! -f $DATA/synapse/signing.key ]]; then
   docker run --rm --user 991:991 -v "$PWD/$DATA/synapse:/data" --entrypoint python "$SYNAPSE_IMAGE" \
@@ -53,7 +55,7 @@ fi
 
 # Containers read config at start. A new CONFIG_REV makes `docker compose up`
 # recreate them, so template edits reach the stack on the next `make up`.
-rev=$(cat "$DATA/synapse/homeserver.yaml" "$DATA/synapse/log.yaml" "$DATA"/synapse/workers/*.yaml \
+rev=$(cat "$DATA/synapse/homeserver.yaml" "$DATA/synapse/log.yaml" "$DATA"/synapse/{workers,appservices}/*.yaml \
   server/caddy/Caddyfile | openssl sha256 | awk '{print $NF}')
 grep -v '^CONFIG_REV=' "$ENV" > "$ENV.tmp" || true
 echo "CONFIG_REV=$rev" >> "$ENV.tmp"
