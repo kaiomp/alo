@@ -76,33 +76,62 @@ Node test tools.
 
 ## 4. Identity and sign-in
 
-- A Chama account is the Matrix user `@<E.164 digits>:<server>`, for example
-  `@5511987654321:chama.chat`. The phone number is the identity, as in WhatsApp.
+- A Chama account is a Matrix user with an **opaque, random** ID, for example
+  `@u7k3m9q2x4w8a1b5:chama.chat` (`u` + 16 lowercase base32 characters). The phone number
+  is how you sign in and how contacts find you, but it is **not** part of the Matrix ID.
+  chama-id keeps the mapping `phone → current account`.
+- Why opaque IDs: Brazilian carriers give a cancelled number to a new customer after about
+  180 days. If the number were the ID, the new owner would inherit the old owner's groups
+  and chats and could post as them. Opaque IDs also keep phone numbers out of room state
+  and out of federation.
+- **Recycled numbers:** when a phone signs in and its current account has had no active
+  device for 45 days, chama-id deactivates that account (contacts see "left") and creates
+  a fresh one. Within 45 days the same account is used; the new device still has to be
+  verified (section 5).
 - Sign-in flow:
   1. Client → `POST /id/v1/otp/request {phone}`. chama-id stores a hashed 6-digit code
      (5 min TTL, max 5 tries, rate-limited per number and per IP, daily caps per number:
      5 codes and 10 wrong tries) and sends the SMS.
      In development the SMS provider is a stub: the code is printed in the chama-id log
      and the fixed code `000000` is accepted when `CHAMA_DEV=1`.
-  2. Client → `POST /id/v1/otp/verify {phone, code}` → chama-id returns a JWT
-     (HS256, 2 min TTL, `sub` = digits, `iss`/`aud` checked).
+  2. Client → `POST /id/v1/otp/verify {phone, code}` → chama-id finds or creates the
+     account and returns a JWT (HS256, 2 min TTL, `sub` = the opaque localpart,
+     `iss`/`aud` checked) plus the `user_id`.
   3. Client → Matrix `POST /_matrix/client/v3/login` with type `org.matrix.login.jwt`.
      Synapse creates the account on first login (`create_non_existent_users=True`).
 - Password registration on Synapse is disabled. Only chama-id can mint logins.
+- **No password means no Matrix "user-interactive auth" (UIA).** Synapse offers UIA only
+  for passwords and SSO, so actions that need it are done by chama-id through the Synapse
+  admin API, after a fresh SMS code and a valid access token:
+  - reset encryption identity (`_allow_cross_signing_replacement_without_uia`), for a new
+    phone without the recovery key (M2);
+  - remove a linked device and deactivate the account (M4).
+  chama-id talks to the admin API on the internal network only; the proxy blocks
+  `/_synapse/admin` from outside.
+- Dev mode (`CHAMA_DEV=1`, code `000000`) is refused unless `SERVER_NAME` ends in `.test`
+  or `.localhost`, so it can never be switched on in production by mistake.
 - Phone numbers are validated and normalised to E.164 (`libphonenumber-js` on the server).
 - Profile: display name and avatar are Matrix profile fields. "Recado" (WhatsApp "about")
   uses an extended profile field (MSC4133); if the server lacks it, it is stored as state
   in the user's status room (section 6).
 
-**Privacy trade-off (accepted):** phone numbers are visible in MXIDs to everyone in a
-shared chat and to federated servers. WhatsApp also shows numbers in groups. Usernames that
-hide the number are a later milestone.
+**Privacy:** phone numbers are not in Matrix IDs. A client shows a contact's saved name
+(from the address book) or their display name. Showing the number to group members is an
+app-level choice, as in WhatsApp.
 
 ## 5. Encryption, devices and linking
 
 - All rooms are created with `m.room.encryption` (megolm). No unencrypted chats.
 - Cross-signing is set up on first sign-in. A recovery key (secure backup, SSSS) is
   offered, as WhatsApp does with "end-to-end encrypted backup".
+- **Security invariant: keys are only shared with verified devices.** The client uses the
+  SDK setting `ShareKeysWith.crossVerifiedIfEnabled` (never `all`). A device that signs in
+  with only an SMS code receives no message keys until it is verified by another device
+  of the same user (QR or emoji) or with the recovery key. This is what stops SIM-swap
+  attackers and the operator from reading new messages by signing in as someone.
+- A user with no other device and no recovery key can **reset their identity** (new
+  cross-signing keys, via chama-id, section 4). Contacts then see "Security code changed",
+  as in WhatsApp. Old messages stay unreadable on the new phone.
 - **Linking the web client (WhatsApp "Linked devices"):**
   1. Web generates an ephemeral X25519 key pair and opens a rendezvous at chama-id
      (`POST /id/v1/link` → `{id}`). It shows a QR code with `{id, pubkey, server}`.
@@ -135,7 +164,7 @@ hide the number are a later milestone.
 | Poll | Polls (MSC3381) |
 | Contact card | `m.file` vCard |
 | Ticks ✓ sent | Server accepted the event (has event ID) |
-| Ticks ✓✓ delivered | To-device `chat.chama.delivered` from recipient devices (batched) |
+| Ticks ✓✓ delivered | To-device `chat.chama.delivered` from recipient devices (batched). Only in DMs and groups up to 32 members; larger groups show ✓ sent and blue ✓✓ read only |
 | Ticks ✓✓ blue read | `m.read` receipt; private `m.read.private` if the user turns read receipts off |
 | Typing… / recording… | `m.typing`; recording sent as typing plus `chat.chama.activity` |
 | Online / last seen | Matrix presence, with a privacy switch |
@@ -147,7 +176,7 @@ hide the number are a later milestone.
 | Channels | Public room where only admins post (power levels); followers see only admins |
 | Communities | Matrix Spaces holding groups and an announcement room |
 | Broadcast list | Client-side list; sends a copy to each 1:1 room |
-| Contacts | The phone app reads the address book, normalises to E.164, asks chama-id `POST /id/v1/directory/lookup` with SHA-256 hashes; chama-id answers which are registered |
+| Contacts | The phone app reads the address book, normalises to E.164, asks chama-id `POST /id/v1/directory/lookup` with SHA-256 hashes; chama-id answers which are registered and their current Matrix IDs. Lookups need an access token |
 | Voice / video calls | MatrixRTC + LiveKit SFU (milestone M6) |
 | Push notifications | Sygnal push gateway with UnifiedPush (ntfy) first, FCM optional (M7) |
 | Report | Matrix `/report` to the operator's moderation queue |
@@ -163,9 +192,9 @@ The MVP (M1–M3 plus push) is the one-week target. It must be ready for million
 | # | Milestone | Done when |
 |---|---|---|
 | M1 | **Foundation.** Monorepo, Compose stack (Synapse with workers, Postgres, Redis, Caddy, chama-id), seed script. | `make up` starts the stack; a script signs two test users in with SMS code `000000` and they exchange an encrypted message. |
-| M2 | **App core (Android first, also runs on web).** Phone sign-in, chat list, 1:1 and groups, text, replies, reactions, edit, delete, ticks, typing, presence, photos/files, voice notes, search, pin/archive/mute, unread counts, pt-BR UI, light and dark. | Integration test on Chrome and on the Android emulator: the app user chats with a test peer, sees ticks turn blue, sends a photo and a voice note. |
+| M2 | **App core (Android first, also runs on web).** Phone sign-in, recovery key, device verification (QR/emoji) and identity reset, chat list, 1:1 and groups, text, replies, reactions, edit, delete, ticks, typing, presence, photos/files, voice notes, search, pin/archive/mute, unread counts, pt-BR UI, light and dark. | Integration test on Chrome and on the Android emulator: the app user chats with a test peer, sees ticks turn blue, sends a photo and a voice note. |
 | M3 | **Android launch.** Contacts sync. Push: Sygnal gateway, FCM for Play Store builds, UnifiedPush (ntfy) for F-Droid and local testing. Release build, ABI splits. | Emulator test: Android user chats with a web user both ways; a message arrives as a notification with the app in the background. |
-| M4 | **Link device and account safety.** QR linking (section 5), device list, recovery key, account PIN (two-step verification), "new device" warnings to contacts. | Web linked by scanning its QR on the emulator reads earlier history. |
+| M4 | **Link device and account safety.** QR linking (section 5), device list and removal, account PIN (two-step verification, also blocks re-registration of a number for 7 days), "new device" warnings to contacts. | Web linked by scanning its QR on the emulator reads earlier history. |
 | M5 | **Extras.** Status, channels, communities, polls, location, disappearing messages, starred, broadcast lists, block, privacy settings, profile "recado". | Each feature has an end-to-end test. |
 | M6 | **Calls.** LiveKit + MatrixRTC 1:1 and group voice/video. | Two clients hold a call locally. |
 | M7 | **Production.** Real SMS provider adapter, deploy guide, monitoring, load test. | A load test passes the targets in section 12. |
@@ -222,7 +251,11 @@ The MVP (M1–M3 plus push) is the one-week target. It must be ready for million
 - Protections against operator abuse (section 5 and M4): account PIN, visible "joined"
   and "new device" events that the server cannot hide, cross-signing verification,
   short log retention (no IP logs beyond 7 days), open source, independent audits,
-  reproducible Android builds, federation so no single operator controls everyone.
+  reproducible Android builds, transparency reports.
+- Honest limit: the operator of a Chama server still controls sign-in for that server, so
+  it can block users. Federation lets other organisations run their own servers, but it
+  does not protect users of one server from that server's operator. Account portability
+  between servers is a later goal.
 - License: AGPL-3.0 for server-side code, matching Synapse; clients AGPL-3.0 too, so forks
   stay open.
 
