@@ -22,6 +22,8 @@ export function openDb(path: string): DatabaseSync {
     CREATE TABLE IF NOT EXISTS pins (
       localpart TEXT PRIMARY KEY, hash TEXT NOT NULL, salt TEXT NOT NULL,
       fails INTEGER NOT NULL DEFAULT 0, locked_until INTEGER NOT NULL DEFAULT 0, reset_at INTEGER);
+    CREATE TABLE IF NOT EXISTS links (
+      id TEXT PRIMARY KEY, expires_at INTEGER NOT NULL, user_id TEXT, offer TEXT, answer TEXT, polls INTEGER NOT NULL DEFAULT 0);
   `);
   return db;
 }

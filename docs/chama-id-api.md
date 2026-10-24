@@ -3,7 +3,7 @@
 O chama-id é o serviço de entrada do Chama ([arquitetura, seção 4](design/2026-10-24-architecture.md#4-identidade-e-entrada)): ele confirma o número de
 telefone por código SMS e libera o login no servidor Matrix. Também responde quais contatos da
 agenda têm conta, guarda o PIN da conta (confirmação em duas etapas) e cuida da redefinição de
-identidade de criptografia.
+identidade de criptografia. E é o ponto de encontro da vinculação do app web por QR code.
 
 Os clientes chegam ao chama-id pelo proxy, no caminho `/id/v1`. Todos os corpos são JSON. Todo
 erro tem o formato `{"error": "<código>"}`, às vezes com campos extras.
@@ -18,6 +18,9 @@ erro tem o formato `{"error": "<código>"}`, às vezes com campos extras.
 >   nas chamadas seguintes.
 > - **Chaves de cross-signing**: o trio de chaves públicas (mestra, de autoassinatura e de
 >   assinatura de usuários) que prova quais aparelhos pertencem à pessoa.
+> - **Caixa selada**: um dado cifrado para a chave pública de quem vai abri-lo. Só o dono da
+>   chave privada correspondente consegue abrir; quem só repassa a caixa (aqui, o chama-id) não
+>   consegue lê-la nem forjá-la.
 > - **PIN da conta**: 6 dígitos que a pessoa escolhe no app. Quando existe, o código SMS sozinho
 >   não basta para entrar num aparelho novo (veja [PIN da conta](#pin-da-conta-confirmação-em-duas-etapas)).
 
@@ -38,6 +41,10 @@ erro tem o formato `{"error": "<código>"}`, às vezes com campos extras.
 | POST | `/id/v1/pin/check` | `Authorization: Bearer <Matrix access token>` |
 | POST | `/id/v1/pin/cancel-reset` | `Authorization: Bearer <Matrix access token>` |
 | POST | `/id/v1/devices/remove` | `Authorization: Bearer <Matrix access token>` |
+| POST | `/id/v1/link` | nenhuma |
+| POST | `/id/v1/link/offer` | `Authorization: Bearer <Matrix access token>` (o celular) |
+| POST | `/id/v1/link/answer` | `Authorization: Bearer <Matrix access token>` (o novo aparelho web) |
+| POST | `/id/v1/link/poll` | nenhuma (o ID do vínculo) |
 
 ### Entrada no app, do começo ao fim
 
@@ -250,7 +257,7 @@ sequenceDiagram
     participant ID as chama-id
     participant S as Synapse
     App->>ID: POST /id/v1/otp/verify {"phone", "code"}
-    ID->>ID: confere o código; a conta tem PIN
+    ID->>ID: confere o código, a conta tem PIN
     ID-->>App: {"pin_required": true, "pin_token" (JWT, 300 s), "reset_at"}
     App->>App: a pessoa digita o PIN
     App->>ID: POST /id/v1/pin/login {"pin_token", "pin"}
@@ -420,7 +427,9 @@ aparelhos apagados param de funcionar na hora.
   [Provas nos aparelhos conectados](#provas-nos-aparelhos-conectados): `pin` quando a conta tem
   PIN, ou `code` (um código SMS novo, pedido com `otp/request`). A lista tem de 1 a 100 IDs de
   texto, cada um com 1 a 255 caracteres, e o aparelho de quem chama não pode estar nela (para
-  sair dele, o app faz o logout Matrix normal).
+  sair dele, o app faz o logout Matrix normal). Mande só uma das duas formas: com
+  `all_others: true` e `device_ids` juntos, o chama-id não adivinha qual a pessoa quis e
+  responde `bad_request` 400, sem gastar a prova.
 - Resposta: `{"removed": 1}`: quantos aparelhos existiam na conta e foram apagados. Um ID que a
   conta não tem é ignorado.
 - O formato da lista é conferido **antes** da prova, então uma lista errada não gasta o código
@@ -446,12 +455,132 @@ sequenceDiagram
     ID-->>App: {"removed": n}
 ```
 
-- Erros: `invalid_token` 401, `bad_request` 400 (nem `device_ids` nem `all_others: true`, lista
+- Erros: `invalid_token` 401, `bad_request` 400 (nem `device_ids` nem `all_others: true`, ou os
+  dois juntos, lista
   vazia, com mais de 100 itens, com um item que não é texto, vazio ou com mais de 255
   caracteres, ou com o próprio aparelho; ou falta
   a prova), `forbidden` 403 (token sem aparelho, ou o número passou para outra conta),
   `invalid_pin` 400, `pin_locked` 429, `invalid_code` 400, `expired` 400,
   `too_many_attempts` 429, `rate_limited` 429.
+
+## Vinculação do app web por QR code
+
+O "Aparelhos conectados" do WhatsApp, no Chama ([arquitetura, seção 5](design/2026-10-24-architecture.md#5-criptografia-aparelhos-e-vinculação)).
+A web abre um ponto de encontro no chama-id e o celular, já conectado, entrega por ele um login
+para a web. O chama-id só guarda e repassa duas **caixas seladas** por vínculo, cada uma postada
+uma vez:
+
+- a **oferta** do celular, cifrada para a chave da web: um token de login Matrix de uso único;
+- a **resposta** da web, cifrada para a chave do celular: as chaves do novo aparelho.
+
+A web gera um par de chaves curve25519 temporário e mostra um QR code com o ID do vínculo e a
+chave pública: `chama-link:1:<id>:<chave pública, base64 sem "=">`. Essa chave só existe na tela
+(nunca chega ao chama-id), então uma caixa que abre na web veio de alguém que viu a tela. Uma
+caixa é a saída da cifra de chave pública do vodozemac (a mesma do backup de chaves do Matrix):
+`{"ciphertext": "…", "mac": "…", "ephemeral": "…"}`, três textos base64, com no máximo 4096
+caracteres somados.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant W as App web
+    participant ID as chama-id
+    participant P as Celular (já conectado)
+    participant S as Synapse
+    W->>W: gera um par de chaves curve25519 temporário
+    W->>ID: POST /id/v1/link {}
+    ID-->>W: {"id", "expires_in": 120}
+    W->>W: mostra o QR code (chama-link:1:id:chave pública)
+    loop a cada ~2 s, até a oferta chegar (no máximo 200 consultas)
+        W->>ID: POST /id/v1/link/poll {"id"}
+        ID-->>W: {"offer": null, "answer": null}
+    end
+    P->>P: lê o QR code
+    P->>S: POST /_matrix/client/v1/login/get_token
+    S-->>P: token de login de uso único
+    P->>P: sela, para a chave da web: o token, a chave mestra<br/>de cross-signing e a chave temporária do celular
+    P->>ID: POST /id/v1/link/offer<br/>Bearer token + {"id", "box"}
+    Note over ID: guarda a caixa e a conta do celular.<br/>O vínculo ganha mais 120 s
+    ID-->>P: {}
+    W->>ID: POST /id/v1/link/poll {"id"}
+    ID-->>W: {"offer": caixa, "answer": null}
+    W->>W: abre a caixa com a chave privada da tela
+    W->>S: POST /_matrix/client/v3/login {"type": "m.login.token", "token"}
+    S-->>W: access_token, device_id
+    W->>W: sela, para a chave do celular:<br/>o device_id e a chave ed25519 da web
+    W->>ID: POST /id/v1/link/answer<br/>Bearer token (novo) + {"id", "box"}
+    ID->>ID: a conta do token é a mesma da oferta?
+    ID-->>W: {}
+    P->>ID: POST /id/v1/link/poll {"id"}
+    ID-->>P: {"offer": caixa, "answer": caixa}
+    P->>P: abre a resposta e confere a chave do aparelho web
+    P->>S: assina o aparelho web com a chave de autoassinatura
+    P->>S: responde aos pedidos de segredos da web<br/>(cross-signing e chave do backup), cifrados para ela
+    S-->>W: segredos
+    Note over W: a web passa a ler o histórico
+```
+
+O chama-id nunca vê o conteúdo de uma caixa: ele confere só o formato (três textos base64 e o
+tamanho). A segurança do vínculo vem da chave que está só no QR code e da assinatura que o
+celular dá ao aparelho web no fim. Um aparelho só recebe chaves de mensagens depois de assinado
+pelo celular ([arquitetura, seção 5](design/2026-10-24-architecture.md#5-criptografia-aparelhos-e-vinculação)).
+
+Regras do ponto de encontro:
+
+- **Validade.** Um vínculo vale 120 s a partir da abertura. A oferta dá mais 120 s, contados a
+  partir dela, para a resposta e as últimas consultas. Depois disso o ID não existe mais
+  (`not_found` 404). Vínculos vencidos são apagados do banco quando outro vínculo é aberto.
+- **Cada passo uma vez.** A primeira oferta vale; uma segunda é `conflict` 409. A resposta
+  também só vale uma vez, e uma resposta antes da oferta é `conflict` 409.
+- **Mesma conta.** Só a conta que fez a oferta pode responder (`forbidden` 403). Quando responde,
+  a web já entrou na conta com o token da oferta.
+- **Tokens.** `link/offer` e `link/answer` pedem um token de um aparelho real, conferido na hora
+  com o Synapse, e somam nas 20 mudanças por conta por hora, como as rotas de
+  [Provas nos aparelhos conectados](#provas-nos-aparelhos-conectados).
+- **Limites.** Cada IP abre no máximo 60 vínculos por hora; cada vínculo aceita no máximo 200
+  consultas (`rate_limited` 429).
+
+### `POST /id/v1/link`
+
+Abre um ponto de encontro. Quem chama é a página web que vai mostrar o QR code.
+
+- Requisição: `{}`. Resposta: `{"id": "<22 caracteres base64url>", "expires_in": 120}`.
+- Erros: `rate_limited` 429 (60 por IP por hora, com `retry_after`).
+
+### `POST /id/v1/link/offer`
+
+O celular entrega a oferta depois de ler o QR code.
+
+- Requisição: `{"id": "<id>", "box": {"ciphertext", "mac", "ephemeral"}}`, com o token de acesso
+  do celular. Resposta: `{}`.
+- A caixa, cifrada para a chave pública do QR code, leva o token de login de uso único
+  (`POST /_matrix/client/v1/login/get_token`), a chave mestra de cross-signing da conta e a
+  chave pública temporária do celular.
+- Erros: `invalid_token` 401, `forbidden` 403 (token sem aparelho), `bad_request` 400 (formato da
+  caixa), `not_found` 404 (ID vencido ou desconhecido), `conflict` 409 (já existe uma oferta),
+  `rate_limited` 429.
+
+### `POST /id/v1/link/answer`
+
+A web entrega a resposta depois de entrar com o token da oferta.
+
+- Requisição: `{"id": "<id>", "box": {…}}`, com o token de acesso **novo** da web. Resposta: `{}`.
+- A caixa, cifrada para a chave temporária do celular, leva o `device_id` e a chave ed25519 do
+  aparelho web. O celular confere essa chave contra a que o Synapse publica antes de assinar o
+  aparelho.
+- Erros: `invalid_token` 401, `forbidden` 403 (token sem aparelho, ou a conta não é a da oferta),
+  `bad_request` 400, `not_found` 404, `conflict` 409 (ainda sem oferta, ou já respondido),
+  `rate_limited` 429.
+
+### `POST /id/v1/link/poll`
+
+A web consulta até a oferta chegar; o celular consulta até a resposta chegar. Não pede token: o
+ID de 22 caracteres aleatórios é o segredo, e o que ele devolve são caixas que só a web ou o
+celular conseguem abrir.
+
+- Requisição: `{"id": "<id>"}`. Resposta: `{"offer": <caixa ou null>, "answer": <caixa ou null>}`.
+- Erros: `not_found` 404 (ID vencido ou desconhecido), `rate_limited` 429 (passou de 200
+  consultas, com `retry_after`).
 
 ## Limites
 
@@ -466,7 +595,10 @@ sequenceDiagram
 | Hashes buscados por conta | 10.000 em 24 h (janela fixa a partir da primeira busca) | ×100 |
 | Tokens de acesso inválidos na busca, por IP | 100 por hora (tokens válidos não contam) | ×100 |
 | Chamadas de reset-identity por IP | 10 por hora | ×100 |
-| Mudanças na conta (`pin/set`, `remove`, `check`, `cancel-reset`, `devices/remove`) por conta | 20 por hora | ×100 |
+| Mudanças na conta (`pin/set`, `remove`, `check`, `cancel-reset`, `devices/remove`, `link/offer`, `link/answer`) por conta | 20 por hora | ×100 |
+| Vínculos abertos (`link`) por IP | 60 por hora | ×100 |
+| Consultas por vínculo (`link/poll`) | 200 | igual |
+| Validade de um vínculo | 120 s desde a abertura, mais 120 s depois da oferta | igual |
 | Validade do `pin_token` | 300 s | igual |
 | PINs errados por conta | 4 livres, depois bloqueios de 1 min, 5 min, 1 h, 24 h, 24 h, … | igual |
 | Espera de "Esqueci meu PIN" | 7 dias | igual |
@@ -526,14 +658,14 @@ Risco residual, aceito por enquanto:
 | `invalid_keys` | 400 | `reset-identity` |
 | `invalid_pin` | 400 | `pin/login`, `pin/set`, `pin/remove`, `pin/check`, `reset-identity`, `devices/remove` |
 | `bad_request` | 400 | todas as rotas POST |
-| `invalid_token` | 401 | `directory/lookup`, `reset-identity`, `devices/remove`, todas as rotas `pin/*` |
-| `forbidden` | 403 | `reset-identity`, `pin/login`, `pin/set`, `pin/remove`, `pin/check`, `pin/cancel-reset`, `devices/remove` |
+| `invalid_token` | 401 | `directory/lookup`, `reset-identity`, `devices/remove`, `link/offer`, `link/answer`, todas as rotas `pin/*` |
+| `forbidden` | 403 | `reset-identity`, `pin/login`, `pin/set`, `pin/remove`, `pin/check`, `pin/cancel-reset`, `devices/remove`, `link/offer`, `link/answer` |
 | `pin_required` | 403 | `pin/login`, `pin/check`, `reset-identity` |
-| `not_found` | 404 | rota desconhecida |
+| `not_found` | 404 | rota desconhecida; `link/offer`, `link/answer`, `link/poll` (vínculo vencido ou desconhecido) |
 | `no_identity` | 409 | `reset-identity` |
-| `conflict` | 409 | reservado para as rotas de vinculação de aparelhos |
+| `conflict` | 409 | `link/offer`, `link/answer` (o passo já foi feito, ou a resposta veio antes da oferta) |
 | `too_many_attempts` | 429 | `otp/verify`, `reset-identity`, `pin/set`, `pin/remove`, `devices/remove` |
-| `rate_limited` | 429 | `otp/request`, `otp/verify`, `directory/lookup`, `reset-identity`, `pin/set`, `pin/remove`, `pin/check`, `pin/cancel-reset`, `devices/remove` |
+| `rate_limited` | 429 | `otp/request`, `otp/verify`, `directory/lookup`, `reset-identity`, `pin/set`, `pin/remove`, `pin/check`, `pin/cancel-reset`, `devices/remove`, `link`, `link/offer`, `link/answer`, `link/poll` |
 | `pin_locked` | 429 | `pin/login`, `pin/set`, `pin/remove`, `pin/check`, `reset-identity`, `devices/remove` |
 | `internal` | 500 | qualquer rota |
 

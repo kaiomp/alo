@@ -9,6 +9,7 @@ import { OtpService } from '../src/otp.ts';
 import { Directory } from '../src/directory.ts';
 import { Accounts } from '../src/accounts.ts';
 import { Pins } from '../src/pin.ts';
+import { Links } from '../src/link.ts';
 import { AppError } from '../src/errors.ts';
 import type { SynapseAdmin } from '../src/synapse.ts';
 import { verifyJwt } from '../src/jwt.ts';
@@ -43,7 +44,7 @@ function make(o: { now?: () => number; dev?: boolean } = {}) {
   const server = createServer({
     otp: new OtpService(db, { pepper: 'p', dev: !!o.dev, now: o.now, sms: { async send(p, t) { codes.set(p, t.match(/\d{6}/)![0]); } } }),
     directory: new Directory(db, 'chama.test'), accounts: new Accounts(db, admin, { serverName: 'chama.test', now: o.now }), admin,
-    pins: new Pins(db, { pepper: 'p', now: o.now }),
+    pins: new Pins(db, { pepper: 'p', now: o.now }), links: new Links(db, { now: o.now }),
     jwtSecret: 'jwt', publicBaseUrl: 'http://localhost:8080', dev: o.dev, now: o.now,
   });
   return { server, admin, codes };
@@ -510,7 +511,8 @@ test('devices/remove deletes listed devices or all others, after proof, and ends
     await post('/id/v1/otp/request', { phone: '11955550006' }, {}, at);
     const code = m.codes.get('5511955550006');
     for (const bad of [{ code }, { device_ids: [] }, { device_ids: 'X' }, { device_ids: [`DEV-${lp}`], code }, { device_ids: [1] },
-      { device_ids: Array(101).fill('X'), code }, { device_ids: ['x'.repeat(256)], code }, { device_ids: [''], code }]) {
+      { device_ids: Array(101).fill('X'), code }, { device_ids: ['x'.repeat(256)], code }, { device_ids: [''], code },
+      { all_others: true, device_ids: ['WEB'], code }]) {
       assert.equal((await remove(bad)).status, 400, JSON.stringify(bad));
     }
     assert.deepEqual(await json(await remove({ device_ids: ['WEB'], code: '000001' === code ? '000002' : '000001' })),
@@ -529,6 +531,37 @@ test('devices/remove deletes listed devices or all others, after proof, and ends
     assert.deepEqual(m.admin.logouts, [[me.user_id, `DEV-${lp}`]]);
     assert.equal((await post('/id/v1/devices/remove', { all_others: true, pin: '123456' }, { authorization: `Bearer nodev-${lp}` }, at)).status, 403,
       'a token without a device cannot remove devices');
+  } finally { m.server.close(); }
+});
+
+test('link over HTTP: anyone opens it, the phone offers with its token, the web answers as the same account', async () => {
+  const m = make({ now: () => 1_000_000 });
+  const at = await listen(m.server);
+  try {
+    const B = { ciphertext: 'Y2lwaGVy', mac: 'bWFj', ephemeral: 'ZXBo' };
+    const { id } = await (await post('/id/v1/link', {}, {}, at)).json();
+    const poll = async () => json(await post('/id/v1/link/poll', { id }, {}, at));
+    assert.deepEqual(await poll(), { status: 200, body: { offer: null, answer: null } });
+    assert.equal((await post('/id/v1/link/offer', { id, box: B }, {}, at)).status, 401, 'offer needs a token');
+    assert.equal((await post('/id/v1/link/offer', { id, box: B }, { authorization: 'Bearer nodev-phone' }, at)).status, 403);
+    assert.equal((await post('/id/v1/link/offer', { id, box: { ...B, mac: '!' } }, bearer('phone'), at)).status, 400);
+    assert.equal((await post('/id/v1/link/offer', { id, box: B }, bearer('phone'), at)).status, 200);
+    assert.deepEqual(await json(await post('/id/v1/link/offer', { id, box: B }, bearer('phone'), at)), { status: 409, body: { error: 'conflict' } });
+    assert.deepEqual((await poll()).body, { offer: B, answer: null });
+    assert.equal((await post('/id/v1/link/answer', { id, box: B }, bearer('someone'), at)).status, 403);
+    assert.equal((await post('/id/v1/link/answer', { id, box: B }, bearer('phone'), at)).status, 200);
+    assert.deepEqual((await poll()).body, { offer: B, answer: B });
+    assert.deepEqual(await json(await post('/id/v1/link/poll', { id: 'unknown' }, {}, at)), { status: 404, body: { error: 'not_found' } });
+  } finally { m.server.close(); }
+});
+test('opening links is capped at 60 per IP per hour', async () => {
+  const m = make({ now: () => 1_000_000 });
+  const at = await listen(m.server);
+  try {
+    const open = (ip: string) => post('/id/v1/link', {}, { 'x-forwarded-for': ip }, at);
+    for (let i = 0; i < 60; i++) assert.equal((await open('9.9.9.9')).status, 200);
+    assert.equal((await open('9.9.9.9')).status, 429);
+    assert.equal((await open('9.9.9.8')).status, 200);
   } finally { m.server.close(); }
 });
 

@@ -4,6 +4,7 @@ import { OtpService } from './otp.ts';
 import { Directory, DAILY_HASHES } from './directory.ts';
 import { Accounts } from './accounts.ts';
 import { Pins } from './pin.ts';
+import { Links, box } from './link.ts';
 import { HttpSynapseAdmin, type SynapseAdmin, type CrossSigningKeys } from './synapse.ts';
 import { ConsoleSms } from './sms.ts';
 import { signJwt, verifyJwt } from './jwt.ts';
@@ -44,7 +45,7 @@ const bearer = (req: IncomingMessage) => {
 const PIN_AUD = 'chama-pin';
 
 export function createServer(d: {
-  otp: OtpService; directory: Directory; accounts: Accounts; admin: SynapseAdmin; pins: Pins;
+  otp: OtpService; directory: Directory; accounts: Accounts; admin: SynapseAdmin; pins: Pins; links: Links;
   jwtSecret: string; publicBaseUrl: string; dev?: boolean; now?: () => number;
 }) {
   const now = d.now ?? (() => Math.floor(Date.now() / 1000));
@@ -56,6 +57,9 @@ export function createServer(d: {
   // Dev mode raises both 100x so test suites can rerun against one stack.
   const scale = d.dev ? 100 : 1;
   const userLookups = windowLimiter({ limit: 30 * scale, window: 3600, maxKeys: 100_000, now });
+  // Each web page that shows a QR code opens a link; the app stops after 5 codes.
+  // Limit: per IP, so a large office behind one address may wait; per-browser keys need state there.
+  const linkStarts = windowLimiter({ limit: 60 * scale, window: 3600, maxKeys: 100_000, now });
   // Each reset call costs a Synapse whoami, so it is capped per IP before that call.
   const resets = windowLimiter({ limit: 10 * (d.dev ? 100 : 1), window: 3600, maxKeys: 100_000, now });
   // Each uncached token costs a Synapse whoami, and failures are not cached, so an IP may send
@@ -179,6 +183,8 @@ export function createServer(d: {
     // accounts cannot do (spec §4), so chama-id deletes it through the admin API after proof.
     'POST /id/v1/devices/remove': async (b, req) => {
       const me = await owner(req);
+      // Both forms at once is ambiguous: refuse rather than guess which one was meant.
+      if (b.all_others === true && b.device_ids !== undefined) throw new AppError('bad_request');
       const ids = b.all_others === true ? null : b.device_ids;
       if (ids !== null && (!Array.isArray(ids) || !ids.length || ids.length > 100 ||
         ids.some((x) => typeof x !== 'string' || !x || x.length > 255 || x === me.deviceId))) throw new AppError('bad_request');
@@ -187,6 +193,22 @@ export function createServer(d: {
       dropCached(me.userId);
       return { removed };
     },
+    // Linking a web client by QR code (spec §5). The boxes are opaque here.
+    'POST /id/v1/link': (_b, req) => {
+      linkStarts.hit(rateKey(clientIp(req)));
+      return d.links.create();
+    },
+    'POST /id/v1/link/offer': async (b, req) => {
+      const me = await owner(req);
+      d.links.offer(b.id, me.userId, box(b.box));
+      return {};
+    },
+    'POST /id/v1/link/answer': async (b, req) => {
+      const me = await owner(req);
+      d.links.answer(b.id, me.userId, box(b.box));
+      return {};
+    },
+    'POST /id/v1/link/poll': (b) => d.links.poll(b.id),
     'POST /id/v1/directory/lookup': async (b, req) => {
       const { userId } = await whoami(req);
       userLookups.hit(userId);
@@ -243,6 +265,7 @@ if (import.meta.main) {
   const admin = new HttpSynapseAdmin({ baseUrl: secrets.synapseUrl, sharedSecret: secrets.sharedSecret, asToken: secrets.asToken, db });
   const server = createServer({
     otp: new OtpService(db, { pepper: secrets.pepper, dev, sms: new ConsoleSms() }), pins: new Pins(db, { pepper: secrets.pepper }),
+    links: new Links(db),
     directory: new Directory(db, secrets.serverName), accounts: new Accounts(db, admin, { serverName: secrets.serverName }), admin,
     jwtSecret: secrets.jwtSecret, publicBaseUrl: secrets.publicBaseUrl, dev,
   });
