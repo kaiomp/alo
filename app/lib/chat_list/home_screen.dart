@@ -43,11 +43,13 @@ class _HomeScreenState extends State<HomeScreen> {
       // A tap can arrive (as a new intent) before this screen exists.
       unawaited(_openFromNotification());
       unawaited(_deps.contacts.start());
+      // A tap that started the app: the engine may have started headless for
+      // a push, with no activity to read the tap from. First, so the chat
+      // opens without waiting for the permission dialog or the push setup
+      // (up to 10 s offline).
+      await _deps.notifications.checkLaunch();
       await _deps.notifications.requestPermission();
       await _deps.push.register();
-      // A tap that started the app: the engine may have started headless for
-      // a push, with no activity to read the tap from.
-      await _deps.notifications.checkLaunch();
     });
   }
 

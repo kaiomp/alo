@@ -8,6 +8,7 @@ IncomingMessage msg(MessageKind kind, [String body = '']) => IncomingMessage(
   roomId: '!r:chama.test',
   eventId: r'$e',
   chatName: 'Família',
+  senderId: '@ana:chama.test',
   senderName: 'Ana',
   kind: kind,
   isGroup: true,

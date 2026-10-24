@@ -519,7 +519,13 @@ class ChatService {
       PushNotification(roomId: roomId, eventId: eventId),
       storeInDatabase: false,
     );
-    if (event == null || event.senderId == myUserId) return null;
+    return event == null ? null : incomingFor(event);
+  }
+
+  /// The checks of [notificationFor], on the fetched [event].
+  @visibleForTesting
+  IncomingMessage? incomingFor(Event event) {
+    if (event.senderId == myUserId) return null;
     final room = event.room;
     if (room.pushRuleState != PushRuleState.notify) return null;
     if (!isVisible(event, isGroup: !room.isDirectChat, hidden: const {})) return null;
@@ -527,9 +533,10 @@ class ChatService {
     if (kind == MessageKind.system || kind == MessageKind.deleted) return null;
     if (kind != MessageKind.undecryptable && !client.pushruleEvaluator.match(event).notify) return null;
     return IncomingMessage(
-      roomId: roomId,
-      eventId: eventId,
+      roomId: room.id,
+      eventId: event.eventId,
       chatName: chatName(room),
+      senderId: event.senderId,
       senderName: nameOf(event.senderFromMemoryOrFallback),
       kind: kind,
       isGroup: !room.isDirectChat,

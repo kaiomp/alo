@@ -161,6 +161,7 @@ class IncomingMessage {
     required this.roomId,
     required this.eventId,
     required this.chatName,
+    required this.senderId,
     required this.senderName,
     required this.kind,
     required this.isGroup,
@@ -171,6 +172,9 @@ class IncomingMessage {
   final String roomId;
   final String eventId;
   final String chatName;
+
+  /// Matrix user ID; empty when unknown. Never shown.
+  final String senderId;
   final String senderName;
   final MessageKind kind;
   final bool isGroup;

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/widgets.dart';
@@ -25,6 +26,15 @@ int notificationId(String roomId) => roomId.codeUnits.fold(17, (h, c) => (h * 31
 
 const replyActionId = 'reply';
 
+/// One line of a chat's notification. Android tells people apart by the
+/// person key: a hash of the user ID, so two senders with the same name stay
+/// apart and no Matrix ID goes into the system's notification store.
+Message notificationMessage(IncomingMessage m, L10n l) => Message(
+  notificationBody(m, l),
+  m.time,
+  Person(name: m.senderName, key: m.senderId.isEmpty ? null : 's${notificationId(m.senderId)}'),
+);
+
 /// Android notifications for new messages: one per chat, Android's
 /// conversation style, a reply field and a tap that opens the chat.
 class Notifications {
@@ -40,7 +50,7 @@ class Notifications {
     if (!onAndroid) return;
     await _plugin.initialize(
       settings: const InitializationSettings(android: AndroidInitializationSettings('ic_notification')),
-      onDidReceiveNotificationResponse: _onResponse,
+      onDidReceiveNotificationResponse: handleResponse,
     );
   }
 
@@ -51,32 +61,55 @@ class Notifications {
   Future<void> checkLaunch() async {
     if (!onAndroid || _launchChecked) return;
     _launchChecked = true;
-    final launch = await _plugin.getNotificationAppLaunchDetails();
-    final response = launch?.notificationResponse;
-    if (launch?.didNotificationLaunchApp == true && response != null) await _onResponse(response);
+    try {
+      final launch = await _plugin.getNotificationAppLaunchDetails();
+      final response = launch?.notificationResponse;
+      if (launch?.didNotificationLaunchApp == true && response != null) await handleResponse(response);
+    } catch (e) {
+      debugPrint('Notifications: no launch details (${e.runtimeType})');
+    }
   }
 
   String? _lastResponse;
   DateTime _lastResponseAt = DateTime(0);
 
-  Future<void> _onResponse(NotificationResponse r) async {
-    // Android can hand one tap over twice when it restores the app's task:
-    // as a new intent and as the launch intent. A reply must be sent once.
+  @visibleForTesting
+  DateTime Function() clock = DateTime.now;
+
+  /// A tap on a notification, or a reply typed in one.
+  @visibleForTesting
+  Future<void> handleResponse(NotificationResponse r) async {
+    // Android can hand one tap over twice, a moment apart, when it restores
+    // the app's task: as a new intent and as the launch intent. A reply must
+    // be sent once; the same text typed again later is a new reply.
     final key = '${r.id}|${r.actionId}|${r.input}';
-    final now = DateTime.now();
-    if (key == _lastResponse && now.difference(_lastResponseAt) < const Duration(seconds: 30)) return;
+    final now = clock();
+    if (key == _lastResponse && now.difference(_lastResponseAt) < const Duration(seconds: 5)) return;
     _lastResponse = key;
     _lastResponseAt = now;
     final roomId = r.payload;
     if (roomId == null || roomId.isEmpty) return;
+    // The chat opens at once; a reply goes out meanwhile and shows there,
+    // as sending or failed.
+    opened.value = roomId;
     final text = r.input?.trim() ?? '';
     // The reply action opens the app (showsUserInterface), so the message is
     // sent here, by the one client this process runs.
-    if (r.actionId == replyActionId && text.isNotEmpty) {
+    if (r.actionId == replyActionId && text.isNotEmpty) unawaited(_sendReply(roomId, text));
+  }
+
+  Future<void> _sendReply(String roomId, String text) async {
+    try {
       await onReply?.call(roomId, text);
-      await _showReply(roomId, text);
+    } catch (e) {
+      // The type only: an error can quote the message.
+      debugPrint('Notification reply failed (${e.runtimeType})');
     }
-    opened.value = roomId;
+    try {
+      await _showReply(roomId, text);
+    } catch (e) {
+      debugPrint('Notification update failed (${e.runtimeType})');
+    }
   }
 
   /// A push arrived ([PushService.onPush]): fetch, decrypt and show the
@@ -98,6 +131,7 @@ class Notifications {
         roomId: roomId,
         eventId: eventId,
         chatName: l.appName,
+        senderId: '',
         senderName: l.appName,
         kind: MessageKind.undecryptable,
         isGroup: false,
@@ -122,13 +156,8 @@ class Notifications {
   AndroidFlutterLocalNotificationsPlugin? get _android =>
       _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
 
-  Future<void> show(IncomingMessage m, L10n l) => _post(
-    m.roomId,
-    Message(notificationBody(m, l), m.time, Person(name: m.senderName, key: m.senderName)),
-    l,
-    isGroup: m.isGroup,
-    chatName: m.chatName,
-  );
+  Future<void> show(IncomingMessage m, L10n l) =>
+      _post(m.roomId, notificationMessage(m, l), l, isGroup: m.isGroup, chatName: m.chatName);
 
   /// After a reply typed in the notification: Android 15+ keeps that
   /// notification (with a spinner) until the app updates it, and ignores a
