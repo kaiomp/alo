@@ -147,21 +147,29 @@ test('directory lookup after verify returns hash and user_id', async () => {
   assert.deepEqual(await r.json(), { registered: [{ hash: sha('5511955554444'), user_id: me.user_id }] });
 });
 
-test('directory lookup is capped at 30 per IP per rolling hour', async () => {
+test('directory lookup has no per-IP cap: many accounts behind one carrier IP (CGNAT)', async () => {
+  const { server: s } = make({ now: () => 1_000_000 });
+  const at = await listen(s);
+  try {
+    for (let i = 0; i < 60; i++) {
+      const r = await post('/id/v1/directory/lookup', { hashes: [] }, { 'x-forwarded-for': '1.1.1.1', ...bearer(`cgnat${i}`) }, at);
+      assert.equal(r.status, 200, `account ${i}`);
+    }
+  } finally { s.close(); }
+});
+test('directory lookup charges the account per hash: 10 000 per day', async () => {
   let clock = 1_000_000;
   const { server: s } = make({ now: () => clock });
   const at = await listen(s);
   try {
-    let n = 0;
-    const look = (ip: string) => post('/id/v1/directory/lookup', { hashes: [] }, { 'x-forwarded-for': `${ip}, 10.0.0.1`, ...bearer(`u${n++}`) }, at);
-    for (let i = 0; i < 30; i++) { assert.equal((await look('1.1.1.1')).status, 200); clock += 10; }
-    const r = await look('1.1.1.1');
+    const look = (hashes: string[]) => post('/id/v1/directory/lookup', { hashes }, bearer('heavy'), at);
+    for (let i = 0; i < 10; i++) {
+      assert.equal((await look(Array.from({ length: 1000 }, (_, k) => hex(i * 1000 + k)))).status, 200);
+    }
+    clock += 60;
+    const r = await look([hex(-1)]);
     assert.equal(r.status, 429);
-    // The oldest call was at 1_000_000; it leaves the window at 1_003_600.
-    assert.deepEqual(await r.json(), { error: 'rate_limited', retry_after: 1_000_000 + 3600 - clock });
-    assert.equal((await look('2.2.2.2')).status, 200, 'other IPs keep their own budget');
-    clock = 1_000_000 + 3600;
-    assert.equal((await look('1.1.1.1')).status, 200, 'oldest call left the window');
+    assert.deepEqual(await r.json(), { error: 'rate_limited', retry_after: 86400 - 60 });
   } finally { s.close(); }
 });
 test('directory lookup is capped at 30 per user per rolling hour, across IPs', async () => {
@@ -177,7 +185,7 @@ test('directory lookup is capped at 30 per user per rolling hour, across IPs', a
     assert.equal((await look(99, 'bob')).status, 200, 'other users keep their own budget');
   } finally { s.close(); }
 });
-test('dev mode raises the per-IP and per-user lookup limits 100x', async () => {
+test('dev mode raises the per-user lookup limit 100x', async () => {
   const m = make({ now: () => 1_000_000, dev: true });
   const at = await listen(m.server);
   try {
@@ -187,7 +195,7 @@ test('dev mode raises the per-IP and per-user lookup limits 100x', async () => {
       assert.deepEqual(rs.map((r) => r.status), Array(50).fill(200), `calls ${i}..${i + 49}`);
     }
     assert.equal((await post('/id/v1/directory/lookup', { hashes: [] }, { 'x-forwarded-for': '4.4.4.5', ...bearer('alice') }, at)).status, 429, 'per-user');
-    assert.equal((await post('/id/v1/directory/lookup', { hashes: [] }, { 'x-forwarded-for': '4.4.4.4', ...bearer('bob') }, at)).status, 429, 'per-IP');
+    assert.equal((await post('/id/v1/directory/lookup', { hashes: [] }, { 'x-forwarded-for': '4.4.4.4', ...bearer('bob') }, at)).status, 200, 'no per-IP cap');
   } finally { m.server.close(); }
 });
 test('whoami results are cached for 60 s', async () => {
@@ -339,19 +347,6 @@ test('rateKey groups IPv6 by /64 and unwraps IPv4-mapped addresses', () => {
   assert.equal(rateKey('::ffff:102:304'), '1.2.3.4');
   assert.equal(rateKey('1.2.3.4'), '1.2.3.4');
   assert.equal(rateKey('unknown'), 'unknown');
-});
-test('two IPv6 addresses in one /64 share the lookup budget; IPv4-mapped equals IPv4', async () => {
-  const { server: s } = make({ now: () => 1_000_000 });
-  const at = await listen(s);
-  try {
-    let n = 0;
-    const look = (ip: string) => post('/id/v1/directory/lookup', { hashes: [] }, { 'x-forwarded-for': ip, ...bearer(`v6u${n++}`) }, at);
-    for (let i = 0; i < 30; i++) assert.equal((await look(`2001:db8:a:b::${(i + 1).toString(16)}`)).status, 200);
-    assert.equal((await look('2001:db8:a:b:dead:beef:0:1')).status, 429);
-    assert.equal((await look('2001:db8:a:c::1')).status, 200, 'other /64 has its own budget');
-    for (let i = 0; i < 30; i++) assert.equal((await look(i % 2 ? '9.9.9.9' : '::ffff:9.9.9.9')).status, 200);
-    assert.equal((await look('9.9.9.9')).status, 429);
-  } finally { s.close(); }
 });
 test('OTP per-IP limit also groups IPv6 by /64', async () => {
   const { server: s } = make();

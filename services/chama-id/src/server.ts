@@ -1,7 +1,7 @@
 import http, { type IncomingMessage } from 'node:http';
 import { openDb } from './db.ts';
 import { OtpService } from './otp.ts';
-import { Directory } from './directory.ts';
+import { Directory, DAILY_HASHES } from './directory.ts';
 import { Accounts } from './accounts.ts';
 import { HttpSynapseAdmin, type SynapseAdmin, type CrossSigningKeys } from './synapse.ts';
 import { ConsoleSms } from './sms.ts';
@@ -42,11 +42,12 @@ export function createServer(d: {
   const now = d.now ?? (() => Math.floor(Date.now() / 1000));
   const str = (v: unknown) => { if (typeof v !== 'string') throw new AppError('bad_request'); return v; };
 
-  // Unsalted phone hashes are enumerable, so lookups are capped per client IP (or IPv6 /64) and per user.
+  // Unsalted phone hashes are enumerable (issue #7), so each account gets 30 lookups per hour and
+  // DAILY_HASHES hashes per day. There is no per-IP cap: Brazilian mobile carriers put many phones
+  // behind one IP (CGNAT), and every lookup already needs an SMS-verified account.
   // Dev mode raises both 100x so test suites can rerun against one stack.
-  const limit = 30 * (d.dev ? 100 : 1);
-  const ipLookups = windowLimiter({ limit, window: 3600, maxKeys: 100_000, now });
-  const userLookups = windowLimiter({ limit, window: 3600, maxKeys: 100_000, now });
+  const scale = d.dev ? 100 : 1;
+  const userLookups = windowLimiter({ limit: 30 * scale, window: 3600, maxKeys: 100_000, now });
   // Each reset call costs a Synapse whoami, so it is capped per IP before that call.
   const resets = windowLimiter({ limit: 10 * (d.dev ? 100 : 1), window: 3600, maxKeys: 100_000, now });
   const whoamiCache = ttlCache<string>({ ttl: 60, maxKeys: 10_000, now });
@@ -78,10 +79,9 @@ export function createServer(d: {
       };
     },
     'POST /id/v1/directory/lookup': async (b, req) => {
-      const token = bearer(req);
-      ipLookups.hit(rateKey(clientIp(req)));
-      userLookups.hit(await cachedWhoami(token));
-      return { registered: d.directory.lookup(b.hashes) };
+      const userId = await cachedWhoami(bearer(req));
+      userLookups.hit(userId);
+      return { registered: d.directory.lookup(b.hashes, userId, { now: now(), quota: DAILY_HASHES * scale }) };
     },
     // For a new phone without the recovery key (spec §5). The phone made the new keys and sends
     // only the public, signed bundle. Ownership, the bundle shape and the old master key are

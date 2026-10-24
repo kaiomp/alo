@@ -126,8 +126,8 @@ first upload of cross-signing keys needs no user-interactive auth.
 | Codes per phone | 1 per 60 s (while a code is pending), 5 per 24 h | same |
 | Wrong tries per phone | 10 per 24 h | same |
 | Code requests per IP | 10 per hour | ×100 |
-| Lookups per IP | 30 per hour | ×100 |
-| Lookups per user | 30 per hour | ×100 |
+| Lookups per account | 30 per hour | ×100 |
+| Hashes looked up per account | 10 000 per 24 h (fixed window from the first lookup) | ×100 |
 | reset-identity calls per IP | 10 per hour | ×100 |
 | Body size | 16 KiB (lookup: 96 KiB, reset-identity: 8 KiB) | same |
 
@@ -135,6 +135,30 @@ first upload of cross-signing keys needs no user-interactive auth.
 - Windows roll: a call leaves the count once it is older than the window.
 - `rate_limited` always carries `retry_after` in seconds.
 - In dev mode the code `000000` is accepted for any phone that has requested a code.
+
+## Contact lookup privacy (issue #7)
+
+Decision for M3: keep plain SHA-256 hashes, and limit how many numbers one account can test.
+
+- There is no per-IP lookup limit. Brazilian mobile carriers put many phones behind one IP
+  address (CGNAT), so a per-IP cap would block ordinary users. Every lookup needs an access
+  token, and every account needs an SMS-verified phone.
+- Each account may send 30 lookups per hour and 10 000 hashes per 24 hours. A first sync of a
+  big address book fits; the app checks each number at most once a day after that.
+- chama-id does not store or log the hashes a client sends. It keeps only a count per account
+  (`lookup_quota`).
+
+Residual risk, accepted for now:
+
+- A phone number has few possible values (a few billion Brazilian mobile numbers), so a hash
+  can be reversed by trying every number. The operator can therefore see which numbers are in a
+  user's address book while a lookup is processed. "Not stored" is a promise of the operator,
+  not a property of the protocol.
+- An attacker with many SMS-verified accounts can test 10 000 numbers per account per day to
+  learn who uses Chama. Listing every Brazilian mobile number would take hundreds of
+  thousands of account-days (each account needs its own SIM).
+- A private contact discovery scheme (for example a secure enclave or private set
+  intersection) removes both risks. It is new server crypto and stays open in issue #7 (M7).
 
 ## Other errors
 
