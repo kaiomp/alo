@@ -16,6 +16,8 @@ services:
 
   synapse:
     image: ghcr.io/element-hq/synapse:v1.163.2
+    # The image drops to uid 991 in its own entrypoint, which these entrypoints replace.
+    user: "991:991"
     entrypoint: ["python", "-m", "synapse.app.homeserver", "--config-path", "/data/homeserver.yaml"]
     environment: { CONFIG_REV: "${CONFIG_REV}" }   # set by init.sh; a new value recreates the container
     volumes: ["./data/synapse:/data", "./data/media:/media"]
@@ -26,6 +28,7 @@ services:
 
   sync1:
     image: ghcr.io/element-hq/synapse:v1.163.2
+    user: "991:991"
     entrypoint: ["python", "-m", "synapse.app.generic_worker", "--config-path", "/data/homeserver.yaml", "--config-path", "/data/workers/sync1.yaml"]
     environment: { CONFIG_REV: "${CONFIG_REV}" }
     volumes: ["./data/synapse:/data"]
@@ -34,6 +37,7 @@ services:
 
   media1:
     image: ghcr.io/element-hq/synapse:v1.163.2
+    user: "991:991"
     entrypoint: ["python", "-m", "synapse.app.generic_worker", "--config-path", "/data/homeserver.yaml", "--config-path", "/data/workers/media1.yaml"]
     environment: { CONFIG_REV: "${CONFIG_REV}" }
     volumes: ["./data/synapse:/data", "./data/media:/media"]

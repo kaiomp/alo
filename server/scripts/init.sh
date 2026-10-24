@@ -12,8 +12,12 @@ ENV=$DATA/.env
 SECRETS="POSTGRES_PASSWORD JWT_SECRET OTP_PEPPER REGISTRATION_SHARED_SECRET MACAROON_SECRET FORM_SECRET WORKER_REPLICATION_SECRET"
 
 mkdir -p "$DATA"/{synapse/workers,media,chama-id}
-# chama-id runs as user node; dev only.
-chmod 777 "$DATA/chama-id"
+# Containers write here as their own users (Synapse uid 991, chama-id user node), and a host user
+# without root cannot chown to them, so these dirs are world-writable. The config files below are
+# world-readable for the same reason. $DATA itself is 700, so other host users cannot reach any of it.
+# Dev only. Files Synapse creates are owned by 991; `make reset` removes them through a container.
+chmod 700 "$DATA"
+chmod 777 "$DATA/synapse" "$DATA/media" "$DATA/chama-id"
 
 umask 077
 touch "$ENV"
@@ -35,13 +39,15 @@ node -e '
     if (!env[k]) throw new Error("unknown or empty variable " + k);
     return env[k];
   });
-  fs.writeFileSync(dst, out, { mode: 0o600 });
+  fs.writeFileSync(dst, out);
 ' "$ENV" server/synapse/homeserver.yaml.tmpl "$DATA/synapse/homeserver.yaml"
 cp server/synapse/log.yaml "$DATA/synapse/"
 cp server/synapse/workers/*.yaml "$DATA/synapse/workers/"
+chmod 755 "$DATA/synapse/workers"
+chmod 644 "$DATA/synapse/homeserver.yaml" "$DATA/synapse/log.yaml" "$DATA"/synapse/workers/*.yaml
 
 if [[ ! -f $DATA/synapse/signing.key ]]; then
-  docker run --rm -v "$PWD/$DATA/synapse:/data" --entrypoint python "$SYNAPSE_IMAGE" \
+  docker run --rm --user 991:991 -v "$PWD/$DATA/synapse:/data" --entrypoint python "$SYNAPSE_IMAGE" \
     -m synapse.app.homeserver --config-path /data/homeserver.yaml --generate-keys
 fi
 

@@ -1,5 +1,5 @@
 # Build context is the repo root, so the pnpm lockfile is available.
-FROM node:26-slim
+FROM node:26.12.1-slim
 WORKDIR /app
 # Node 26 images no longer ship corepack.
 RUN npm install -g pnpm@10.32.1
