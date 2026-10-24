@@ -743,6 +743,8 @@ flowchart LR
 
 ## 13. Modelo de federação (proposta)
 
+> **Decisão de 2026-10-24:** o lançamento usa **uma única implantação nacional** — servidores, armazenamento de mídia e CDN, tudo no Brasil (São Paulo). A federação por DDD descrita abaixo fica como possibilidade futura, não como meta de lançamento.
+
 Objetivo: o Chama não ter um dono único, sem que os usuários precisem saber o que é um
 servidor ([issue #13](https://github.com/kaiomp/chama/issues/13)).
 
