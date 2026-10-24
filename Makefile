@@ -3,7 +3,7 @@ COMPOSE = docker compose -f server/compose.yaml --env-file server/data/.env
 SYNAPSE_IMAGE := $(shell awk '/image: ghcr.io\/element-hq\/synapse:/ {print $$2; exit}' server/compose.yaml)
 NO_ENV = echo "server/data/.env does not exist yet: run make up first"
 
-.PHONY: up down logs reset test smoke
+.PHONY: up down logs reset test smoke app-test app-web app-android app-e2e-web app-e2e-android app-apk
 
 up:
 	./server/scripts/init.sh
@@ -22,6 +22,29 @@ reset:
 
 test:
 	pnpm -r test
+	cd app && flutter test
 
 smoke: up
 	pnpm --filter smoke start
+
+app-test:
+	cd app && flutter test
+
+# Run the app against the local stack (make up first).
+app-web:
+	cd app && ./scripts/build-vodozemac-web.sh && flutter run -d chrome
+
+app-android:
+	cd app && flutter run -d $$(adb devices | awk '/^emulator-/{print $$1; exit}')
+
+# End-to-end: the app chats with tools/peer (needs make up).
+app-e2e-web:
+	cd app && ./scripts/e2e.sh chrome
+
+app-e2e-android:
+	cd app && ./scripts/e2e.sh android
+
+# Release APKs, one per ABI. pub get first: a GeneratedPluginRegistrant left by
+# an integration-test run still names the test-only plugin and breaks javac.
+app-apk:
+	cd app && flutter pub get && flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64,android-x64
