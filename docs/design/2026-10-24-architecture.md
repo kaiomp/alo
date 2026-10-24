@@ -58,21 +58,24 @@ the hard parts (crypto, sync, multi-device) come from audited libraries.
             │                                     │
        PostgreSQL                           SQLite (OTP codes, link sessions)
             │
-   later: LiveKit (calls), Sygnal/UnifiedPush (push), Coturn (TURN)
+   push: Synapse pusher worker → Sygnal (Web Push) → UnifiedPush distributor or FCM
+   later: LiveKit (calls), Coturn (TURN)
 ```
 
 ### Components
 
 | Unit | What it does | Depends on |
 |---|---|---|
-| `server/` | Docker Compose stack: Synapse (main + workers), PostgreSQL, Redis, Caddy, chama-id. Config templates and a seed script. | Docker |
+| `server/` | Docker Compose stack: Synapse (main + workers, including the pusher), PostgreSQL, Redis, Caddy, chama-id, Sygnal (push gateway), and ntfy for the emulator (dev only). Config templates and a seed script. | Docker |
 | `services/chama-id/` | Phone sign-in (SMS code → signed JWT), contact discovery, device-link rendezvous. Small TypeScript service on Node 26. | Synapse admin API, SQLite |
 | `app/` | The Chama app (Flutter) for every platform. Android layout on phones, WhatsApp-Web-style two-pane layout on wide screens. | `matrix` Dart SDK, `flutter_vodozemac` |
 | `docs/` | Design and operator docs. | — |
 
 Pinned starting versions (checked 2026-10-24): Synapse v1.163.2, Flutter 3.47 (stable),
 `matrix` (Dart) 14.2.0, `flutter_vodozemac` 0.9.0. `matrix-js-sdk` 44.0.0 is used only by
-Node test tools.
+Node test tools. Added in M3: Sygnal v0.17.0, ntfy v2.28.0 (dev server) and ntfy Android 1.25.2
+(emulator), `unifiedpush` 6.2.0, `flutter_local_notifications` 22.3.2, `flutter_contacts` 2.6.0,
+`share_plus` 13.3.1, `org.unifiedpush.android:embedded-fcm-distributor` 3.1.0 (Play build only).
 
 ## 4. Identity and sign-in
 
@@ -184,9 +187,9 @@ app-level choice, as in WhatsApp.
 | Channels | Public room where only admins post (power levels); followers see only admins |
 | Communities | Matrix Spaces holding groups and an announcement room |
 | Broadcast list | Client-side list; sends a copy to each 1:1 room |
-| Contacts | The phone app reads the address book, normalises to E.164, asks chama-id `POST /id/v1/directory/lookup` with SHA-256 hashes; chama-id answers which are registered and their current Matrix IDs. Lookups need an access token |
+| Contacts | The phone app reads the address book, normalises to E.164, asks chama-id `POST /id/v1/directory/lookup` with SHA-256 hashes; chama-id answers which are registered and their current Matrix IDs. Lookups need an access token; each account may send 30 lookups per hour and 10 000 hashes per day, and each number is checked at most once a day. Saved names replace display names in the app. Residual risk: docs/chama-id-api.md, "Contact lookup privacy" |
 | Voice / video calls | MatrixRTC + LiveKit SFU (milestone M6) |
-| Push notifications | Sygnal push gateway with UnifiedPush (ntfy) first, FCM optional (M7) |
+| Push notifications | Synapse's pusher worker → Sygnal, `event_id_only` (no content) → Web Push (RFC 8291, VAPID), encrypted to the phone's keys, to the user's UnifiedPush distributor (ntfy, …) or, in the Play build, to FCM through UnifiedPush's embedded FCM distributor (no Firebase SDK). The phone syncs once, decrypts and shows sender and text; muted chats are not pushed |
 | Report | Matrix `/report` to the operator's moderation queue |
 
 Neutrality rules built into the product: chat list ordered by last activity only; channels
@@ -224,7 +227,11 @@ The MVP (M1–M3 plus push) is the one-week target. It must be ready for million
 - Media is always fetched with auth and decrypted in the client.
 - i18n: pt-BR first, English second, with Flutter's ARB files.
 - No Google Play Services dependency in the core, so the app can also ship on F-Droid
-  (FCM only in the Play Store build).
+  (FCM only in the Play Store build): Android flavors `fdroid` (default) and `play`.
+- One Flutter engine per Android process: pushes reach the running app, or start it without
+  a screen, so there is never a second Matrix client on the same database.
+- Release builds talk to the server over HTTPS only (the server URL is set at build time) and
+  take the signing key from the environment, never from the repo (app/README.md).
 
 ### Brand
 
@@ -280,6 +287,8 @@ Target for the first months: 5 million accounts, 1 million daily active users,
   - `media_repository` worker; media stored on S3-compatible storage
     (`synapse-s3-storage-provider`), not on local disk.
   - `pusher` worker feeding Sygnal; `federation_sender` and `federation_reader` workers.
+  - Sygnal sends Web Push to any endpoint a user registers, so it runs where it can reach the
+    internet but no internal service.
   - Redis for worker replication.
 - **PostgreSQL** primary with streaming replicas and PgBouncer; regular `VACUUM` and
   state compression (`synapse_auto_compressor`).

@@ -31,6 +31,22 @@ Sign in with any Brazilian mobile number (for example `11 91234-5678`) and the c
 - Strings: `lib/l10n/app_pt.arb` (Portuguese, the template) and `app_en.arb`.
 - Colours: `lib/common/theme.dart` only.
 
+## Contacts
+
+After sign-in the app reads the address book (READ_CONTACTS; New chat explains why before Android asks) and asks
+chama-id which numbers have an account. Only SHA-256 hashes of the numbers leave the phone, each number at most once
+a day, at most 1000 per request (docs/chama-id-api.md, "Contact lookup privacy"). Saved names replace display names
+everywhere. Without the permission, chats start by typing a number.
+
+## Push notifications
+
+Pushes come through UnifiedPush: the user's distributor app (for example ntfy) or, in the Play build, FCM through
+UnifiedPush's embedded distributor. The server (Synapse pusher → Sygnal) sends only room and event IDs, encrypted with
+Web Push; the app fetches and decrypts the message and shows it. Without a distributor, Settings → Notificações says so.
+
+On the emulator: start the stack (`make up`) and the emulator, then run `./scripts/ntfy-setup.sh` once. It installs
+ntfy and points it at the stack's ntfy (`http://10.0.2.2:8081`).
+
 ## Release builds
 
 Two flavors: `fdroid` (the default, no Google code; push needs a UnifiedPush app such as ntfy) and
@@ -51,3 +67,12 @@ Without them a release build stops with an error. For local testing only, `CHAMA
 signs with the debug key and the version name ends in `-debugkey`; the stores refuse such builds,
 and a store-signed build cannot update them (a tester would have to uninstall and lose keys and
 chats).
+
+For a store that signs the APK itself (the F-Droid build server), `CHAMA_UNSIGNED=1` builds the
+release unsigned and ignores the variables above, for example
+`CHAMA_UNSIGNED=1 flutter build apk --release --flavor fdroid --dart-define=CHAMA_BASE_URL=https://chama.example`.
+The APK is `build/app/outputs/flutter-apk/app-fdroid-release.apk` (unsigned: it does not install
+until signed).
+
+Version: `version: <name>+<code>` in pubspec.yaml. Raise the code for every release; split APKs get
+1000 × ABI number on top (armeabi-v7a 1, arm64-v8a 2, x86_64 4).
