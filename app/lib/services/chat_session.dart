@@ -17,6 +17,7 @@ class ChatSession extends ChangeNotifier {
   final _subs = <StreamSubscription>[];
   DateTime _lastTypingSent = DateTime(0);
   bool _visible = true;
+  bool _disposed = false;
 
   /// Newest first, as the SDK keeps them.
   List<Message> messages = const [];
@@ -48,7 +49,10 @@ class ChatSession extends ChangeNotifier {
   bool get iAmAdmin => _room.getPowerLevelByUserId(_service.myUserId).level >= 100;
 
   Future<void> open() async {
-    _timeline = await _room.getTimeline(onUpdate: _rebuild);
+    final timeline = await _room.getTimeline(onUpdate: _rebuild);
+    // The user may leave the chat before the timeline loads.
+    if (_disposed) return timeline.cancelSubscriptions();
+    _timeline = timeline;
     _subs.add(
       _service.client.onSync.stream
           .where((s) => s.rooms?.join?.containsKey(_room.id) ?? false)
@@ -65,6 +69,7 @@ class ChatSession extends ChangeNotifier {
   }
 
   void _setPresence(CachedPresence p) {
+    if (_disposed) return;
     presence = OnlineStatus(
       online: p.currentlyActive == true || p.presence == PresenceType.online,
       lastSeen: p.lastActiveTimestamp,
@@ -81,7 +86,7 @@ class ChatSession extends ChangeNotifier {
 
   void _rebuild() {
     final timeline = _timeline;
-    if (timeline == null) return;
+    if (timeline == null || _disposed) return;
     final hidden = hiddenEventIds(_room);
     final knownTs = {for (final e in timeline.events) e.eventId: e.originServerTs.millisecondsSinceEpoch};
     messages = [
@@ -311,6 +316,7 @@ class ChatSession extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _service.delivery.revision.removeListener(_rebuild);
     for (final s in _subs) {
       s.cancel();
