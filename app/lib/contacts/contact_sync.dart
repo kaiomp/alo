@@ -109,6 +109,10 @@ class ContactSync {
       for (final d in names.keys)
         if (now - (cache[d]?.checkedAt ?? 0) >= refreshAfter.inMilliseconds) d,
     ];
+    // Oldest check first, never-checked numbers before all: a book bigger than
+    // the daily quota then gets through in a few days instead of re-checking
+    // its first numbers every day.
+    due.sort((a, b) => (cache[a]?.checkedAt ?? 0).compareTo(cache[b]?.checkedAt ?? 0));
     final retryAt = _prefs.getInt(_retryKey) ?? 0;
     if (now >= retryAt) {
       for (var i = 0; i < due.length; i += maxBatch) {

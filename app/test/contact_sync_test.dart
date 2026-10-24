@@ -90,6 +90,25 @@ void main() {
     expect(g.calls.single, hasLength(500));
   });
 
+  test('a book bigger than the daily quota: the next day, the unchecked numbers go first', () async {
+    final book = [
+      for (var i = 0; i < 12000; i++) BookContact('C$i', [mobile(i)]),
+    ];
+    // 10 000 hashes a day: the 11th batch is refused.
+    final f = FakeLookup({}, refuseAfter: 10);
+    await sync(f).run(book);
+    expect(f.calls, hasLength(10));
+
+    clock = clock.add(const Duration(days: 1));
+    final g = FakeLookup({}, refuseAfter: 2);
+    await sync(g).run(book);
+    final checked = f.calls.expand((c) => c).toSet();
+    expect(g.calls.expand((c) => c).toSet(), {
+      for (final c in book)
+        if (!checked.contains(c.numbers.single)) c.numbers.single,
+    });
+  });
+
   test('a network error keeps the cache and makes no further calls in that run', () async {
     var n = 0;
     final s = ContactSync(prefs, (d) async {
