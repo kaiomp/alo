@@ -2,6 +2,6 @@
   "name": "smoke",
   "private": true,
   "type": "module",
-  "scripts": { "start": "node smoke.ts" },
+  "scripts": { "start": "node --disable-warning=ExperimentalWarning smoke.ts" },
   "dependencies": { "matrix-js-sdk": "44.0.0" }
 }

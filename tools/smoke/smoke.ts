@@ -9,8 +9,12 @@ import { logger } from 'matrix-js-sdk/lib/logger.js';
 
 // The SDK logs every sync and crypto step, and its child loggers reset themselves to
 // debug level. Child loggers copy the root's method factory, so filter there: errors only.
-(logger as any).methodFactory = (method: string) => (method === 'error' ? console.error : () => {});
-(logger as any).rebuild();
+// These are loglevel internals; if a new SDK drops them, the run is just noisier.
+const root = logger as any;
+if (typeof root.methodFactory === 'function' && typeof root.rebuild === 'function') {
+  root.methodFactory = (method: string) => (method === 'error' ? console.error : () => {});
+  root.rebuild();
+} else console.warn('smoke: matrix-js-sdk logger internals changed; SDK logs not filtered');
 
 const BASE = process.env.BASE ?? 'http://localhost:8080';
 const TEXT = 'Olá do Chama 🔥';
@@ -35,6 +39,9 @@ async function signIn(name: string) {
   step = `${name}: sign in`;
   await post('/id/v1/otp/request', { phone });
   const v = await post('/id/v1/otp/verify', { phone, code: '000000' });
+  if (v.phone !== phone) throw new Error(`${name}: chama-id normalised ${phone} to ${v.phone}`);
+  if (!/^@u[a-z2-7]{16}:chama\.test$/.test(v.user_id)) throw new Error(`${name}: user_id not opaque: ${v.user_id}`);
+  if (v.user_id.includes(phone.slice(-8))) throw new Error(`${name}: user_id contains phone digits: ${v.user_id}`);
   const login = await sdk.createClient({ baseUrl: BASE }).loginRequest({ type: 'org.matrix.login.jwt', token: v.login_token });
   if (login.user_id !== v.user_id) throw new Error(`${name}: login user ${login.user_id} != chama-id user ${v.user_id}`);
   const client = sdk.createClient({ baseUrl: BASE, userId: login.user_id, accessToken: login.access_token, deviceId: login.device_id });
@@ -53,7 +60,7 @@ async function signIn(name: string) {
   await client.startClient({ initialSyncLimit: 10 });
   await prepared;
   console.log(`ok: ${name} signed in as ${v.user_id}`);
-  return { client, userId: v.user_id as string, phone: v.phone as string, token: login.access_token };
+  return { client, userId: v.user_id as string, phone, token: login.access_token };
 }
 
 // Resolves when user `userId` has membership `want` in room `roomId`, as seen by `client`.
@@ -84,7 +91,9 @@ try {
   step = 'A: create room and invite B';
   const invited = membership(b.client, b.userId, 'invite');
   const { room_id: roomId } = await a.client.createRoom({ is_direct: true, invite: [bId], preset: sdk.Preset.TrustedPrivateChat });
-  const enc = await a.client.getStateEvent(roomId, 'm.room.encryption', '').catch(() => null);
+  // Only a 404 means "no encryption state"; any other error fails with its own cause.
+  const enc = await a.client.getStateEvent(roomId, 'm.room.encryption', '')
+    .catch((e) => { if (e?.httpStatus === 404) return null; throw e; });
   if (enc?.algorithm !== 'm.megolm.v1.aes-sha2') throw new Error(`room ${roomId} has no m.room.encryption: server default is broken`);
   console.log(`ok: room ${roomId} encrypted by default (${enc.algorithm})`);
 
@@ -107,6 +116,8 @@ try {
   });
   const { event_id: eventId } = await a.client.sendTextMessage(roomId, TEXT);
   const ev = await received;
+  if (ev.getId() !== eventId) throw new Error(`B decrypted ${ev.getId()}, want the sent event ${eventId}`);
+  if (ev.getSender() !== a.userId) throw new Error(`sender ${ev.getSender()}, want ${a.userId}`);
   if (!ev.isEncrypted()) throw new Error('message was not encrypted');
   if (ev.getContent().body !== TEXT) throw new Error(`decrypted body ${JSON.stringify(ev.getContent().body)}, want ${JSON.stringify(TEXT)}`);
   if (ev.getWireType() !== 'm.room.encrypted') throw new Error(`wire type ${ev.getWireType()}`);
