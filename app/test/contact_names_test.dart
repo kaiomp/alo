@@ -8,6 +8,7 @@ import 'package:chama/services/chat_service.dart';
 import 'package:chama/services/chat_session.dart';
 import 'package:chama/services/models.dart';
 import 'package:crypto/crypto.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -20,6 +21,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'fakes.dart';
 
 void main() {
+  setUp(() => FlutterSecureStorage.setMockInitialValues({}));
+
   test('a saved contact name replaces the display name; others keep theirs', () async {
     SharedPreferences.setMockInitialValues({});
     final service = await testService(await SharedPreferences.getInstance());
@@ -136,7 +139,7 @@ void main() {
     expect(service.nameOf(ana), 'ana_profile');
     expect(contacts.onChama, isEmpty);
     await Future<void>.delayed(Duration.zero);
-    expect(ContactSync(prefs, (_) async => {}).cachedNames(), isEmpty);
+    expect(await ContactSync(prefs, (_) async => {}).cachedNames(), isEmpty);
   });
 
   test('a lookup still running at sign-out leaves nothing behind', () async {
@@ -172,7 +175,7 @@ void main() {
     lookup.complete();
     await running;
     expect(contacts.onChama, isEmpty);
-    expect(ContactSync(prefs, (_) async => {}).cachedNames(), isEmpty);
+    expect(await ContactSync(prefs, (_) async => {}).cachedNames(), isEmpty);
   });
 
   test('an empty saved name is skipped: the profile name stays', () async {
@@ -219,7 +222,7 @@ void main() {
     await contacts.start();
     expect(calls, 1, reason: 'no lookup without an access token');
     expect(contacts.onChama, isEmpty);
-    expect(ContactSync(prefs, (_) async => {}).cachedNames(), isEmpty);
+    expect(await ContactSync(prefs, (_) async => {}).cachedNames(), isEmpty);
   });
 
   test('a lookup answered after sign-out and a new sign-in is not kept', () async {
@@ -251,7 +254,80 @@ void main() {
 
     await contacts.start();
     expect(contacts.onChama, isEmpty);
-    expect(ContactSync(prefs, (_) async => {}).cachedNames(), isEmpty);
+    expect(await ContactSync(prefs, (_) async => {}).cachedNames(), isEmpty);
+  });
+  test('a number that now answers for another account: that account shows by its profile name and number, and the chat with the old one says so (final review 6)', () async {
+    const a = '@a:chama.test';
+    const b = '@b:chama.test';
+    const digits = '5511987654321';
+    const roomId = '!r:chama.test';
+    SharedPreferences.setMockInitialValues({});
+    // Mãe's number answered for A at the last check, over a day ago.
+    FlutterSecureStorage.setMockInitialValues({
+      'chama.contacts.v1': jsonEncode({
+        digits: {'u': a, 't': 0, 'n': 'Mãe', 'k': a},
+      }),
+    });
+    final prefs = await SharedPreferences.getInstance();
+    final chamaId = MockClient(
+      (req) async => http.Response(
+        jsonEncode({
+          'registered': [
+            {'hash': sha256.convert(utf8.encode(digits)).toString(), 'user_id': b},
+          ],
+        }),
+        200,
+      ),
+    );
+    final matrix = MockClient(
+      (req) async => Uri.decodeComponent(req.url.path).endsWith('/profile/$b')
+          ? http.Response(jsonEncode({'displayname': 'Bia Nova'}), 200)
+          : http.Response('{"errcode":"M_UNKNOWN","error":"no"}', 400),
+    );
+    final service = await testService(prefs, matrix: matrix, chamaId: chamaId);
+    final client = service.client
+      ..setUserId('@me:chama.test')
+      ..homeserver = testBase;
+    service.client.accessToken = 'token';
+    service.loggedIn.value = true;
+    final room = _ReadyRoom(id: roomId, client: client);
+    for (final user in [a, '@me:chama.test']) {
+      room.setState(
+        Event(
+          type: EventTypes.RoomMember,
+          content: {'membership': 'join', 'displayname': user == a ? 'a_profile' : 'Eu'},
+          eventId: '\$$user',
+          senderId: user,
+          stateKey: user,
+          originServerTs: DateTime(2026),
+          room: room,
+        ),
+      );
+    }
+    client.rooms.add(room);
+    final contacts = ContactsService(
+      service,
+      _Book(const [
+        BookContact('Mãe', ['(11) 98765-4321']),
+      ]),
+      prefs,
+    );
+    await contacts.ready;
+    expect(
+      service.nameOf(User(a, displayName: 'a_profile', room: room)),
+      'Mãe',
+      reason: 'cached before the check',
+    );
+    final session = ChatSession(service, room);
+    await session.open();
+
+    await contacts.start();
+    expect([for (final c in contacts.onChama) (c.userId, c.name, c.phone)], [(b, 'Bia Nova', digits)]);
+    expect(service.nameOf(User(b, displayName: 'b_profile', room: room)), 'b_profile');
+    expect(service.nameOf(User(a, displayName: 'a_profile', room: room)), 'a_profile');
+    final line = session.messages.singleWhere((m) => m.systemKind == SystemKind.numberMoved);
+    expect(line.senderName, 'Mãe');
+    session.dispose();
   });
 }
 

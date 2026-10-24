@@ -125,4 +125,40 @@ void main() {
     );
     expect(MessageBubble.systemText(m, lookupL10n(const Locale('en')), myUserId: me), "Bia's security code changed");
   });
+
+  test(
+    'a saved number now answering for another account adds a line to every chat with the old one (final review 6)',
+    () async {
+      room('!dm:chama.test', {bob: 'join'});
+      room('!group:chama.test', {bob: 'join'});
+      room('!old:chama.test', {bob: 'leave'});
+      watch.noteNumberMoved(bob, 'Mãe');
+      expect(watch.noticesIn('!dm:chama.test').map((n) => (n.userId, n.name)), [(bob, 'Mãe')]);
+      expect(watch.noticesIn('!group:chama.test'), hasLength(1));
+      expect(watch.noticesIn('!old:chama.test'), isEmpty);
+      expect(watch.revision.value, 1);
+
+      final restarted = SecurityCodeWatch(client, prefs);
+      expect(restarted.noticesIn('!dm:chama.test').single.name, 'Mãe');
+      await restarted.dispose();
+
+      final m = Message(
+        id: 'security_${bob}_1',
+        senderId: bob,
+        senderName: 'Mãe',
+        isMine: false,
+        time: DateTime(2026),
+        kind: MessageKind.system,
+        systemKind: SystemKind.numberMoved,
+      );
+      expect(
+        MessageBubble.systemText(m, lookupL10n(const Locale('pt')), myUserId: me),
+        'O número de Mãe agora é de outra conta',
+      );
+      expect(
+        MessageBubble.systemText(m, lookupL10n(const Locale('en')), myUserId: me),
+        "Mãe's number now belongs to another account",
+      );
+    },
+  );
 }

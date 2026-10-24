@@ -175,6 +175,21 @@ class ChatService {
   /// A 1:1 chat is named after the other person as saved in the address book.
   String chatName(Room room) => _contactNames[room.directChatMatrixID] ?? room.getLocalizedDisplayname();
 
+  /// [userId]'s own profile name; empty when it has none or the server does
+  /// not answer.
+  Future<String> profileName(String userId) async {
+    try {
+      return (await client.getUserProfile(userId)).displayname ?? '';
+    } catch (e) {
+      Logs().w('Profile fetch failed', e);
+      return '';
+    }
+  }
+
+  /// The number saved as [name] now answers for another account than
+  /// [userId]: the chats with [userId] get a local line saying so.
+  void numberMoved(String userId, String name) => securityCodes.noteNumberMoved(userId, name);
+
   // ---- sign-in and profile ----
 
   static const _phoneKey = 'chama.phone';

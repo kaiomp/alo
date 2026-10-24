@@ -189,6 +189,7 @@
   "repairTitle": "Finish protecting your account",
   "repairExplain": "Encryption setup did not finish. To complete it, confirm with the code we sent by SMS. Your contacts will see that your security code changed.",
   "securityCodeChanged": "{name}'s security code changed",
+  "numberMoved": "{name}'s number now belongs to another account",
   "notEncryptedNotice": "This chat is not encrypted. Chama does not send messages in it.",
   "notEncryptedNoSend": "Messages cannot be sent in a chat without encryption.",
   "smsCodeLabel": "SMS code",

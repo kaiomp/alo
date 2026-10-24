@@ -383,6 +383,14 @@
       }
     }
   },
+  "numberMoved": "O número de {name} agora é de outra conta",
+  "@numberMoved": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "notEncryptedNotice": "Esta conversa não é criptografada. O Chama não envia mensagens nela.",
   "notEncryptedNoSend": "Não é possível enviar mensagens em uma conversa sem criptografia.",
   "smsCodeLabel": "Código do SMS",

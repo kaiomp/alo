@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:chama/auth/id_client.dart';
 import 'package:chama/contacts/contact_sync.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -27,6 +30,7 @@ void main() {
   var clock = DateTime(2026, 10, 24, 12);
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
+    FlutterSecureStorage.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
     clock = DateTime(2026, 10, 24, 12);
   });
@@ -141,13 +145,13 @@ void main() {
       BookContact('Ana', [mobile(1)]),
       BookContact('Bia', [mobile(2)]),
     ]);
-    expect(sync(f).cachedNames(), {'@u1:chama.test': 'Ana', '@u2:chama.test': 'Bia'});
+    expect(await sync(f).cachedNames(), {'@u1:chama.test': 'Ana', '@u2:chama.test': 'Bia'});
     await sync(f).run([
       BookContact('Ana', [mobile(1)]),
     ]);
-    expect(sync(f).cachedNames(), {'@u1:chama.test': 'Ana'});
+    expect(await sync(f).cachedNames(), {'@u1:chama.test': 'Ana'});
     await sync(f).clear();
-    expect(sync(f).cachedNames(), isEmpty);
+    expect(await sync(f).cachedNames(), isEmpty);
   });
 
   test('a number saved once without a name takes the name it has elsewhere', () async {
@@ -157,6 +161,89 @@ void main() {
       BookContact('Ana', ['+${mobile(1)}']),
     ]);
     expect([for (final c in r.onChama) c.name], ['Ana']);
-    expect(sync(f).cachedNames(), {'@u1:chama.test': 'Ana'});
+    expect(await sync(f).cachedNames(), {'@u1:chama.test': 'Ana'});
+  });
+
+  group('a number that now answers for another account (final review 6)', () {
+    const a = '@a:chama.test';
+    const b = '@b:chama.test';
+    final book = [
+      BookContact('Mãe', [mobile(1)]),
+    ];
+
+    test('the saved name does not move to the new account, and the change is reported once', () async {
+      final f = FakeLookup({mobile(1): a});
+      expect((await sync(f).run(book)).moved, isEmpty);
+      expect(await sync(f).cachedNames(), {a: 'Mãe'});
+
+      f.accounts[mobile(1)] = b;
+      clock = clock.add(ContactSync.refreshAfter);
+      final r = await sync(f).run(book);
+      expect(r.moved, [(userId: a, name: 'Mãe')]);
+      expect([for (final c in r.onChama) (c.userId, c.name, c.phone, c.moved)], [(b, '', mobile(1), true)]);
+      expect(await sync(f).cachedNames(), isEmpty);
+
+      clock = clock.add(ContactSync.refreshAfter);
+      expect((await sync(f).run(book)).moved, isEmpty, reason: 'reported once');
+      expect(await sync(f).cachedNames(), isEmpty, reason: 'still not attached');
+    });
+
+    test('also when the number had no account in between (a recycled number)', () async {
+      final f = FakeLookup({mobile(1): a});
+      await sync(f).run(book);
+      f.accounts.remove(mobile(1));
+      clock = clock.add(ContactSync.refreshAfter);
+      expect((await sync(f).run(book)).moved, isEmpty);
+      f.accounts[mobile(1)] = b;
+      clock = clock.add(ContactSync.refreshAfter);
+      expect((await sync(f).run(book)).moved, [(userId: a, name: 'Mãe')]);
+      expect(await sync(f).cachedNames(), isEmpty);
+    });
+
+    test('the number taken off the address book and saved again trusts the new account', () async {
+      final f = FakeLookup({mobile(1): a});
+      await sync(f).run(book);
+      f.accounts[mobile(1)] = b;
+      clock = clock.add(ContactSync.refreshAfter);
+      await sync(f).run(book);
+      await sync(f).run(const []);
+      clock = clock.add(ContactSync.refreshAfter);
+      expect((await sync(f).run(book)).moved, isEmpty);
+      expect(await sync(f).cachedNames(), {b: 'Mãe'});
+    });
+  });
+
+  group('the number-to-account map is kept encrypted (final review 13)', () {
+    const secure = FlutterSecureStorage();
+
+    test('it goes to secure storage, not to SharedPreferences', () async {
+      final f = FakeLookup({mobile(1): '@u1:chama.test'});
+      await sync(f).run([
+        BookContact('Ana', [mobile(1)]),
+      ]);
+      expect(prefs.getString('chama.contacts.v1'), isNull);
+      expect(await secure.read(key: 'chama.contacts.v1'), contains('@u1:chama.test'));
+      await sync(f).clear();
+      expect(await secure.read(key: 'chama.contacts.v1'), isNull);
+    });
+
+    test('an old plain copy moves over and is deleted; its accounts stay trusted', () async {
+      SharedPreferences.setMockInitialValues({
+        'chama.contacts.v1': jsonEncode({
+          mobile(1): {'u': '@a:chama.test', 't': clock.millisecondsSinceEpoch, 'n': 'Mãe'},
+        }),
+      });
+      prefs = await SharedPreferences.getInstance();
+      final f = FakeLookup({mobile(1): '@b:chama.test'});
+      expect(await sync(f).cachedNames(), {'@a:chama.test': 'Mãe'});
+      expect(prefs.getString('chama.contacts.v1'), isNull);
+      expect(await secure.read(key: 'chama.contacts.v1'), contains('@a:chama.test'));
+
+      clock = clock.add(ContactSync.refreshAfter);
+      final r = await sync(f).run([
+        BookContact('Mãe', [mobile(1)]),
+      ]);
+      expect(r.moved, [(userId: '@a:chama.test', name: 'Mãe')]);
+    });
   });
 }

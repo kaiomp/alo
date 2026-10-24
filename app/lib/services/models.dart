@@ -66,6 +66,10 @@ enum SystemKind {
 
   /// Local line: a contact's master key changed (identity reset).
   securityCodeChanged,
+
+  /// Local line: the number saved as this contact now answers for another
+  /// account. The sender name is the saved name.
+  numberMoved,
 }
 
 class Reaction {

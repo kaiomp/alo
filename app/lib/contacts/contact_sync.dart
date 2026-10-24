@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../auth/id_client.dart';
@@ -15,12 +16,16 @@ class BookContact {
 
 /// A saved contact with a Chama account.
 class ChamaContact {
-  const ChamaContact({required this.name, required this.phone, required this.userId});
+  const ChamaContact({required this.name, required this.phone, required this.userId, this.moved = false});
   final String name;
 
   /// E.164 digits without '+'.
   final String phone;
   final String userId;
+
+  /// The number now answers for another account than the one it was saved
+  /// for: [name] is empty, the saved name is not attached to [userId].
+  final bool moved;
 }
 
 /// A saved contact without an account, for "Convidar para o Chama".
@@ -31,10 +36,19 @@ class InviteContact {
 }
 
 class ContactSyncResult {
-  const ContactSyncResult(this.onChama, this.invite);
+  const ContactSyncResult(this.onChama, this.invite, [this.moved = const []]);
   final List<ChamaContact> onChama;
   final List<InviteContact> invite;
+
+  /// Numbers found answering for another account in this run: the account
+  /// they were saved for, and the saved name (or the number).
+  final List<({String userId, String name})> moved;
 }
+
+/// One cached number: its account at the last check (or null), when that
+/// was, the saved name, and the account the saved name belongs to (the first
+/// one seen for it, kept while the number has none).
+typedef _Entry = ({String? userId, int checkedAt, String name, String? trusted});
 
 /// Asks chama-id which of these numbers (up to 1000) have an account.
 typedef LookupPhones = Future<Map<String, String>> Function(List<String> phoneDigits);
@@ -47,8 +61,14 @@ typedef LookupPhones = Future<Map<String, String>> Function(List<String> phoneDi
 /// ago, are sent, at most [maxBatch] per request. A refusal (rate_limited) or a
 /// network error stops the run; what was learned is kept and the next run
 /// continues where this one stopped.
+///
+/// The number-to-account map stays in the system keystore (secure storage),
+/// not in plain SharedPreferences: opaque IDs keep it off the server, so it
+/// must not sit readable on the phone either.
 class ContactSync {
   ContactSync(this._prefs, this._lookup, {DateTime Function()? now}) : _now = now ?? DateTime.now;
+
+  static const _secure = FlutterSecureStorage();
 
   // Limit: chama-id takes at most 1000 hashes per lookup.
   static const maxBatch = 1000;
@@ -60,31 +80,46 @@ class ContactSync {
   final LookupPhones _lookup;
   final DateTime Function() _now;
 
-  /// digits -> (user ID or null, last check in ms, saved name)
-  Map<String, ({String? userId, int checkedAt, String name})> _load() {
-    final raw = _prefs.getString(_cacheKey);
+  /// digits -> entry. A copy left in SharedPreferences by an older build
+  /// moves to secure storage and is deleted.
+  Future<Map<String, _Entry>> _load() async {
+    var raw = await _secure.read(key: _cacheKey);
+    final plain = _prefs.getString(_cacheKey);
+    if (plain != null) {
+      if (raw == null) await _secure.write(key: _cacheKey, value: raw = plain);
+      await _prefs.remove(_cacheKey);
+    }
     if (raw == null) return {};
     return (jsonDecode(raw) as Map<String, dynamic>).map(
-      (digits, v) => MapEntry(digits, (userId: v['u'] as String?, checkedAt: v['t'] as int, name: v['n'] as String)),
+      (digits, v) => MapEntry(digits, (
+        userId: v['u'] as String?,
+        checkedAt: v['t'] as int,
+        name: v['n'] as String,
+        // Older caches trust the account they had.
+        trusted: (v as Map).containsKey('k') ? v['k'] as String? : v['u'] as String?,
+      )),
     );
   }
 
-  Future<void> _save(Map<String, ({String? userId, int checkedAt, String name})> cache) => _prefs.setString(
-    _cacheKey,
-    jsonEncode({
-      for (final MapEntry(key: d, value: e) in cache.entries) d: {'u': e.userId, 't': e.checkedAt, 'n': e.name},
+  Future<void> _save(Map<String, _Entry> cache) => _secure.write(
+    key: _cacheKey,
+    value: jsonEncode({
+      for (final MapEntry(key: d, value: e) in cache.entries)
+        d: {'u': e.userId, 't': e.checkedAt, 'n': e.name, 'k': e.trusted},
     }),
   );
 
   /// Saved names of known accounts, from the last run. Needs no address book,
-  /// so a push in the background can name the sender.
-  Map<String, String> cachedNames() => {
-    for (final e in _load().values)
-      if (e.userId != null) e.userId!: e.name,
+  /// so a push in the background can name the sender. A number that now
+  /// answers for another account names no one.
+  Future<Map<String, String>> cachedNames() async => {
+    for (final e in (await _load()).values)
+      if (e.userId != null && e.userId == e.trusted) e.userId!: e.name,
   };
 
   /// Forgets everything (sign-out).
   Future<void> clear() async {
+    await _secure.delete(key: _cacheKey);
     await _prefs.remove(_cacheKey);
     await _prefs.remove(_retryKey);
   }
@@ -100,12 +135,14 @@ class ContactSync {
       }
     }
     final now = _now().millisecondsSinceEpoch;
-    final old = _load();
-    // Numbers no longer in the address book are dropped.
-    final cache = {
+    final old = await _load();
+    // Numbers no longer in the address book are dropped. Saved again later,
+    // a number trusts whatever account it then answers for.
+    final cache = <String, _Entry>{
       for (final MapEntry(key: d, value: name) in names.entries)
-        if (old[d] case final e?) d: (userId: e.userId, checkedAt: e.checkedAt, name: name),
+        if (old[d] case final e?) d: (userId: e.userId, checkedAt: e.checkedAt, name: name, trusted: e.trusted),
     };
+    final moved = <({String userId, String name})>[];
     final due = [
       for (final d in names.keys)
         if (now - (cache[d]?.checkedAt ?? 0) >= refreshAfter.inMilliseconds) d,
@@ -121,7 +158,18 @@ class ContactSync {
         try {
           final found = await _lookup(batch);
           for (final d in batch) {
-            cache[d] = (userId: found[d], checkedAt: now, name: names[d]!);
+            final was = cache[d];
+            final userId = found[d];
+            final trusted = was?.trusted ?? userId;
+            // A recycled number (chama-id gives it a fresh account) or a
+            // directory answering wrongly: the saved name stays off the new
+            // account, and the chats with the old one say so, once.
+            // Limit: it stays off until the number answers for the trusted
+            // account again, or is taken off the address book and saved again.
+            if (userId != null && userId != trusted && userId != was?.userId) {
+              moved.add((userId: trusted!, name: names[d]!.trim().isEmpty ? formatPhone(d) : names[d]!));
+            }
+            cache[d] = (userId: userId, checkedAt: now, name: names[d]!, trusted: trusted);
           }
           await _save(cache);
         } on IdError catch (e) {
@@ -131,10 +179,14 @@ class ContactSync {
       }
     }
     await _save(cache);
-    return _result(book, cache);
+    return _result(book, cache, moved);
   }
 
-  ContactSyncResult _result(List<BookContact> book, Map<String, ({String? userId, int checkedAt, String name})> cache) {
+  ContactSyncResult _result(
+    List<BookContact> book,
+    Map<String, _Entry> cache,
+    List<({String userId, String name})> moved,
+  ) {
     final onChama = <String, ChamaContact>{};
     final invite = <InviteContact>[];
     for (final c in book) {
@@ -143,7 +195,11 @@ class ContactSync {
       final registered = digits.where((d) => cache[d]?.userId != null).toList();
       for (final d in registered) {
         final e = cache[d]!;
-        onChama.putIfAbsent(e.userId!, () => ChamaContact(name: e.name, phone: d, userId: e.userId!));
+        final isMoved = e.userId != e.trusted;
+        onChama.putIfAbsent(
+          e.userId!,
+          () => ChamaContact(name: isMoved ? '' : e.name, phone: d, userId: e.userId!, moved: isMoved),
+        );
       }
       // Only numbers already checked: an unchecked one may still have an account.
       if (registered.isEmpty && digits.every(cache.containsKey)) {
@@ -154,6 +210,7 @@ class ContactSync {
     return ContactSyncResult(
       onChama.values.toList()..sort((a, b) => byName(a.name, b.name)),
       invite..sort((a, b) => byName(a.name, b.name)),
+      moved,
     );
   }
 }

@@ -32,6 +32,7 @@ class AppServices with WidgetsBindingObserver {
     final chat = await ChatService.start(homeserver: chamaBaseUrl, id: id, background: background);
     final prefs = await SharedPreferences.getInstance();
     final contacts = ContactsService(chat, onAndroid ? DeviceAddressBook() : NoAddressBook(), prefs);
+    await contacts.ready;
     final notifications = Notifications()
       ..onReply = chat.sendQuickReply
       ..clearOnSignOut(chat.loggedIn);

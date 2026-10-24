@@ -157,7 +157,7 @@ class ChatSession extends ChangeNotifier {
     );
   }
 
-  /// Local "security code changed" lines, placed by time among the messages
+  /// Local "security code changed" and "number moved" lines, placed by time among the messages
   /// (newest first). Only those within the loaded range, so they do not
   /// pile up above the oldest loaded message.
   void _insertSecurityNotices() {
@@ -173,11 +173,11 @@ class ChatSession extends ChangeNotifier {
         Message(
           id: 'security_${n.userId}_${n.ts}',
           senderId: n.userId,
-          senderName: _service.nameOf(_room.unsafeGetUserFromMemoryOrFallback(n.userId)),
+          senderName: n.name ?? _service.nameOf(_room.unsafeGetUserFromMemoryOrFallback(n.userId)),
           isMine: false,
           time: time,
           kind: MessageKind.system,
-          systemKind: SystemKind.securityCodeChanged,
+          systemKind: n.name == null ? SystemKind.securityCodeChanged : SystemKind.numberMoved,
           systemTargetId: n.userId,
         ),
       );

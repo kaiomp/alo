@@ -9,7 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// key seen for each contact and, when it changes (an identity reset, or
 /// someone else installing keys for that account), records a notice in every
 /// chat shared with that person. Pinning is local, so it does not depend on
-/// the operator.
+/// the operator. The same local lines also say when a saved number now
+/// answers for another account (`O número de Mãe agora é de outra conta`).
 class SecurityCodeWatch {
   SecurityCodeWatch(this._client, this._prefs) {
     final pins = _prefs.getString(_pinsKey);
@@ -17,7 +18,10 @@ class SecurityCodeWatch {
     final notices = _prefs.getString(_noticesKey);
     if (notices != null) {
       (jsonDecode(notices) as Map<String, dynamic>).forEach((room, list) {
-        _notices[room] = [for (final n in list as List) (userId: n[0] as String, ts: n[1] as int)];
+        _notices[room] = [
+          for (final n in list as List)
+            (userId: n[0] as String, ts: n[1] as int, name: n.length > 2 ? n[2] as String : null),
+        ];
       });
     }
     _sub = _client.onSync.stream.listen((_) => check());
@@ -29,13 +33,47 @@ class SecurityCodeWatch {
   final SharedPreferences _prefs;
   late final StreamSubscription _sub;
   final Map<String, String> _pins = {};
-  final Map<String, List<({String userId, int ts})>> _notices = {};
+
+  /// [name] is set on a "number moved" line: the saved name it was under.
+  final Map<String, List<({String userId, int ts, String? name})>> _notices = {};
 
   /// Bumps when a notice is added, so open chats can redraw.
   final revision = ValueNotifier<int>(0);
 
   /// Notices for [roomId], oldest first.
-  List<({String userId, int ts})> noticesIn(String roomId) => _notices[roomId] ?? const [];
+  List<({String userId, int ts, String? name})> noticesIn(String roomId) => _notices[roomId] ?? const [];
+
+  /// The number saved as [name] now answers for another account than
+  /// [userId]: a line in every chat shared with [userId].
+  void noteNumberMoved(String userId, String name) {
+    if (_note(userId, name: name)) _saveNotices();
+  }
+
+  /// Adds a notice to every joined chat [userId] is in; false when there is none.
+  bool _note(String userId, {String? name}) {
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    var added = false;
+    for (final room in _client.rooms) {
+      if (room.membership != Membership.join) continue;
+      if (room.getState(EventTypes.RoomMember, userId)?.content['membership'] != Membership.join.name) continue;
+      (_notices[room.id] ??= []).add((userId: userId, ts: ts, name: name));
+      added = true;
+    }
+    return added;
+  }
+
+  void _saveNotices() {
+    _prefs.setString(
+      _noticesKey,
+      jsonEncode({
+        for (final MapEntry(:key, :value) in _notices.entries)
+          key: [
+            for (final n in value) [n.userId, n.ts, ?n.name],
+          ],
+      }),
+    );
+    revision.value++;
+  }
 
   /// Compares every known master key with its pin. Runs after each sync,
   /// when the SDK has refreshed the device lists.
@@ -50,27 +88,10 @@ class SecurityCodeWatch {
       _pins[userId] = key;
       pinsChanged = true;
       if (!known) continue; // first sight: trust on first use
-      final ts = DateTime.now().millisecondsSinceEpoch;
-      for (final room in _client.rooms) {
-        if (room.membership != Membership.join) continue;
-        if (room.getState(EventTypes.RoomMember, userId)?.content['membership'] != Membership.join.name) continue;
-        (_notices[room.id] ??= []).add((userId: userId, ts: ts));
-        noticesChanged = true;
-      }
+      if (_note(userId)) noticesChanged = true;
     }
     if (pinsChanged) _prefs.setString(_pinsKey, jsonEncode(_pins));
-    if (noticesChanged) {
-      _prefs.setString(
-        _noticesKey,
-        jsonEncode({
-          for (final MapEntry(:key, :value) in _notices.entries)
-            key: [
-              for (final n in value) [n.userId, n.ts],
-            ],
-        }),
-      );
-      revision.value++;
-    }
+    if (noticesChanged) _saveNotices();
   }
 
   /// Sign-out: the next account starts with no pins and no notices.

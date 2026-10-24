@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../chat_list/chat_filter.dart';
 import '../services/chat_service.dart';
 import 'address_book.dart';
 import 'contact_sync.dart';
@@ -12,9 +13,13 @@ import 'contact_sync.dart';
 class ContactsService extends ChangeNotifier {
   ContactsService(this._chat, this._book, SharedPreferences prefs) {
     _sync = ContactSync(prefs, _chat.lookupPhones);
-    _chat.contactNames = _sync.cachedNames();
+    ready = _loadCached();
     _chat.loggedIn.addListener(_onLoginChanged);
   }
+
+  /// Done when the names saved at the last run are in place: a push in the
+  /// background waits for it to name the sender.
+  late final Future<void> ready;
 
   final ChatService _chat;
   final AddressBook _book;
@@ -24,6 +29,17 @@ class ContactsService extends ChangeNotifier {
 
   /// Counts sign-outs, so a lookup that outlived its account is dropped.
   int _signOuts = 0;
+
+  Future<void> _loadCached() async {
+    final signOuts = _signOuts;
+    try {
+      final names = await _sync.cachedNames();
+      if (signOuts == _signOuts) _chat.contactNames = names;
+    } catch (e) {
+      // The keystore could not be read: names come with the next run.
+      debugPrint('Saved contact names not read: $e');
+    }
+  }
 
   ContactsAccess access = ContactsAccess.notGranted;
   List<ChamaContact> onChama = const [];
@@ -53,11 +69,26 @@ class ContactsService extends ChangeNotifier {
     _running = true;
     final signOuts = _signOuts;
     try {
+      await ready; // the cached names must not land over this run's
       final r = await _sync.run(await _book.read());
+      // A number that now answers for another account shows that account's
+      // own profile name, with the number under it.
+      final shown = [
+        for (final c in r.onChama)
+          c.moved
+              ? ChamaContact(name: await _chat.profileName(c.userId), phone: c.phone, userId: c.userId, moved: true)
+              : c,
+      ]..sort((a, b) => foldText(a.name).compareTo(foldText(b.name)));
       if (signOuts != _signOuts) return;
-      onChama = r.onChama;
+      for (final m in r.moved) {
+        _chat.numberMoved(m.userId, m.name);
+      }
+      onChama = shown;
       invite = r.invite;
-      _chat.contactNames = {for (final c in r.onChama) c.userId: c.name};
+      _chat.contactNames = {
+        for (final c in shown)
+          if (!c.moved) c.userId: c.name,
+      };
       notifyListeners();
     } finally {
       // Signed out while the lookup ran, or it failed half-way: that
