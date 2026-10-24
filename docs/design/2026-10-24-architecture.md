@@ -3,7 +3,8 @@
 Status: accepted · 2026-10-24
 
 Chama is a free, open-source messenger for Brazil with the features and feel of WhatsApp:
-an Android app and a web client in the style of WhatsApp Web. It is built to be run by a
+one app for Android, iOS, desktop and the web (in the style of WhatsApp Web), built from a
+single codebase. Android ships first. It is built to be run by a
 public, non-profit operator (possibly a public body) without that operator being able to
 read messages, rank content or silently censor users.
 
@@ -14,7 +15,8 @@ read messages, rank content or silently censor users.
 - WhatsApp feature parity, delivered in milestones (section 7).
 - End-to-end encryption (E2EE) on by default for every chat, group and status.
 - Sign-up with a phone number and SMS code, like WhatsApp.
-- Android app (native) and a web client that links to the phone account.
+- One cross-platform app (Android first; web, iOS and desktop from the same code), so
+  contributors work in one codebase.
 - No ranking, no feed algorithm, no ads. Chats show in time order only.
 - Everything runs locally with one command for development.
 - An open protocol, so other operators (universities, states, NGOs) can run compatible
@@ -22,7 +24,8 @@ read messages, rank content or silently censor users.
 
 **Non-goals (for now)**
 
-- iOS app. The web client covers iPhone users until a native app exists.
+- iOS and desktop release builds in the MVP. The code supports them; store releases come
+  after Android.
 - Payments.
 - Business API.
 - Interop with WhatsApp itself.
@@ -33,7 +36,7 @@ Chama uses the [Matrix](https://spec.matrix.org) open protocol, with our own cli
 
 | Option | Verdict |
 |---|---|
-| **Matrix protocol + own WhatsApp-style clients** | **Chosen.** Audited E2EE (vodozemac) in the browser and on Android; mature server; federation built in. Already the base of government messengers (France: Tchap; Germany: BwMessenger). |
+| **Matrix protocol + own WhatsApp-style clients** | **Chosen.** Audited E2EE (vodozemac) on every platform, including the browser; mature server; federation built in. Already the base of government messengers (France: Tchap; Germany: BwMessenger). |
 | Fork Signal (server + Android) | Best crypto, but the server is hard to self-host, there is no browser client, and forks are discouraged. |
 | Own protocol + libsignal | Full control, but we would re-build multi-device, groups and sync, and libsignal has no browser build. Highest security risk. |
 | XMPP (ejabberd + Conversations) | Proven (early WhatsApp ran on ejabberd), but weak browser E2EE and a fragmented feature set. |
@@ -45,10 +48,10 @@ the hard parts (crypto, sync, multi-device) come from audited libraries.
 ## 3. System overview
 
 ```
- Android app (Kotlin, Compose)        Web client (React, TS)
-   matrix-rust-sdk (sdk-android)        matrix-js-sdk + rust crypto (wasm)
-            │  HTTPS                              │  HTTPS
-            ▼                                     ▼
+ Chama app (Flutter): Android · Web · iOS · desktop
+   famedly matrix Dart SDK + vodozemac (native on mobile/desktop, wasm on web)
+                              │  HTTPS
+                              ▼
    ┌───────────────────────────── reverse proxy (Caddy) ─────────────────────────────┐
    │   /_matrix/*  → Synapse (homeserver)          /id/* → chama-id                  │
    └─────────────────────────────────────────────────────────────────────────────────┘
@@ -64,12 +67,12 @@ the hard parts (crypto, sync, multi-device) come from audited libraries.
 |---|---|---|
 | `server/` | Docker Compose stack: Synapse (main + workers), PostgreSQL, Redis, Caddy, chama-id. Config templates and a seed script. | Docker |
 | `services/chama-id/` | Phone sign-in (SMS code → signed JWT), contact discovery, device-link rendezvous. Small TypeScript service on Node 26. | Synapse admin API, SQLite |
-| `web/` | WhatsApp-Web-style client. | matrix-js-sdk |
-| `android/` | Native Android app. | matrix-rust-sdk Kotlin bindings |
+| `app/` | The Chama app (Flutter) for every platform. Android layout on phones, WhatsApp-Web-style two-pane layout on wide screens. | `matrix` Dart SDK, `flutter_vodozemac` |
 | `docs/` | Design and operator docs. | — |
 
-Pinned starting versions (checked 2026-10-24): Synapse v1.163.2,
-`org.matrix.rustcomponents:sdk-android` 26.10.23, `matrix-js-sdk` 44.0.0.
+Pinned starting versions (checked 2026-10-24): Synapse v1.163.2, Flutter 3.47 (stable),
+`matrix` (Dart) 14.2.0, `flutter_vodozemac` 0.9.0. `matrix-js-sdk` 44.0.0 is used only by
+Node test tools.
 
 ## 4. Identity and sign-in
 
@@ -77,7 +80,8 @@ Pinned starting versions (checked 2026-10-24): Synapse v1.163.2,
   `@5511987654321:chama.chat`. The phone number is the identity, as in WhatsApp.
 - Sign-in flow:
   1. Client → `POST /id/v1/otp/request {phone}`. chama-id stores a hashed 6-digit code
-     (5 min TTL, max 5 tries, rate-limited per number and per IP) and sends the SMS.
+     (5 min TTL, max 5 tries, rate-limited per number and per IP, daily caps per number:
+     5 codes and 10 wrong tries) and sends the SMS.
      In development the SMS provider is a stub: the code is printed in the chama-id log
      and the fixed code `000000` is accepted when `CHAMA_DEV=1`.
   2. Client → `POST /id/v1/otp/verify {phone, code}` → chama-id returns a JWT
@@ -143,7 +147,7 @@ hide the number are a later milestone.
 | Channels | Public room where only admins post (power levels); followers see only admins |
 | Communities | Matrix Spaces holding groups and an announcement room |
 | Broadcast list | Client-side list; sends a copy to each 1:1 room |
-| Contacts | Android reads the address book, normalises to E.164, asks chama-id `POST /id/v1/directory/lookup` with SHA-256 hashes; chama-id answers which are registered |
+| Contacts | The phone app reads the address book, normalises to E.164, asks chama-id `POST /id/v1/directory/lookup` with SHA-256 hashes; chama-id answers which are registered |
 | Voice / video calls | MatrixRTC + LiveKit SFU (milestone M6) |
 | Push notifications | Sygnal push gateway with UnifiedPush (ntfy) first, FCM optional (M7) |
 | Report | Matrix `/report` to the operator's moderation queue |
@@ -159,8 +163,8 @@ The MVP (M1–M3 plus push) is the one-week target. It must be ready for million
 | # | Milestone | Done when |
 |---|---|---|
 | M1 | **Foundation.** Monorepo, Compose stack (Synapse with workers, Postgres, Redis, Caddy, chama-id), seed script. | `make up` starts the stack; a script signs two test users in with SMS code `000000` and they exchange an encrypted message. |
-| M2 | **Web core.** Phone sign-in, chat list, 1:1 and groups, text, replies, reactions, edit, delete, ticks, typing, presence, photos/files, voice notes, search, pin/archive/mute, unread counts, pt-BR UI, light and dark. | Playwright test: two browsers sign in, chat, see ticks turn blue, send a photo and a voice note. |
-| M3 | **Android core.** Same features as M2, native. Contacts sync. Push: Sygnal gateway, FCM for Play Store builds, UnifiedPush (ntfy) for F-Droid and local testing. | Emulator test: Android user chats with a web user both ways; a message arrives as a notification with the app in the background. |
+| M2 | **App core (Android first, also runs on web).** Phone sign-in, chat list, 1:1 and groups, text, replies, reactions, edit, delete, ticks, typing, presence, photos/files, voice notes, search, pin/archive/mute, unread counts, pt-BR UI, light and dark. | Integration test on Chrome and on the Android emulator: the app user chats with a test peer, sees ticks turn blue, sends a photo and a voice note. |
+| M3 | **Android launch.** Contacts sync. Push: Sygnal gateway, FCM for Play Store builds, UnifiedPush (ntfy) for F-Droid and local testing. Release build, ABI splits. | Emulator test: Android user chats with a web user both ways; a message arrives as a notification with the app in the background. |
 | M4 | **Link device and account safety.** QR linking (section 5), device list, recovery key, account PIN (two-step verification), "new device" warnings to contacts. | Web linked by scanning its QR on the emulator reads earlier history. |
 | M5 | **Extras.** Status, channels, communities, polls, location, disappearing messages, starred, broadcast lists, block, privacy settings, profile "recado". | Each feature has an end-to-end test. |
 | M6 | **Calls.** LiveKit + MatrixRTC 1:1 and group voice/video. | Two clients hold a call locally. |
@@ -168,26 +172,22 @@ The MVP (M1–M3 plus push) is the one-week target. It must be ready for million
 
 ## 8. Clients
 
-### Web (`web/`)
+### The Chama app (`app/`)
 
-- React + Vite + TypeScript. No state library: a thin store maps SDK events into React with
-  `useSyncExternalStore`.
-- `matrix-js-sdk` with `initRustCrypto()`, IndexedDB store.
-- Layout copies the WhatsApp Web model: left pane (header, search, filters
-  Todas/Não lidas/Favoritas/Grupos, chat list), right pane (chat header, timeline, composer).
-  Narrow screens show one pane at a time.
-- Media is always fetched with auth and decrypted in the client, then shown as blob URLs.
-- i18n: pt-BR first, English second. Strings live in one file per language.
-
-### Android (`android/`)
-
-- Kotlin, Jetpack Compose (Material 3), single activity, Navigation Compose, min SDK 26.
-- `org.matrix.rustcomponents:sdk-android` for sync (`SyncService`, `RoomListService`),
-  timelines and crypto. Requires simplified sliding sync, which Synapse provides.
-- Coil for images; CameraX + ZXing for QR (no Google Play Services dependency, so the app
-  can ship on F-Droid).
-- Screens mirror WhatsApp Android: tabs Conversas / Atualizações / Comunidades /
-  Ligações, chat screen, contact picker, settings.
+- Flutter (Dart), one codebase for Android, web, iOS and desktop. Android ships first.
+- Matrix layer: famedly `matrix` Dart SDK with `flutter_vodozemac` for encryption. This is
+  the same stack as FluffyChat, which already runs on all these platforms.
+- Code layout: feature folders (`auth`, `chat_list`, `chat`, `group`, `profile`,
+  `common`) and one thin service layer over the SDK. Widgets never call the SDK directly,
+  so features are easy to test and to contribute.
+- Layout: phones follow WhatsApp Android (tabs Conversas / Atualizações / Comunidades /
+  Ligações, chat screen, contact picker, settings). Wide screens follow WhatsApp Web: left
+  pane (header, search, filters Todas/Não lidas/Favoritas/Grupos, chat list), right pane
+  (chat header, timeline, composer).
+- Media is always fetched with auth and decrypted in the client.
+- i18n: pt-BR first, English second, with Flutter's ARB files.
+- No Google Play Services dependency in the core, so the app can also ship on F-Droid
+  (FCM only in the Play Store build).
 
 ### Brand
 
@@ -211,10 +211,9 @@ The MVP (M1–M3 plus push) is the one-week target. It must be ready for million
 
 - chama-id: `node --test` unit tests (phone normalisation, OTP expiry and tries, JWT claims,
   rate limits) plus an integration test against the real Synapse.
-- Stack: `scripts/smoke.ts` signs in two users and exchanges an encrypted message.
-- Web: Vitest for pure logic; Playwright end-to-end tests with two browser contexts
-  against the local stack.
-- Android: JUnit for logic; Compose UI tests; an emulator smoke test driven by `adb`.
+- Stack: `tools/smoke` signs in two users and exchanges an encrypted message.
+- App: `flutter test` for logic and widgets; `integration_test` end-to-end against the
+  local stack, on Chrome (fast) and on the Android emulator, with a Node test peer.
 
 ## 11. Operations and trust
 
