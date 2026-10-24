@@ -1,0 +1,10 @@
+worker_app: synapse.app.generic_worker
+worker_name: sync1
+worker_listeners:
+  - type: http
+    port: 8083
+    x_forwarded: true
+    bind_addresses: ['0.0.0.0']
+    resources:
+      - names: [client]
+worker_log_config: /data/log.yaml

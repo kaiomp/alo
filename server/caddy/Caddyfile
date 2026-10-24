@@ -1,0 +1,45 @@
+{
+	auto_https off
+	admin off
+}
+:8080 {
+	@options method OPTIONS
+	@admin path /_synapse/admin/*
+	@sync path_regexp sync ^/_matrix/client/(r0|v3)/sync$|^/_matrix/client/(api/v1|r0|v3)/events$|^/_matrix/client/(api/v1|r0|v3)/initialSync$|^/_matrix/client/(api/v1|r0|v3)/rooms/[^/]+/initialSync$|^/_matrix/client/unstable/org\.matrix\.simplified_msc3575/sync$
+	@media path /_matrix/media/* /_matrix/client/v1/media/*
+	@id path /id/*
+	@matrix path /_matrix/*
+
+	# defer: replace upstream CORS headers instead of adding a second copy.
+	header {
+		defer
+		Access-Control-Allow-Origin *
+		Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+		Access-Control-Allow-Headers "Authorization, Content-Type, X-Requested-With"
+	}
+
+	# Only the first matching handle runs. Caddy puts the method and regexp
+	# matchers first and sorts path matchers longest first, so sync and media
+	# win over the /_matrix/* catch-all.
+	handle @options {
+		respond 204
+	}
+	handle @admin {
+		respond 403
+	}
+	handle @sync {
+		reverse_proxy sync1:8083
+	}
+	handle @media {
+		reverse_proxy media1:8085
+	}
+	handle @id {
+		reverse_proxy chama-id:8090
+	}
+	handle @matrix {
+		reverse_proxy synapse:8008
+	}
+	handle {
+		respond 404
+	}
+}

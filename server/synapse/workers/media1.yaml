@@ -1,0 +1,13 @@
+worker_app: synapse.app.generic_worker
+worker_name: media1
+worker_listeners:
+  - type: http
+    port: 8085
+    x_forwarded: true
+    bind_addresses: ['0.0.0.0']
+    resources:
+      - names: [media]
+worker_log_config: /data/log.yaml
+# The shared config sets enable_media_repo: false, and a generic_worker only
+# loads the media repo when this is true.
+enable_media_repo: true
