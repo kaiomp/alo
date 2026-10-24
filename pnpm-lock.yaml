@@ -14,6 +14,12 @@ importers:
         specifier: ^1.12.0
         version: 1.13.15
 
+  tools/peer:
+    dependencies:
+      matrix-js-sdk:
+        specifier: 44.0.0
+        version: 44.0.0
+
   tools/smoke:
     dependencies:
       matrix-js-sdk:
