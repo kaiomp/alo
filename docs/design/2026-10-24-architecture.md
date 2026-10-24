@@ -130,8 +130,11 @@ app-level choice, as in WhatsApp.
   of the same user (QR or emoji) or with the recovery key. This is what stops SIM-swap
   attackers and the operator from reading new messages by signing in as someone.
 - A user with no other device and no recovery key can **reset their identity** (new
-  cross-signing keys, via chama-id, section 4). Contacts then see "Security code changed",
-  as in WhatsApp. Old messages stay unreadable on the new phone.
+  cross-signing keys, via chama-id, section 4). A reset **logs out every other device**
+  of that account, so a SIM-swap attacker cannot stay hidden next to the real owner, who
+  notices at once (as with WhatsApp re-registration). Contacts then see "Security code
+  changed". Old messages stay unreadable on the new phone. From M4 the account PIN also
+  gates resets.
 - **Linking the web client (WhatsApp "Linked devices"):**
   1. Web generates an ephemeral X25519 key pair and opens a rendezvous at chama-id
      (`POST /id/v1/link` → `{id}`). It shows a QR code with `{id, pubkey, server}`.
