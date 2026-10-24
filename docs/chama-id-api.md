@@ -89,7 +89,10 @@ keys. The phone makes the keys; private keys never leave it.
   ```
 
   `keys` is the body of Matrix `POST /_matrix/client/v3/keys/device_signing/upload`: the
-  self-signing and user-signing keys are signed by the new master key. Other fields are dropped.
+  self-signing and user-signing keys are signed by the new master key. It must hold exactly
+  these three keys. Each key has `user_id` equal to the caller, a `usage` of exactly its own
+  type, and only the fields `user_id`, `usage`, `keys` and `signatures`, so no private key can
+  be sent. The request body is capped at 8 KiB.
 - Response: `{"logged_out_devices": 1}` (how many other devices were logged out).
 - Errors: `invalid_token` 401, `invalid_phone` 400, `forbidden` 403 (the token's account is
   not the phone's current account), `bad_request` 400 (`keys` missing or malformed),
@@ -126,7 +129,7 @@ first upload of cross-signing keys needs no user-interactive auth.
 | Lookups per IP | 30 per hour | ×100 |
 | Lookups per user | 30 per hour | ×100 |
 | reset-identity calls per IP | 10 per hour | ×100 |
-| Body size | 16 KiB (lookup: 96 KiB) | same |
+| Body size | 16 KiB (lookup: 96 KiB, reset-identity: 8 KiB) | same |
 
 - Per-IP limits count an IPv6 address by its /64. An IPv4-mapped IPv6 address counts as IPv4.
 - Windows roll: a call leaves the count once it is older than the window.

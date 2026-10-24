@@ -11,18 +11,22 @@ import { AppError } from './errors.ts';
 import { router, clientIp, rateKey, windowLimiter, ttlCache } from './http.ts';
 
 // Shape check of the client's new public cross-signing keys, done before the SMS code is spent.
-// Synapse checks the signatures. Only the three key fields are passed on.
+// Only the Matrix fields of a public key are allowed, so chama-id never accepts private keys.
+// Synapse checks the signatures.
 const USAGES = { master_key: 'master', self_signing_key: 'self_signing', user_signing_key: 'user_signing' } as const;
+const KEY_FIELDS = new Set(['user_id', 'usage', 'keys', 'signatures']);
+const isObj = (v: unknown): v is Record<string, any> => typeof v === 'object' && v !== null && !Array.isArray(v);
 function crossSigningKeys(v: unknown, userId: string): CrossSigningKeys {
-  if (typeof v !== 'object' || v === null || Array.isArray(v)) throw new AppError('bad_request');
-  const out = {} as CrossSigningKeys;
-  for (const [field, usage] of Object.entries(USAGES) as [keyof CrossSigningKeys, string][]) {
-    const k = (v as Record<string, any>)[field];
-    if (typeof k !== 'object' || k === null || k.user_id !== userId || !Array.isArray(k.usage) || !k.usage.includes(usage)
-      || typeof k.keys !== 'object' || k.keys === null || !Object.keys(k.keys).length) throw new AppError('bad_request');
-    out[field] = k;
+  const bad = () => new AppError('bad_request');
+  if (!isObj(v) || Object.keys(v).sort().join() !== Object.keys(USAGES).sort().join()) throw bad();
+  for (const [field, usage] of Object.entries(USAGES)) {
+    const k = v[field];
+    if (!isObj(k) || Object.keys(k).some((f) => !KEY_FIELDS.has(f)) || k.user_id !== userId) throw bad();
+    if (!Array.isArray(k.usage) || k.usage.length !== 1 || k.usage[0] !== usage) throw bad();
+    if (!isObj(k.keys) || !Object.keys(k.keys).length || Object.values(k.keys).some((x) => typeof x !== 'string')) throw bad();
+    if (k.signatures !== undefined && !isObj(k.signatures)) throw bad();
   }
-  return out;
+  return v as CrossSigningKeys;
 }
 
 const bearer = (req: IncomingMessage) => {
@@ -99,7 +103,10 @@ export function createServer(d: {
       await d.admin.uploadCrossSigningKeys(userId, keys);
       return { logged_out_devices: loggedOut };
     },
-  }, { 'POST /id/v1/directory/lookup': 96 * 1024 })); // room for 1000 hashes (about 67 KB)
+  }, {
+    'POST /id/v1/directory/lookup': 96 * 1024, // room for 1000 hashes (about 67 KB)
+    'POST /id/v1/account/reset-identity': 8 * 1024, // a public key bundle is about 1.5 KB
+  }));
 }
 
 if (import.meta.main) {

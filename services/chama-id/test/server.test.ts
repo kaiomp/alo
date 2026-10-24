@@ -236,7 +236,11 @@ test('reset-identity checks the code and that the token belongs to the phone', a
     assert.deepEqual(await r.json(), { error: 'forbidden' });
     assert.deepEqual(m.admin.uploads, []);
     const bad = [null, [], 'x', { ...keys, master_key: undefined }, bundle('@uother:chama.test'),
-      { ...keys, self_signing_key: { ...keys.self_signing_key, usage: ['master'] } }, { ...keys, user_signing_key: { ...keys.user_signing_key, keys: {} } }];
+      { ...keys, self_signing_key: { ...keys.self_signing_key, usage: ['master'] } }, { ...keys, user_signing_key: { ...keys.user_signing_key, keys: {} } },
+      { ...keys, auth: { type: 'm.login.dummy' } }, // exactly the three keys
+      { ...keys, master_key: { ...keys.master_key, private_key: 'secret' } }, // only public-key fields
+      { ...keys, master_key: { ...keys.master_key, usage: ['master', 'self_signing'] } },
+      { ...keys, master_key: { ...keys.master_key, keys: { 'ed25519:x': 1 } } }];
     for (const [i, k] of bad.entries()) {
       r = await reset({ ...bearer(lp), 'x-forwarded-for': `8.8.8.${i}` }, code, k); // own IP: the reset limit is 10 per IP
       assert.equal(r.status, 400, JSON.stringify(k));
@@ -247,10 +251,10 @@ test('reset-identity checks the code and that the token belongs to the phone', a
     assert.equal(r.status, 400);
     assert.deepEqual(await r.json(), { error: 'invalid_code' });
     assert.deepEqual(m.admin.logouts, [], 'no logout before the code is checked');
-    r = await reset(bearer(lp), code, { ...keys, auth: { type: 'm.login.dummy' } });
+    r = await reset(bearer(lp));
     assert.equal(r.status, 200);
     assert.deepEqual(await r.json(), { logged_out_devices: 2 });
-    assert.deepEqual(m.admin.uploads, [[me.user_id, keys]], 'only the three keys are uploaded, as the user');
+    assert.deepEqual(m.admin.uploads, [[me.user_id, keys]], 'the bundle is uploaded as the user');
     assert.deepEqual(m.admin.logouts, [[me.user_id, `DEV-${lp}`]], 'every device but the caller is logged out');
     r = await reset(bearer(lp));
     assert.equal(r.status, 400, 'the code is single use');
@@ -276,6 +280,11 @@ test('reset-identity without a master key is no_identity (409) and keeps the cod
     m.admin.noMasterKey.clear();
     assert.equal((await reset()).status, 200, 'the code was not spent');
   } finally { m.server.close(); }
+});
+test('reset-identity body is capped at 8 KiB', async () => {
+  const r = await post('/id/v1/account/reset-identity', { phone: '11987654321', code: '000000', keys: { pad: 'x'.repeat(9000) } }, bearer('x'));
+  assert.equal(r.status, 400);
+  assert.deepEqual(await r.json(), { error: 'bad_request' });
 });
 test('reset-identity is capped at 10 per IP per hour', async () => {
   const { server: s } = make({ now: () => 1_000_000 });
