@@ -211,6 +211,28 @@ test('whoami results are cached for 60 s', async () => {
     assert.equal(m.admin.whoamiCalls, 2);
   } finally { m.server.close(); }
 });
+test('directory lookup refuses an IP before whoami after 100 bad tokens per hour; valid tokens never count', async () => {
+  let clock = 1_000_000;
+  const m = make({ now: () => clock });
+  const at = await listen(m.server);
+  try {
+    const look = (ip: string, auth: Record<string, string>) => post('/id/v1/directory/lookup', { hashes: [] }, { 'x-forwarded-for': ip, ...auth }, at);
+    for (let i = 0; i < 150; i++) assert.equal((await look('5.5.5.5', bearer(`cgnat-ok${i}`))).status, 200, 'valid tokens are not counted');
+    const bad = (i: number) => look('5.5.5.5', { authorization: `Bearer bogus${i}` });
+    const burst = await Promise.all(Array.from({ length: 100 }, (_, i) => bad(i)));
+    assert.deepEqual(burst.map((r) => r.status), Array(100).fill(401));
+    const calls = m.admin.whoamiCalls;
+    const r = await bad(100);
+    assert.equal(r.status, 429);
+    assert.equal((await r.json()).error, 'rate_limited');
+    assert.equal(m.admin.whoamiCalls, calls, 'refused before whoami');
+    assert.equal((await look('5.5.5.5', bearer('cgnat-ok0'))).status, 200, 'cached valid tokens still work');
+    assert.equal((await look('5.5.5.5', bearer('fresh'))).status, 429, 'uncached tokens wait out the window');
+    assert.equal((await look('6.6.6.6', bearer('fresh'))).status, 200, 'other IPs are not affected');
+    clock += 3600;
+    assert.equal((await bad(101)).status, 401, 'window passed');
+  } finally { m.server.close(); }
+});
 test('ttlCache expires entries and never holds more than maxKeys', () => {
   let t = 0;
   const c = ttlCache<string>({ ttl: 60, maxKeys: 2, now: () => t });

@@ -128,6 +128,7 @@ first upload of cross-signing keys needs no user-interactive auth.
 | Code requests per IP | 10 per hour | ×100 |
 | Lookups per account | 30 per hour | ×100 |
 | Hashes looked up per account | 10 000 per 24 h (fixed window from the first lookup) | ×100 |
+| Bad access tokens on lookup per IP | 100 per hour (valid tokens do not count) | ×100 |
 | reset-identity calls per IP | 10 per hour | ×100 |
 | Body size | 16 KiB (lookup: 96 KiB, reset-identity: 8 KiB) | same |
 
@@ -142,7 +143,9 @@ Decision for M3: keep plain SHA-256 hashes, and limit how many numbers one accou
 
 - There is no per-IP lookup limit. Brazilian mobile carriers put many phones behind one IP
   address (CGNAT), so a per-IP cap would block ordinary users. Every lookup needs an access
-  token, and every account needs an SMS-verified phone.
+  token, and every account needs an SMS-verified phone. Only invalid access tokens are capped
+  per IP (100 per hour), because each one costs chama-id a call to Synapse; past that cap, an
+  IP's tokens that chama-id has not seen in the last 60 s are refused until the window passes.
 - Each account may send 30 lookups per hour and 10 000 hashes per 24 hours. A first sync of a
   big address book fits; the app checks each number at most once a day after that.
 - chama-id does not store or log the hashes a client sends. It keeps only a count per account

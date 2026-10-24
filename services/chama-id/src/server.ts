@@ -50,11 +50,25 @@ export function createServer(d: {
   const userLookups = windowLimiter({ limit: 30 * scale, window: 3600, maxKeys: 100_000, now });
   // Each reset call costs a Synapse whoami, so it is capped per IP before that call.
   const resets = windowLimiter({ limit: 10 * (d.dev ? 100 : 1), window: 3600, maxKeys: 100_000, now });
+  // Each uncached token costs a Synapse whoami, and failures are not cached, so an IP may send
+  // 100 bad tokens per hour; past that, its uncached tokens are refused before whoami. A token is
+  // counted while its whoami runs (so a burst of parallel calls cannot slip past) and taken back
+  // when it turns out valid, so many valid users behind one carrier IP (CGNAT) are never blocked.
+  const badTokens = windowLimiter({ limit: 100 * scale, window: 3600, maxKeys: 100_000, now });
   const whoamiCache = ttlCache<string>({ ttl: 60, maxKeys: 10_000, now });
-  const cachedWhoami = async (token: string) => {
+  const cachedWhoami = async (token: string, req: IncomingMessage) => {
     const hit = whoamiCache.get(token);
     if (hit) return hit;
-    const { userId } = await d.admin.whoami(token);
+    const ip = rateKey(clientIp(req));
+    badTokens.hit(ip);
+    let userId: string;
+    try {
+      ({ userId } = await d.admin.whoami(token));
+    } catch (e) {
+      if (!(e instanceof AppError && e.code === 'invalid_token')) badTokens.undo(ip); // Synapse down: not the client's fault
+      throw e;
+    }
+    badTokens.undo(ip);
     whoamiCache.set(token, userId);
     return userId;
   };
@@ -79,7 +93,7 @@ export function createServer(d: {
       };
     },
     'POST /id/v1/directory/lookup': async (b, req) => {
-      const userId = await cachedWhoami(bearer(req));
+      const userId = await cachedWhoami(bearer(req), req);
       userLookups.hit(userId);
       return { registered: d.directory.lookup(b.hashes, userId, { now: now(), quota: DAILY_HASHES * scale }) };
     },

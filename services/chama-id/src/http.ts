@@ -64,6 +64,12 @@ export function windowLimiter(o: { limit: number; window: number; maxKeys: numbe
       recent.push(t);
       hits.set(key, recent);
     },
+    // Takes back the newest hit of `key`, for a call that turned out not to count.
+    undo(key: string) {
+      const v = hits.get(key);
+      v?.pop();
+      if (v && !v.length) hits.delete(key);
+    },
   };
 }
 
