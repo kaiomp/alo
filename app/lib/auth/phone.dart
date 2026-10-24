@@ -10,6 +10,11 @@ String? normalizePhone(String countryCode, String number) {
   final cc = full ? '' : countryCode.replaceAll(RegExp(r'\D'), '');
   var national = number.replaceAll(RegExp(r'\D'), '');
   if (!full) national = national.replaceFirst(RegExp(r'^0+'), '');
+  // Pasted with the country code but no '+': a Brazilian national number has
+  // at most 11 digits, so 12 or 13 starting with 55 already carry it.
+  if (cc == '55' && national.startsWith('55') && (national.length == 12 || national.length == 13)) {
+    national = national.substring(2);
+  }
   final digits = '$cc$national';
   if (digits.length < 8 || digits.length > 15) return null;
   if (digits.startsWith('55')) {

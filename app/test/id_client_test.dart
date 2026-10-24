@@ -68,6 +68,44 @@ void main() {
     );
   });
 
+  test('malformed bodies are internal errors, never type errors', () async {
+    Matcher internal = throwsA(isA<IdError>().having((e) => e.code, 'code', 'internal'));
+    await expectLater(client(200, {'phone': 5511, 'retry_after': 60}).requestCode('1'), internal);
+    await expectLater(client(200, {}).requestCode('1'), internal);
+    await expectLater(client(200, {'phone': '1'}).verifyCode('1', '000000'), internal);
+    await expectLater(client(200, {'registered': 'x'}).lookup(['1'], accessToken: 't'), internal);
+    await expectLater(
+      client(200, {
+        'registered': [42],
+      }).lookup(['1'], accessToken: 't'),
+      internal,
+    );
+    await expectLater(client(400, {'error': 7}).requestCode('1'), internal);
+    await expectLater(
+      client(429, {'error': 'rate_limited', 'retry_after': 'soon'}).requestCode('1'),
+      throwsA(isA<IdError>().having((e) => e.code, 'code', 'rate_limited').having((e) => e.retryAfter, 'retry', null)),
+    );
+    final list = IdClient(base, httpClient: MockClient((_) async => http.Response('[1]', 200)));
+    await expectLater(list.requestCode('1'), internal);
+  });
+
+  test('resetIdentity posts phone, code and keys with the access token', () async {
+    late http.Request sent;
+    final c = client(200, {}, onRequest: (r) => sent = r);
+    final keys = {
+      'master_key': {
+        'user_id': '@u7k3m9q2x4w8a1b5c:chama.test',
+        'usage': ['master'],
+        'keys': {'ed25519:abc': 'abc'},
+      },
+    };
+    await c.resetIdentity('5511987654321', '000000', keys, accessToken: 'tok');
+    expect(sent.method, 'POST');
+    expect(sent.url.toString(), 'http://localhost:8080/id/v1/account/reset-identity');
+    expect(sent.headers['authorization'], 'Bearer tok');
+    expect(jsonDecode(sent.body), {'phone': '5511987654321', 'code': '000000', 'keys': keys});
+  });
+
   test('unreachable server is a network error', () async {
     final c = IdClient(base, httpClient: MockClient((_) async => throw http.ClientException('down')));
     await expectLater(c.requestCode('1'), throwsA(isA<IdError>().having((e) => e.code, 'code', 'network')));

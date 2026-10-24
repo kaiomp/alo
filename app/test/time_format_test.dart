@@ -20,4 +20,17 @@ void main() {
     expect(sameDay(DateTime(2026, 10, 24, 0, 1), DateTime(2026, 10, 24, 23, 59)), isTrue);
     expect(sameDay(DateTime(2026, 10, 24, 23, 59), DateTime(2026, 10, 25)), isFalse);
   });
+
+  test('UTC timestamps use the local day and clock', () async {
+    await initializeDateFormatting('pt');
+    final l = await L10n.delegate.load(const Locale('pt'));
+    final local = DateTime(2026, 10, 23, 23, 30);
+    final utc = local.toUtc();
+    final now = DateTime(2026, 10, 23, 23, 45).toUtc();
+    expect(sameDay(utc, local), isTrue);
+    expect(dayLabel(utc, now, l), 'Hoje');
+    expect(listTime(utc, now, l), '23:30');
+    expect(clock(utc, l), '23:30');
+    expect(dayLabel(utc, DateTime(2026, 10, 24, 8), l), 'Ontem');
+  });
 }

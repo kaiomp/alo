@@ -45,7 +45,14 @@ class IdClient {
   final Uri baseUrl;
   final http.Client _http;
 
-  Future<Map<String, dynamic>> _post(String path, Map<String, Object?> body, {String? accessToken}) async {
+  /// Posts [body] and hands the JSON answer to [parse]. A body of the wrong
+  /// shape is an `internal` error, never a raw [TypeError].
+  Future<T> _post<T>(
+    String path,
+    Map<String, Object?> body,
+    T Function(Map<String, dynamic> json) parse, {
+    String? accessToken,
+  }) async {
     final http.Response res;
     try {
       res = await _http
@@ -68,27 +75,36 @@ class IdClient {
       throw const IdError('internal');
     }
     if (res.statusCode != 200) {
-      throw IdError(json['error'] as String? ?? 'internal', retryAfter: json['retry_after'] as int?);
+      final code = json['error'], retry = json['retry_after'];
+      throw IdError(code is String ? code : 'internal', retryAfter: retry is int ? retry : null);
     }
-    return json;
+    try {
+      return parse(json);
+    } on TypeError {
+      throw const IdError('internal');
+    }
   }
 
   /// Sends the SMS. Returns the phone digits as the server normalised them
   /// and the seconds until a new code may be requested.
   Future<({String phone, int retryAfter})> requestCode(String phoneDigits) async {
-    final json = await _post('/id/v1/otp/request', {'phone': phoneDigits});
-    return (phone: json['phone'] as String, retryAfter: json['retry_after'] as int);
+    return _post('/id/v1/otp/request', {
+      'phone': phoneDigits,
+    }, (json) => (phone: json['phone'] as String, retryAfter: json['retry_after'] as int));
   }
 
   Future<IdLogin> verifyCode(String phoneDigits, String code) async {
-    final json = await _post('/id/v1/otp/verify', {'phone': phoneDigits, 'code': code});
     // `homeserver` in the answer is the server's public URL; the app keeps its
     // own base URL instead (the emulator reaches the same server as 10.0.2.2).
-    return IdLogin(
-      phone: json['phone'] as String,
-      userId: json['user_id'] as String,
-      loginToken: json['login_token'] as String,
-      newAccount: json['new_account'] as bool? ?? false,
+    return _post(
+      '/id/v1/otp/verify',
+      {'phone': phoneDigits, 'code': code},
+      (json) => IdLogin(
+        phone: json['phone'] as String,
+        userId: json['user_id'] as String,
+        loginToken: json['login_token'] as String,
+        newAccount: json['new_account'] as bool? ?? false,
+      ),
     );
   }
 
@@ -97,11 +113,15 @@ class IdClient {
   /// only sees SHA-256 hashes of the digits (spec §6, "Contacts").
   Future<Map<String, String>> lookup(List<String> phoneDigits, {required String accessToken}) async {
     final byHash = {for (final d in phoneDigits) sha256.convert(utf8.encode(d)).toString(): d};
-    final json = await _post('/id/v1/directory/lookup', {'hashes': byHash.keys.toList()}, accessToken: accessToken);
-    return {
-      for (final r in (json['registered'] as List).cast<Map<String, dynamic>>())
-        if (byHash[r['hash']] != null) byHash[r['hash']]!: r['user_id'] as String,
-    };
+    return _post(
+      '/id/v1/directory/lookup',
+      {'hashes': byHash.keys.toList()},
+      (json) => {
+        for (final r in (json['registered'] as List).cast<Map<String, dynamic>>())
+          if (byHash[r['hash']] != null) byHash[r['hash']]!: r['user_id'] as String,
+      },
+      accessToken: accessToken,
+    );
   }
 
   /// Replaces this account's cross-signing keys (new phone, no recovery key;
@@ -112,9 +132,10 @@ class IdClient {
     String code,
     Map<String, Object?> keys, {
     required String accessToken,
-  }) => _post('/id/v1/account/reset-identity', {
-    'phone': phoneDigits,
-    'code': code,
-    'keys': keys,
-  }, accessToken: accessToken);
+  }) => _post(
+    '/id/v1/account/reset-identity',
+    {'phone': phoneDigits, 'code': code, 'keys': keys},
+    (_) {},
+    accessToken: accessToken,
+  );
 }
