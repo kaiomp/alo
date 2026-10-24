@@ -64,17 +64,6 @@ out=$(curl -fs -XPOST "$BASE/id/v1/directory/lookup" -H "$AUTH" -H 'content-type
 [[ $out == "{\"registered\":[{\"hash\":\"$HASH\",\"user_id\":\"$MXID\"}]}" ]] || fail "lookup body: $out"
 ok "lookup with token: $out"
 
-# chama-id's own admin client against the real Synapse admin API (internal network only).
-out=$(dc exec -T -e MXID="$MXID" chama-id node --input-type=module -e "
-  import { openDb } from './src/db.ts'; import { HttpSynapseAdmin } from './src/synapse.ts';
-  const e = process.env;
-  const a = new HttpSynapseAdmin({ baseUrl: e.SYNAPSE_INTERNAL_URL, sharedSecret: e.REGISTRATION_SHARED_SECRET, db: openDb(e.DB_PATH) });
-  const age = Date.now() - await a.lastActiveMs(e.MXID);
-  console.log(age >= 0 && age < 600_000, await a.lastActiveMs('@uzzzzzzzzzzzzzzzz:chama.test'));" | tail -1) \
-  || fail "admin client"
-[[ $out == 'true null' ]] || fail "admin client: want 'true null' (recently active, unknown user), got '$out'"
-ok "admin client: $MXID recently active, unknown user is null"
-
 out=$(curl -fs -H "$AUTH" "$BASE/_matrix/client/v3/sync?timeout=0&$MARK=1") || fail "sync"
 grep -q '"next_batch"' <<<"$out" || fail "sync body: ${out:0:100}"
 sleep 1
@@ -90,6 +79,20 @@ sleep 1
 [[ $(served_by media1 "$MARK") -ge 2 ]] || fail "upload and download not both in media1 logs"
 [[ $(served_by synapse "$MARK") -eq 0 ]] || fail "media reached the main process"
 ok "media round trip via media1: $MXC -> $out"
+
+# chama-id's own admin client against the real Synapse admin API (internal network only).
+# After logout the device is gone, but the user-level last_seen still marks the account active.
+curl -fs -XPOST -H "$AUTH" "$BASE/_matrix/client/v3/logout" -d '{}' >/dev/null || fail "logout"
+admin_check() { dc exec -T -e MXID="$MXID" chama-id node --input-type=module -e "
+  import { openDb } from './src/db.ts'; import { HttpSynapseAdmin } from './src/synapse.ts';
+  const e = process.env;
+  const a = new HttpSynapseAdmin({ baseUrl: e.SYNAPSE_INTERNAL_URL, sharedSecret: e.REGISTRATION_SHARED_SECRET, db: openDb(e.DB_PATH) });
+  const age = Date.now() - await a.lastActiveMs(e.MXID);
+  console.log(age >= 0 && age < 600_000, await a.lastActiveMs('@uzzzzzzzzzzzzzzzz:chama.test'));" | tail -1; }
+# Synapse writes client IPs in batches every few seconds.
+for _ in 1 2 3 4 5 6 7 8 9 10; do out=$(admin_check) || fail "admin client"; [[ $out == 'true null' ]] && break; sleep 2; done
+[[ $out == 'true null' ]] || fail "admin client after logout: want 'true null' (recently active, unknown user), got '$out'"
+ok "admin client: $MXID still recently active after logout, unknown user is null"
 
 flows=$(curl -fs "$BASE/_matrix/client/v3/login") || fail "login flows"
 [[ $flows != *m.login.password* ]] || fail "login flows offer password: $flows"

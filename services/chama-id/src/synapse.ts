@@ -5,7 +5,7 @@ import { AppError } from './errors.ts';
 // Actions that need Matrix user-interactive auth, which password-less accounts cannot do (spec §4).
 export interface SynapseAdmin {
   whoami(accessToken: string): Promise<string>;
-  /** Newest device last_seen_ts in ms; 0 when the user has no devices; null when Synapse does not know the user. */
+  /** Last activity in ms (devices and user-level last_seen); 0 when none is left; null when Synapse does not know the user. */
   lastActiveMs(userId: string): Promise<number | null>;
   deactivate(userId: string): Promise<void>;
   /** Returns updatable_without_uia_before_ms. */
@@ -81,11 +81,17 @@ export class HttpSynapseAdmin implements SynapseAdmin {
     return b.user_id;
   }
 
+  // Newest of: any current device's last_seen_ts, and the user-level last_seen_ts (MAX over user_ips,
+  // which survives logout until Synapse prunes it after user_ips_max_age).
   async lastActiveMs(userId: string): Promise<number | null> {
-    const r = await this.admin(`/_synapse/admin/v2/users/${encodeURIComponent(userId)}/devices`);
+    const id = encodeURIComponent(userId);
+    const u = await this.admin(`/_synapse/admin/v2/users/${id}`);
+    if (u.status === 404) return null;
+    const { last_seen_ts } = await this.ok(u, 'user') as { last_seen_ts: number | null };
+    const r = await this.admin(`/_synapse/admin/v2/users/${id}/devices`);
     if (r.status === 404) return null;
     const { devices } = await this.ok(r, 'devices') as { devices: { last_seen_ts: number | null }[] };
-    return Math.max(0, ...devices.map((d) => d.last_seen_ts ?? 0));
+    return Math.max(0, last_seen_ts ?? 0, ...devices.map((d) => d.last_seen_ts ?? 0));
   }
 
   async deactivate(userId: string): Promise<void> {

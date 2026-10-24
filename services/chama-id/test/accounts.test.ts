@@ -52,7 +52,7 @@ test('account never logged in (unknown to Synapse) is reused', async () => {
   tick(100 * DAY);
   assert.deepEqual(await accounts.resolve(PHONE), { ...a, created: false });
 });
-test('account inactive for 46 days is deactivated and replaced (recycled number)', async () => {
+test('account inactive for 46 days, last sign-in 200 days ago, is deactivated and replaced (recycled number)', async () => {
   const { db, accounts, admin, tick, nowMs } = setup();
   const a = await accounts.resolve(PHONE);
   tick(200 * DAY);
@@ -66,13 +66,30 @@ test('account inactive for 46 days is deactivated and replaced (recycled number)
   assert.deepEqual(db.prepare('SELECT phone, localpart FROM retired_accounts').all().map((r) => ({ ...r })),
     [{ phone: PHONE, localpart: a.localpart }]);
 });
-test('a recent sign-in keeps the account even with no devices (logout, then sign in again)', async () => {
+test('user last seen 2 days ago keeps the account although the last sign-in is 100 days old', async () => {
+  const { accounts, admin, tick, nowMs } = setup();
+  const a = await accounts.resolve(PHONE);
+  tick(100 * DAY);
+  admin.active.set(a.userId, nowMs() - 2 * DAY * 1000); // devices gone, user-level last_seen remains
+  assert.deepEqual(await accounts.resolve(PHONE), { ...a, created: false });
+  assert.deepEqual(admin.deactivated, []);
+});
+test('sign-in 10 days ago keeps the account when Synapse has no activity left (logout, IP log pruned)', async () => {
   const { accounts, admin, tick } = setup();
   const a = await accounts.resolve(PHONE);
   tick(10 * DAY);
-  admin.active.set(a.userId, 0); // logged out: Synapse has no devices
+  admin.active.set(a.userId, 0);
   assert.deepEqual(await accounts.resolve(PHONE), { ...a, created: false });
   assert.deepEqual(admin.deactivated, []);
+});
+test('the previous sign-in time counts, not the one being made now', async () => {
+  const { accounts, admin, tick } = setup();
+  const a = await accounts.resolve(PHONE);
+  tick(46 * DAY);
+  admin.active.set(a.userId, 0);
+  const b = await accounts.resolve(PHONE);
+  assert.equal(b.created, true);
+  assert.deepEqual(admin.deactivated, [a.userId]);
 });
 test('failed deactivation keeps the old mapping', async () => {
   const { accounts, admin, tick } = setup();

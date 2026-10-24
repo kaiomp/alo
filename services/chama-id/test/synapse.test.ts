@@ -5,6 +5,7 @@ import { createHmac, randomUUID } from 'node:crypto';
 import type { AddressInfo } from 'node:net';
 import { openDb } from '../src/db.ts';
 import { HttpSynapseAdmin } from '../src/synapse.ts';
+import { Accounts } from '../src/accounts.ts';
 
 const SECRET = 'shared-secret';
 type Device = { device_id: string; last_seen_ts: number | null };
@@ -13,7 +14,7 @@ type Device = { device_id: string; last_seen_ts: number | null };
 async function stub() {
   const s = {
     nonces: new Set<string>(), taken: new Set<string>(), registered: [] as string[],
-    adminTokens: new Set<string>(), users: new Map<string, Device[]>(),
+    adminTokens: new Set<string>(), users: new Map<string, Device[]>(), userLastSeen: new Map<string, number | null>(),
     deactivated: [] as { user: string; body: unknown }[], resets: [] as string[],
     badMacs: 0, base: '', close: () => {},
   };
@@ -41,6 +42,11 @@ async function stub() {
     }
     if (!bearer || !s.adminTokens.has(bearer)) return send(401, { errcode: 'M_UNKNOWN_TOKEN', error: 'Unknown access token' });
     let m;
+    if (req.method === 'GET' && (m = p.match(/^\/_synapse\/admin\/v2\/users\/([^/]+)$/))) {
+      const user = decodeURIComponent(m[1]);
+      return s.users.has(user) ? send(200, { name: user, deactivated: false, last_seen_ts: s.userLastSeen.get(user) ?? null })
+        : send(404, { errcode: 'M_NOT_FOUND', error: 'User not found' });
+    }
     if (req.method === 'GET' && (m = p.match(/^\/_synapse\/admin\/v2\/users\/([^/]+)\/devices$/))) {
       const devices = s.users.get(decodeURIComponent(m[1]));
       return devices ? send(200, { devices, total: devices.length }) : send(404, { errcode: 'M_NOT_FOUND', error: 'Unknown user' });
@@ -152,5 +158,33 @@ test('whoami returns the user id; 401 is invalid_token', async () => {
     assert.equal(await admin.whoami('good'), '@ualice:chama.test');
     await assert.rejects(admin.whoami('bad'), (e: any) => e.code === 'invalid_token' && e.status === 401);
     assert.deepEqual(s.registered, [], 'whoami needs no admin token');
+  } finally { s.close(); }
+});
+test('lastActiveMs also counts the user-level last_seen_ts, which survives logout', async () => {
+  const s = await stub();
+  try {
+    const { admin } = setup(s);
+    s.users.set('@ua:chama.test', [{ device_id: 'A', last_seen_ts: 1000 }]);
+    s.userLastSeen.set('@ua:chama.test', 9000);
+    assert.equal(await admin.lastActiveMs('@ua:chama.test'), 9000);
+    s.users.set('@ua:chama.test', []); // logged out
+    assert.equal(await admin.lastActiveMs('@ua:chama.test'), 9000);
+    s.userLastSeen.set('@ua:chama.test', null); // user_ips pruned
+    assert.equal(await admin.lastActiveMs('@ua:chama.test'), 0);
+  } finally { s.close(); }
+});
+test('active 100 days, logged out to switch phones, signs in 2 days later: same account', async () => {
+  const s = await stub();
+  try {
+    const DAY = 86400;
+    let clock = 1_000_000_000;
+    const { db, admin } = setup(s);
+    const accounts = new Accounts(db, admin, { serverName: 'chama.test', now: () => clock });
+    const a = await accounts.resolve('5511987654321');
+    clock += 102 * DAY;
+    s.users.set(a.userId, []); // devices gone after logout
+    s.userLastSeen.set(a.userId, (clock - 2 * DAY) * 1000);
+    assert.deepEqual(await accounts.resolve('5511987654321'), { ...a, created: false });
+    assert.deepEqual(s.deactivated, []);
   } finally { s.close(); }
 });

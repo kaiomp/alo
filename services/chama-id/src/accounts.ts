@@ -39,7 +39,9 @@ export class Accounts {
     }
     const old = row.localpart;
     const ms = await this.admin.lastActiveMs(this.userId(old));
-    // Logging out deletes the device, so a recent sign-in through chama-id also counts as activity.
+    // Activity = newest of: current devices, user-level last_seen (Synapse keeps IP logs 7 days), and the
+    // PREVIOUS sign-in through chama-id (logout deletes devices). Known gap: logged out, then away 8-45 days,
+    // with the last sign-in over 45 days ago → fresh account. M4's account PIN blocks auto-retire for PIN users.
     const lastActive = Math.max(ms ?? Infinity, row.last_signin_at * 1000);
     if (ms === null || lastActive > (now - this.o.inactiveDays * 86400) * 1000) {
       this.db.prepare('UPDATE accounts SET last_signin_at = MAX(last_signin_at, ?) WHERE phone = ?').run(now, phone);

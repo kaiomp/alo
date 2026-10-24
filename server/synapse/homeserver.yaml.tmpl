@@ -51,6 +51,9 @@ media_instance_running_background_jobs: media1
 max_upload_size: 100M
 url_preview_enabled: false
 
+# Spec: no IP logs older than 7 days. chama-id also reads the user-level last_seen from these logs.
+user_ips_max_age: 7d
+
 enable_registration: false
 registration_shared_secret: "${REGISTRATION_SHARED_SECRET}"
 macaroon_secret_key: "${MACAROON_SECRET}"
