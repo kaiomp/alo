@@ -182,6 +182,7 @@ app-level choice, as in WhatsApp.
 | Starred messages | Account data `chat.chama.starred` |
 | Pin / archive / mute chat | Room tags `m.favourite`-style (`chat.chama.pinned`, `chat.chama.archived`) and push rules |
 | Disappearing messages | `m.room.retention` (Synapse purge) + client hides expired events |
+| Message storage on the server | Kept only until delivered, at most 30 days (retention policy); history lives on the phones |
 | Block | `m.ignored_user_list` |
 | Status (stories) | One room per user, custom type `chat.chama.status`, members = contacts; items expire after 24 h |
 | Channels | Public room where only admins post (power levels); followers see only admins |
@@ -303,3 +304,28 @@ Target for the first months: 5 million accounts, 1 million daily active users,
 - **SMS cost:** millions of sign-in codes cost real money. chama-id has a provider
   interface so the cheapest provider (Zenvia, Infobip, Twilio, flash-call) can be swapped
   without client changes.
+
+## 13. Federation model (proposed)
+
+Goal: no single owner of Chama, while users never see servers.
+
+- **Regional homeservers, run by independent Brazilian institutions** (federal universities
+  and institutes, state governments, NGOs, cooperatives). Each region's server is operated
+  by its own institution under one shared rulebook (retention, moderation, transparency
+  reports, security baseline).
+- **The DDD picks the home server.** At sign-in the app maps the phone number's area code
+  to a regional server, so a user simply types their number. Matrix federation connects
+  the servers; chats across regions work like any other chat.
+- **Why:** a misbehaving, blocked or failing operator affects one region only; hosting cost
+  is spread across operators (roughly $2–5k/month per region at full scale instead of one
+  large bill); public bodies can join without owning the whole network.
+- **Already compatible:** account IDs are opaque and the phone number is not part of the ID
+  (section 4), so accounts can live on any server.
+- **Open questions:** a shared phone-number directory across servers (who runs it, how it
+  stays private), moving between DDDs, federation load for large groups spanning regions,
+  and the governance of the shared rulebook.
+
+Also considered for later: a nearby "no internet" mode over Bluetooth / Wi-Fi Direct for
+blocks and blackouts (Brazil has seen nationwide messenger blocks). Pure peer-to-peer
+without servers is not suitable for millions of non-technical users (offline phones,
+battery, delivery delays).
