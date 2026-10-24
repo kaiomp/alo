@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -18,6 +20,13 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late Future<({String name, Uri? avatar})> _profile = Deps.of(context).chat.myProfile();
+
+  @override
+  void initState() {
+    super.initState();
+    // The status shows what the server has, not only what this phone stored.
+    if (onAndroid) unawaited(Deps.of(context).push.refresh());
+  }
 
   Future<void> _editProfile() async {
     final profile = await _profile;

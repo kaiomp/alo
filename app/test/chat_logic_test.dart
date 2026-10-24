@@ -6,6 +6,7 @@ import 'package:chama/chat/message_bubble.dart';
 import 'package:chama/chat_list/chat_list_view.dart';
 import 'package:chama/chat_list/chat_tile.dart';
 import 'package:chama/common/deps.dart';
+import 'package:chama/common/notifications.dart';
 import 'package:chama/contacts/address_book.dart';
 import 'package:chama/contacts/contacts_service.dart';
 import 'package:chama/common/theme.dart';
@@ -333,6 +334,7 @@ Widget _host(ChatService service, Widget child) => Deps(
   chat: service,
   id: service.id,
   contacts: ContactsService(service, NoAddressBook(), _prefs),
+  notifications: Notifications(),
   push: PushService(service, _prefs),
   newRecorder: () => throw UnimplementedError(),
   pickFile: ({required bool image}) async => null,

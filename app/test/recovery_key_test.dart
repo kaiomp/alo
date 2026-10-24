@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:chama/auth/encryption_screen.dart';
 import 'package:chama/auth/id_client.dart';
 import 'package:chama/common/deps.dart';
+import 'package:chama/common/notifications.dart';
 import 'package:chama/contacts/address_book.dart';
 import 'package:chama/contacts/contacts_service.dart';
 import 'package:chama/common/theme.dart';
@@ -95,6 +96,7 @@ Widget _app(ChatService service, Widget home) => Deps(
   chat: service,
   id: service.id,
   contacts: ContactsService(service, NoAddressBook(), _prefs),
+  notifications: Notifications(),
   push: PushService(service, _prefs),
   newRecorder: () => throw UnimplementedError(),
   pickFile: ({required bool image}) async => null,

@@ -5,7 +5,9 @@
 //   - acks each message with Olm-encrypted to-device chat.chama.delivered (grey ✓✓),
 //   - sends a read receipt 3 s later (blue ✓✓),
 //   - replies "eco: <text>" to text (not to edits), "recebi: foto criptografada" to an
-//     encrypted image and "recebi: voz criptografada" to an encrypted voice note.
+//     encrypted image and "recebi: voz criptografada" to an encrypted voice note,
+//   - answers a text that starts with "demora" 30 s later instead of 3 s (time
+//     to close the app and receive the answer as a push).
 // Env: PEER_PHONE (E.164 digits, required), CHAMA_BASE_URL (default
 // http://localhost:8080), PEER_NAME (default "Peer").
 import * as sdk from 'matrix-js-sdk';
@@ -81,6 +83,7 @@ async function answer(ev: sdk.MatrixEvent, roomId: string): Promise<void> {
   );
   await sleep(3000);
   await client.sendReadReceipt(ev, sdk.ReceiptType.Read, true);
+  if (typeof content.body === 'string' && content.body.startsWith('demora')) await sleep(30_000);
   const encryptedFile = typeof content.file?.url === 'string' && content.url === undefined;
   let reply: string | undefined;
   // Replies carry the quoted message as "> " lines first (reply fallback): echo only the new text.

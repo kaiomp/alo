@@ -415,5 +415,8 @@
   "contactsAllow": "Permitir acesso aos contatos",
   "contactsOpenSettings": "Abrir configurações",
   "notificationsOn": "Ativadas",
-  "notificationsNeedApp": "Para receber notificações, instale um app UnifiedPush, como o ntfy, e abra o Chama de novo."
+  "notificationsNeedApp": "Para receber notificações, instale um app UnifiedPush, como o ntfy, e abra o Chama de novo.",
+  "newMessage": "Nova mensagem",
+  "channelMessages": "Mensagens",
+  "channelGroups": "Grupos"
 }

@@ -11,6 +11,7 @@ import 'app.dart';
 import 'auth/id_client.dart';
 import 'chat/voice/voice_recorder.dart';
 import 'common/deps.dart';
+import 'common/notifications.dart';
 import 'config.dart';
 import 'contacts/address_book.dart';
 import 'contacts/contacts_service.dart';
@@ -21,7 +22,7 @@ import 'services/push.dart';
 /// Everything the app runs, started once per process. A push can start it
 /// with no screen (main.dart); the UI then attaches to the same instance.
 class AppServices with WidgetsBindingObserver {
-  AppServices._(this.id, this.chat, this.contacts, this.push) {
+  AppServices._(this.id, this.chat, this.contacts, this.notifications, this.push) {
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -31,14 +32,18 @@ class AppServices with WidgetsBindingObserver {
     final chat = await ChatService.start(homeserver: chamaBaseUrl, id: id, background: background);
     final prefs = await SharedPreferences.getInstance();
     final contacts = ContactsService(chat, onAndroid ? DeviceAddressBook() : NoAddressBook(), prefs);
-    final push = PushService(chat, prefs);
+    final notifications = Notifications()..onReply = chat.sendQuickReply;
+    // onPush before init: a push that started the app comes right after it.
+    final push = PushService(chat, prefs)..onPush = (roomId, eventId) => notifications.showPush(chat, roomId, eventId);
+    await notifications.init();
     await push.init();
-    return AppServices._(id, chat, contacts, push);
+    return AppServices._(id, chat, contacts, notifications, push);
   }
 
   final IdClient id;
   final ChatService chat;
   final ContactsService contacts;
+  final Notifications notifications;
   final PushService push;
 
   /// The app with these services. Integration tests pass fakes for the
@@ -47,6 +52,7 @@ class AppServices with WidgetsBindingObserver {
     chat: chat,
     id: id,
     contacts: contacts,
+    notifications: notifications,
     push: push,
     newRecorder: newRecorder ?? RecordVoiceRecorder.new,
     pickFile: pickFile ?? _pickWithSystemPicker,

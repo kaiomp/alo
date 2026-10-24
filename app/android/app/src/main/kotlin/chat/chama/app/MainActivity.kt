@@ -23,6 +23,9 @@ class MainActivity : FlutterActivity() {
         // engine()); registering them twice breaks plugins that keep state.
         // lib/common/secure_clipboard.dart: the recovery key is copied as
         // sensitive, so clipboard previews and keyboard histories hide it.
+        // The engine outlives this activity: the handler keeps the app's
+        // context, never the activity.
+        val appContext = applicationContext
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "chat.chama.app/clipboard")
             .setMethodCallHandler { call, result ->
                 if (call.method != "copySensitive") return@setMethodCallHandler result.notImplemented()
@@ -31,7 +34,7 @@ class MainActivity : FlutterActivity() {
                 clip.description.extras = PersistableBundle().apply {
                     putBoolean("android.content.extra.IS_SENSITIVE", true)
                 }
-                (applicationContext.getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(clip)
+                (appContext.getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(clip)
                 result.success(null)
             }
     }

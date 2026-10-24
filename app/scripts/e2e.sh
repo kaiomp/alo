@@ -24,11 +24,11 @@ for _ in $(seq 60); do grep -q 'peer ready' "$PEER_LOG" && break; sleep 1; done
 grep -q 'peer ready' "$PEER_LOG" || { echo "Peer did not start:"; tail -30 "$PEER_LOG"; exit 1; }
 echo "app +$APP_PHONE  peer +$PEER_PHONE  peer log: $PEER_LOG"
 
-# The contacts test finds the peer in the address book under another name,
-# next to one number without an account.
+# The contacts and push tests find the peer in the address book under another
+# name, next to one number without an account.
 pretty() { printf '(%s) %s-%s' "${1:2:2}" "${1:4:5}" "${1:9}"; }
 case $TEST in
-  *contacts_test.dart)
+  *contacts_test.dart | *push_test.dart)
     export E2E_CONTACTS="Peer Agenda=$(pretty "$PEER_PHONE"),Sem Chama=$(pretty "$(rand_phone)")" ;;
 esac
 

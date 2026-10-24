@@ -155,6 +155,31 @@ class Member {
   final Uri? avatar;
 }
 
+/// A new message to show as a notification, resolved from a push.
+class IncomingMessage {
+  const IncomingMessage({
+    required this.roomId,
+    required this.eventId,
+    required this.chatName,
+    required this.senderName,
+    required this.kind,
+    required this.isGroup,
+    required this.time,
+    this.body = '',
+  });
+
+  final String roomId;
+  final String eventId;
+  final String chatName;
+  final String senderName;
+  final MessageKind kind;
+  final bool isGroup;
+  final DateTime time;
+
+  /// Text, or the file name; empty when it could not be decrypted.
+  final String body;
+}
+
 /// A file the user picked to send.
 class PickedFile {
   const PickedFile({required this.name, required this.bytes, this.mimeType});

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:matrix/matrix.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -34,6 +35,7 @@ const pushAppId = 'chat.chama.app';
 class PushService {
   PushService(this._chat, this._prefs, {http.Client? httpClient}) : _http = httpClient ?? http.Client() {
     _chat.loggedIn.addListener(_onLoginChanged);
+    _chat.onSigningOut = _dropPusher;
   }
 
   final ChatService _chat;
@@ -67,9 +69,30 @@ class PushService {
   Future<bool> register() async {
     if (!onAndroid) return false;
     final config = await _config();
-    if (config == null || !await UnifiedPush.tryUseCurrentOrDefaultDistributor()) return false;
-    await UnifiedPush.register(vapid: config.vapid);
-    return true;
+    if (config == null) return false;
+    try {
+      if (!await UnifiedPush.tryUseCurrentOrDefaultDistributor()) return false;
+      await UnifiedPush.register(vapid: config.vapid);
+      return true;
+    } on PlatformException catch (e) {
+      // The distributor app can be gone or its binder dead: no push, no crash.
+      Logs().w('Push registration failed (${e.code})');
+      return false;
+    }
+  }
+
+  /// Settings: whether the server still has this device's pusher (Synapse
+  /// drops pushers whose endpoint keeps failing). Offline, the last known
+  /// state stays.
+  Future<void> refresh() async {
+    final key = _prefs.getString(_pushkeyKey);
+    if (key == null || !_chat.client.isLogged()) return;
+    try {
+      final pushers = await _chat.client.getPushers() ?? const [];
+      active.value = pushers.any((p) => p.appId == pushAppId && p.pushkey == key);
+    } catch (e) {
+      Logs().w('Could not check the pusher (${e.runtimeType})');
+    }
   }
 
   /// The server's push gateway (as Synapse reaches it) and Sygnal's VAPID key.
@@ -148,8 +171,9 @@ class PushService {
     if (push != null) await onPush?.call(push.roomId, push.eventId);
   }
 
-  /// Sign-out: Synapse deletes the pushers of the signed-out session itself;
-  /// here the distributor forgets the endpoint, so nothing reaches it again.
+  /// Sign-out: [_dropPusher] deletes the server pusher first (a refused or
+  /// offline logout must not leave it pushing); here the distributor forgets
+  /// the endpoint, so nothing reaches it again.
   void _onLoginChanged() {
     if (_chat.loggedIn.value || !onAndroid) return;
     active.value = false;

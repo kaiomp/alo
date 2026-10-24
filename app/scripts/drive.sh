@@ -77,7 +77,20 @@ case $TARGET in
     if [ -n "${TEST_DRIVER:-}" ]; then
       flutter drive --driver="$TEST_DRIVER" --target="$TEST" -d "$DEVICE" "$@"
     else
-      flutter test "$TEST" -d "$DEVICE" "$@"
+      # push_test.dart prints E2E_BACKGROUND: like a user, press Home, wait for
+      # the app's notification, then open the app again so the test can check
+      # it (in the background Android freezes the test's own code).
+      flutter test "$TEST" -d "$DEVICE" "$@" 2>&1 | while IFS= read -r line; do
+        printf '%s\n' "$line"
+        if [[ $line == *E2E_BACKGROUND* ]]; then
+          (adb -s "$DEVICE" shell input keyevent KEYCODE_HOME
+            for _ in $(seq 90); do
+              adb -s "$DEVICE" shell dumpsys notification | grep -q 'pkg=chat.chama.app' && break
+              sleep 1
+            done
+            adb -s "$DEVICE" shell am start -n chat.chama.app/.MainActivity >/dev/null) &
+        fi
+      done
     fi
     ;;
   *) echo "unknown target $TARGET"; exit 2 ;;

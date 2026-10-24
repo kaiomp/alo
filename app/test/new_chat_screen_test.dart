@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:chama/common/deps.dart';
+import 'package:chama/common/notifications.dart';
 import 'package:chama/common/theme.dart';
 import 'package:chama/contacts/address_book.dart';
 import 'package:chama/contacts/contact_sync.dart';
@@ -72,6 +73,7 @@ void main() {
         chat: service,
         id: service.id,
         contacts: contacts,
+        notifications: Notifications(),
         push: PushService(service, prefs),
         newRecorder: () => throw UnimplementedError(),
         pickFile: ({required bool image}) async => null,

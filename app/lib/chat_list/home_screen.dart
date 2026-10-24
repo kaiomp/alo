@@ -31,16 +31,37 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _selected; // wide layout only
   final _left = GlobalKey<NavigatorState>();
   int _profileVersion = 0; // reloads my avatar after settings
+  bool _isWide = false; // last layout, for chats opened from a notification
+  late final Deps _deps = Deps.of(context);
 
   @override
   void initState() {
     super.initState();
     // Signed in and on screen: the steps that need the user or an activity.
-    final deps = Deps.of(context);
+    _deps.notifications.opened.addListener(_openFromNotification);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      unawaited(deps.contacts.start());
-      await deps.push.register();
+      // A tap can arrive (as a new intent) before this screen exists.
+      unawaited(_openFromNotification());
+      unawaited(_deps.contacts.start());
+      await _deps.notifications.requestPermission();
+      await _deps.push.register();
+      // A tap that started the app: the engine may have started headless for
+      // a push, with no activity to read the tap from.
+      await _deps.notifications.checkLaunch();
     });
+  }
+
+  @override
+  void dispose() {
+    _deps.notifications.opened.removeListener(_openFromNotification);
+    super.dispose();
+  }
+
+  Future<void> _openFromNotification() async {
+    final roomId = _deps.notifications.opened.value;
+    if (roomId == null) return;
+    _deps.notifications.opened.value = null;
+    if (await _deps.chat.hasChat(roomId) && mounted) _open(roomId, _isWide);
   }
 
   NavigatorState _nav(bool wide) => wide ? _left.currentState! : Navigator.of(context);
@@ -48,6 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Route<T> _route<T>(bool wide, Widget page) => wide ? paneRoute<T>(page) : MaterialPageRoute<T>(builder: (_) => page);
 
   void _open(String roomId, bool wide) {
+    unawaited(_deps.notifications.cancel(roomId));
     if (wide) {
       // The chat opens in the right pane: close anything stacked on the list.
       _left.currentState?.popUntil((r) => r.isFirst);
@@ -77,7 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final l = L10n.of(context);
     return LayoutBuilder(
       builder: (context, constraints) {
-        final wide = constraints.maxWidth >= wideLayoutMinWidth;
+        final wide = _isWide = constraints.maxWidth >= wideLayoutMinWidth;
         return wide ? _wide(context, l) : _phone(context, l);
       },
     );

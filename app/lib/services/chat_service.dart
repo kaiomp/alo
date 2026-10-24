@@ -193,7 +193,12 @@ class ChatService {
     await _prefs.setString(_phoneKey, login.phone);
   }
 
+  /// Runs before the logout while the session still works: PushService
+  /// deletes this device's pusher.
+  Future<void> Function()? onSigningOut;
+
   Future<void> signOut() async {
+    await onSigningOut?.call();
     try {
       await client.logout();
     } catch (_) {
@@ -486,6 +491,53 @@ class ChatService {
       client.createGroupChat(groupName: name, invite: userIds, enableEncryption: true);
 
   ChatSession openChat(String roomId) => ChatSession(this, _room(roomId));
+
+  /// True once [roomId] is a chat this device has joined. Rooms load from the
+  /// database after start, and a notification tap can come first.
+  Future<bool> hasChat(String roomId) async {
+    await client.roomsLoading;
+    return client.getRoomById(roomId)?.membership == Membership.join;
+  }
+
+  /// A reply typed in a notification.
+  Future<void> sendQuickReply(String roomId, String text) async {
+    final room = client.getRoomById(roomId);
+    if (room == null) return;
+    await room.sendTextEvent(text, parseCommands: false, parseMarkdown: false);
+  }
+
+  // ---- push (spec §6: event_id_only, the phone decrypts) ----
+
+  /// What to show for a push about [eventId], or null when nothing should
+  /// show: a muted chat, my own message, one already read, or no message
+  /// (edits, reactions, state). A message this device cannot decrypt yet
+  /// comes back as [MessageKind.undecryptable], with no body.
+  Future<IncomingMessage?> notificationFor(String roomId, String eventId) async {
+    // One sync brings the room key (to-device) and sends the delivery ack.
+    await client.oneShotSync(timeout: Duration.zero).timeout(const Duration(seconds: 10)).catchError((_) {});
+    final event = await client.getEventByPushNotification(
+      PushNotification(roomId: roomId, eventId: eventId),
+      storeInDatabase: false,
+    );
+    if (event == null || event.senderId == myUserId) return null;
+    final room = event.room;
+    if (room.pushRuleState != PushRuleState.notify) return null;
+    if (!isVisible(event, isGroup: !room.isDirectChat, hidden: const {})) return null;
+    final kind = kindOf(event);
+    if (kind == MessageKind.system || kind == MessageKind.deleted) return null;
+    if (kind != MessageKind.undecryptable && !client.pushruleEvaluator.match(event).notify) return null;
+    return IncomingMessage(
+      roomId: roomId,
+      eventId: eventId,
+      chatName: chatName(room),
+      senderName: nameOf(event.senderFromMemoryOrFallback),
+      kind: kind,
+      isGroup: !room.isDirectChat,
+      time: event.originServerTs,
+      // Never the ciphertext or the SDK's decryption error.
+      body: kind == MessageKind.undecryptable ? '' : previewText(event),
+    );
+  }
 
   // ---- media ----
 

@@ -4,6 +4,7 @@ import 'package:chama/auth/encryption_screen.dart';
 import 'package:chama/auth/id_client.dart';
 import 'package:chama/auth/sign_in_screen.dart';
 import 'package:chama/common/deps.dart';
+import 'package:chama/common/notifications.dart';
 import 'package:chama/contacts/address_book.dart';
 import 'package:chama/contacts/contacts_service.dart';
 import 'package:chama/l10n/app_localizations.dart';
@@ -68,6 +69,7 @@ void main() {
         chat: service,
         id: service.id,
         contacts: ContactsService(service, NoAddressBook(), prefs),
+        notifications: Notifications(),
         push: PushService(service, prefs),
         newRecorder: () => throw UnimplementedError(),
         pickFile: ({required bool image}) async => null,
@@ -135,6 +137,7 @@ void main() {
         chat: service,
         id: service.id,
         contacts: ContactsService(service, NoAddressBook(), prefs),
+        notifications: Notifications(),
         push: PushService(service, prefs),
         newRecorder: () => throw UnimplementedError(),
         pickFile: ({required bool image}) async => null,
@@ -194,6 +197,7 @@ Widget _keyScreen(WidgetTester tester, ChatService service, SharedPreferences pr
     chat: service,
     id: service.id,
     contacts: ContactsService(service, NoAddressBook(), prefs),
+    notifications: Notifications(),
     push: PushService(service, prefs),
     newRecorder: () => throw UnimplementedError(),
     pickFile: ({required bool image}) async => null,

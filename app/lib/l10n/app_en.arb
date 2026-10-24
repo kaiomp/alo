@@ -214,5 +214,8 @@
   "contactsAllow": "Allow access to contacts",
   "contactsOpenSettings": "Open settings",
   "notificationsOn": "On",
-  "notificationsNeedApp": "To get notifications, install a UnifiedPush app such as ntfy, then open Chama again."
+  "notificationsNeedApp": "To get notifications, install a UnifiedPush app such as ntfy, then open Chama again.",
+  "newMessage": "New message",
+  "channelMessages": "Messages",
+  "channelGroups": "Groups"
 }

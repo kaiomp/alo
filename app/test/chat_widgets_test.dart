@@ -6,6 +6,7 @@ import 'package:chama/chat/message_bubble.dart';
 import 'package:chama/chat/voice/voice_player.dart';
 import 'package:chama/chat/voice/voice_recorder.dart';
 import 'package:chama/common/deps.dart';
+import 'package:chama/common/notifications.dart';
 import 'package:chama/contacts/address_book.dart';
 import 'package:chama/contacts/contacts_service.dart';
 import 'package:chama/common/theme.dart';
@@ -286,6 +287,7 @@ Widget _composer(ChatService service, ChatSession session, _Recorder recorder, {
   id: IdClient(Uri.parse('http://localhost:8080')),
   newRecorder: () => recorder..created += 1,
   contacts: ContactsService(service, NoAddressBook(), _prefs),
+  notifications: Notifications(),
   push: PushService(service, _prefs),
   pickFile: ({required image}) async => null,
   shareText: (_) async {},
