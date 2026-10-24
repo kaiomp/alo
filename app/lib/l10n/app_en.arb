@@ -216,6 +216,7 @@
   "contactsOpenSettings": "Open settings",
   "notificationsOn": "On",
   "notificationsNeedApp": "To get notifications, install a UnifiedPush app such as ntfy, then open Chama again.",
+  "notificationsBlocked": "Off: Android is blocking Chama's notifications. Tap to turn them on.",
   "newMessage": "New message",
   "channelMessages": "Messages",
   "channelGroups": "Groups"

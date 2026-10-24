@@ -68,9 +68,11 @@ class AppServices with WidgetsBindingObserver {
     if (!onAndroid || !chat.loggedIn.value) return;
     if (state == AppLifecycleState.resumed) {
       chat.setForeground(true, pushActive: push.active.value);
-      // Back on screen, maybe from the system settings: the permission or the
-      // address book may have changed.
+      // Back on screen, maybe from the system settings or after installing
+      // ntfy: the permission, the address book or the distributor may have
+      // changed.
       unawaited(contacts.start());
+      push.resumed();
     } else if (state == AppLifecycleState.paused) {
       chat.setForeground(false, pushActive: push.active.value);
     }

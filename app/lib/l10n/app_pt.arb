@@ -424,6 +424,7 @@
   "contactsOpenSettings": "Abrir configurações",
   "notificationsOn": "Ativadas",
   "notificationsNeedApp": "Para receber notificações, instale um app UnifiedPush, como o ntfy, e abra o Chama de novo.",
+  "notificationsBlocked": "Desativadas: o Android está bloqueando as notificações do Chama. Toque para ativar.",
   "newMessage": "Nova mensagem",
   "channelMessages": "Mensagens",
   "channelGroups": "Grupos"

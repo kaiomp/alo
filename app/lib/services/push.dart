@@ -65,8 +65,20 @@ class PushService {
 
   /// With the app on screen (the distributor may show a chooser): uses the
   /// distributor the user has and registers. False when there is none, or
-  /// when the server has no push gateway.
-  Future<bool> register() async {
+  /// when the server has no push gateway. Calls made while one runs share it,
+  /// so the distributor's chooser opens once.
+  Future<bool> register() => _registering ??= _register().whenComplete(() => _registering = null);
+  Future<bool>? _registering;
+
+  /// Back on screen with no pusher: the user may just have installed a
+  /// distributor, as Settings tells them to, so registration runs again.
+  /// Limit: with several distributors and none picked, the chooser opens on
+  /// each return until the user picks one.
+  void resumed() {
+    if (onAndroid && !active.value && _chat.loggedIn.value) unawaited(register());
+  }
+
+  Future<bool> _register() async {
     if (!onAndroid) return false;
     final config = await _config();
     if (config == null) return false;

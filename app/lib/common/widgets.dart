@@ -91,13 +91,13 @@ class SearchBox extends StatelessWidget {
   final ValueChanged<String> onChanged;
 
   static const _pill = OutlineInputBorder(
-    borderRadius: BorderRadius.all(Radius.circular(22)),
+    borderRadius: BorderRadius.all(Radius.circular(24)),
     borderSide: BorderSide.none,
   );
 
   @override
   Widget build(BuildContext context) => SizedBox(
-    height: 44,
+    height: 48, // the touch target
     child: TextField(
       key: fieldKey,
       controller: controller,

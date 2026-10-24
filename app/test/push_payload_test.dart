@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:chama/services/push.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -33,6 +35,19 @@ class _FailingDistributor extends DefaultUnifiedPush {
     registered.add(vapid);
     throw PlatformException(code: 'error', message: 'binder died');
   }
+}
+
+/// A distributor that answers once [pick] completes and records registrations.
+class _SlowDistributor extends DefaultUnifiedPush {
+  var pick = Completer<bool>();
+  final registered = <String?>[];
+
+  @override
+  Future<bool> tryUseCurrentOrDefaultDistributor() => pick.future;
+
+  @override
+  Future<void> register(String instance, List<String> features, String? messageForDistributor, String? vapid) async =>
+      registered.add(vapid);
 }
 
 void main() {
@@ -159,5 +174,36 @@ void main() {
     online = false;
     await push.refresh();
     expect(push.active.value, isTrue, reason: 'offline: the last known state stays');
+  });
+  test('back on screen with no pusher (ntfy just installed), registration runs again, once at a time', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final service = await testService(prefs);
+    final push = PushService(service, prefs, httpClient: pushConfig);
+    final saved = UnifiedPushPlatform.instance;
+    addTearDown(() => UnifiedPushPlatform.instance = saved);
+    final distributor = _SlowDistributor();
+    UnifiedPushPlatform.instance = distributor;
+    Future<void> settled() => Future<void>.delayed(const Duration(milliseconds: 20));
+
+    push.resumed();
+    await settled();
+    expect(distributor.registered, isEmpty, reason: 'signed out: nothing to register');
+
+    service.loggedIn.value = true;
+    push.resumed();
+    await settled();
+    push.resumed(); // a second return while the first registration still runs
+    distributor.pick.complete(true);
+    await settled();
+    expect(distributor.registered, ['V']);
+
+    distributor.pick = Completer()..complete(true);
+    push.active.value = true;
+    push.resumed();
+    await settled();
+    expect(distributor.registered, ['V'], reason: 'a pusher already: nothing to do');
   });
 }

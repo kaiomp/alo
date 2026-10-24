@@ -107,7 +107,8 @@ void main() {
       findsOneWidget,
     );
 
-    // Rows and the invite button are at least 48 dp tall.
+    // Rows, the search box and the invite button are at least 48 dp tall.
+    expect(tester.getSize(find.byKey(const Key('contact_search'))).height, greaterThanOrEqualTo(48));
     expect(tester.getSize(find.byKey(const ValueKey('contact_@ana:chama.test'))).height, greaterThanOrEqualTo(48));
     final inviteBia = find.descendant(
       of: find.byKey(const ValueKey('invite_5511955550002')),

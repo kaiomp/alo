@@ -206,6 +206,15 @@ class Notifications {
     if (onAndroid) await _android?.requestNotificationsPermission();
   }
 
+  /// False when Android blocks this app's notifications: the permission
+  /// denied (Android 13+), or turned off in the system settings.
+  Future<bool> enabled() async => !onAndroid || (await _android?.areNotificationsEnabled() ?? true);
+
+  /// The system screen where the user turns this app's notifications on.
+  Future<void> openSettings() async {
+    if (onAndroid) await _android?.openAppNotificationSettings();
+  }
+
   AndroidFlutterLocalNotificationsPlugin? get _android =>
       _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
 
