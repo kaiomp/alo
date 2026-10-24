@@ -12,8 +12,17 @@ Prerequisites: Docker, Node 26, pnpm.
 pnpm install && make up && make smoke
 ```
 
+- `make test` runs the unit tests (no stack needed).
+- `server/scripts/check.sh` runs the acceptance checks against the running stack.
+- `make smoke` signs in two users and sends an encrypted message between them.
+- `make down` stops the stack; `make reset` also deletes all its data.
+
+The local stack is for development only. In dev mode the code `000000` signs in any
+phone number, so the stack listens on localhost only (`http://localhost:8080`).
+
 Design: [docs/design/2026-10-24-architecture.md](docs/design/2026-10-24-architecture.md)
+chama-id API: [docs/chama-id-api.md](docs/chama-id-api.md)
 
 ## License
 
-GNU Affero General Public License v3.0. See [LICENSE](LICENSE).
+GNU Affero General Public License v3.0 only (AGPL-3.0-only). See [LICENSE](LICENSE).
