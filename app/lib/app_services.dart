@@ -16,25 +16,30 @@ import 'contacts/address_book.dart';
 import 'contacts/contacts_service.dart';
 import 'services/chat_service.dart';
 import 'services/models.dart';
+import 'services/push.dart';
 
-/// Everything the app runs, started once per process.
+/// Everything the app runs, started once per process. A push can start it
+/// with no screen (main.dart); the UI then attaches to the same instance.
 class AppServices with WidgetsBindingObserver {
-  AppServices._(this.id, this.chat, this.contacts) {
+  AppServices._(this.id, this.chat, this.contacts, this.push) {
     WidgetsBinding.instance.addObserver(this);
   }
 
-  static Future<AppServices> start() async {
+  static Future<AppServices> start({bool background = false}) async {
     if (!kIsWeb) unawaited(getTemporaryDirectory().then(sweepVoiceFiles));
     final id = IdClient(chamaBaseUrl);
-    final chat = await ChatService.start(homeserver: chamaBaseUrl, id: id);
+    final chat = await ChatService.start(homeserver: chamaBaseUrl, id: id, background: background);
     final prefs = await SharedPreferences.getInstance();
     final contacts = ContactsService(chat, onAndroid ? DeviceAddressBook() : NoAddressBook(), prefs);
-    return AppServices._(id, chat, contacts);
+    final push = PushService(chat, prefs);
+    await push.init();
+    return AppServices._(id, chat, contacts, push);
   }
 
   final IdClient id;
   final ChatService chat;
   final ContactsService contacts;
+  final PushService push;
 
   /// The app with these services. Integration tests pass fakes for the
   /// recorder and the file picker.
@@ -42,6 +47,7 @@ class AppServices with WidgetsBindingObserver {
     chat: chat,
     id: id,
     contacts: contacts,
+    push: push,
     newRecorder: newRecorder ?? RecordVoiceRecorder.new,
     pickFile: pickFile ?? _pickWithSystemPicker,
     shareText: (text) => SharePlus.instance.share(ShareParams(text: text)),
@@ -51,9 +57,14 @@ class AppServices with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (!onAndroid || !chat.loggedIn.value) return;
-    // Back on screen, maybe from the system settings: the permission or the
-    // address book may have changed.
-    if (state == AppLifecycleState.resumed) unawaited(contacts.start());
+    if (state == AppLifecycleState.resumed) {
+      chat.setForeground(true, pushActive: push.active.value);
+      // Back on screen, maybe from the system settings: the permission or the
+      // address book may have changed.
+      unawaited(contacts.start());
+    } else if (state == AppLifecycleState.paused) {
+      chat.setForeground(false, pushActive: push.active.value);
+    }
   }
 }
 

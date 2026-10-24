@@ -168,7 +168,6 @@
   "profileRowSub": "Name and photo",
   "theme": "Theme",
   "themeSystem": "System default",
-  "comingSoonShort": "Coming soon",
   "about": "About Chama",
   "aboutBody": "Free and open source messenger with end-to-end encryption. AGPL-3.0 licence.",
   "technicalId": "Technical ID",
@@ -213,5 +212,7 @@
   "contactsRationaleTitle": "Find your contacts on Chama",
   "contactsRationale": "To show who in your address book already uses Chama, the app sends each number to the server in coded form (a hash). Names and other details never leave your phone, and the server does not keep the list. Without this, you can still chat by typing a number.",
   "contactsAllow": "Allow access to contacts",
-  "contactsOpenSettings": "Open settings"
+  "contactsOpenSettings": "Open settings",
+  "notificationsOn": "On",
+  "notificationsNeedApp": "To get notifications, install a UnifiedPush app such as ntfy, then open Chama again."
 }

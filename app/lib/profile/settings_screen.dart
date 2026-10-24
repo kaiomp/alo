@@ -5,6 +5,7 @@ import '../auth/phone.dart';
 import '../common/avatar.dart';
 import '../common/deps.dart';
 import '../common/widgets.dart';
+import '../config.dart';
 import '../l10n/app_localizations.dart';
 import 'profile_screen.dart';
 
@@ -122,13 +123,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: Text(l.theme),
             subtitle: Text(l.themeSystem),
           ),
-          SectionHeader(l.sectionNotifications),
-          ListTile(
-            enabled: false,
-            leading: const Icon(Icons.notifications_outlined),
-            title: Text(l.sectionNotifications),
-            subtitle: Text(l.comingSoonShort),
-          ),
+          if (onAndroid) ...[
+            SectionHeader(l.sectionNotifications),
+            ValueListenableBuilder<bool>(
+              valueListenable: Deps.of(context).push.active,
+              builder: (context, on, _) => ListTile(
+                key: const Key('notifications_status'),
+                leading: Icon(on ? Icons.notifications_active_outlined : Icons.notifications_off_outlined),
+                title: Text(l.sectionNotifications),
+                subtitle: Text(on ? l.notificationsOn : l.notificationsNeedApp),
+              ),
+            ),
+          ],
           SectionHeader(l.sectionHelp),
           ListTile(leading: const Icon(Icons.info_outline), title: Text(l.about), onTap: _about),
           const SizedBox(height: 16),

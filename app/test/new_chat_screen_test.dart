@@ -7,6 +7,7 @@ import 'package:chama/contacts/contact_sync.dart';
 import 'package:chama/contacts/contacts_service.dart';
 import 'package:chama/group/new_chat_screen.dart';
 import 'package:chama/l10n/app_localizations.dart';
+import 'package:chama/services/push.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -71,6 +72,7 @@ void main() {
         chat: service,
         id: service.id,
         contacts: contacts,
+        push: PushService(service, prefs),
         newRecorder: () => throw UnimplementedError(),
         pickFile: ({required bool image}) async => null,
         shareText: (text) async => shared.add(text),

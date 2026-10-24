@@ -78,7 +78,14 @@ class ChatService {
   static bool _vodozemacReady = false;
 
   /// [clientName] names the local database; tests use several per process.
-  static Future<ChatService> start({required Uri homeserver, required IdClient id, String clientName = 'chama'}) async {
+  /// [background]: started by a push with no screen, so one sync only and no
+  /// "online" presence.
+  static Future<ChatService> start({
+    required Uri homeserver,
+    required IdClient id,
+    String clientName = 'chama',
+    bool background = false,
+  }) async {
     if (!_vodozemacReady) {
       await vod.init();
       _vodozemacReady = true;
@@ -97,6 +104,10 @@ class ChatService {
       // marks it failed and the user retries by hand (spec section 9).
       sendTimelineEventTimeout: const Duration(seconds: 30),
     );
+    if (background) {
+      client.backgroundSync = false;
+      client.syncPresence = PresenceType.offline;
+    }
     return restore(client, id: id, homeserver: homeserver);
   }
 
@@ -131,6 +142,13 @@ class ChatService {
   final chats = ValueNotifier<List<ChatSummary>>(const []);
 
   String get myUserId => client.userID ?? '';
+
+  /// Android, app in the background: presence says "unavailable" instead of
+  /// online, and when push works the sync loop stops (a push wakes the app).
+  void setForeground(bool on, {required bool pushActive}) {
+    client.syncPresence = on ? null : PresenceType.unavailable;
+    client.backgroundSync = on || !pushActive;
+  }
 
   // ---- names (spec §4, Privacy: a contact's saved name wins) ----
 

@@ -37,7 +37,10 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     // Signed in and on screen: the steps that need the user or an activity.
     final deps = Deps.of(context);
-    WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(deps.contacts.start()));
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      unawaited(deps.contacts.start());
+      await deps.push.register();
+    });
   }
 
   NavigatorState _nav(bool wide) => wide ? _left.currentState! : Navigator.of(context);

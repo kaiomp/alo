@@ -10,6 +10,7 @@ import 'package:chama/l10n/app_localizations.dart';
 import 'package:chama/services/chama_client.dart';
 import 'package:chama/services/chat_service.dart';
 import 'package:chama/services/delivery.dart';
+import 'package:chama/services/push.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -94,6 +95,7 @@ Widget _app(ChatService service, Widget home) => Deps(
   chat: service,
   id: service.id,
   contacts: ContactsService(service, NoAddressBook(), _prefs),
+  push: PushService(service, _prefs),
   newRecorder: () => throw UnimplementedError(),
   pickFile: ({required bool image}) async => null,
   shareText: (_) async {},

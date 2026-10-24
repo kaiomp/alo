@@ -8,6 +8,7 @@ import 'package:chama/contacts/address_book.dart';
 import 'package:chama/contacts/contacts_service.dart';
 import 'package:chama/l10n/app_localizations.dart';
 import 'package:chama/services/chat_service.dart';
+import 'package:chama/services/push.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -67,6 +68,7 @@ void main() {
         chat: service,
         id: service.id,
         contacts: ContactsService(service, NoAddressBook(), prefs),
+        push: PushService(service, prefs),
         newRecorder: () => throw UnimplementedError(),
         pickFile: ({required bool image}) async => null,
         shareText: (_) async {},
@@ -133,6 +135,7 @@ void main() {
         chat: service,
         id: service.id,
         contacts: ContactsService(service, NoAddressBook(), prefs),
+        push: PushService(service, prefs),
         newRecorder: () => throw UnimplementedError(),
         pickFile: ({required bool image}) async => null,
         shareText: (_) async {},
@@ -191,6 +194,7 @@ Widget _keyScreen(WidgetTester tester, ChatService service, SharedPreferences pr
     chat: service,
     id: service.id,
     contacts: ContactsService(service, NoAddressBook(), prefs),
+    push: PushService(service, prefs),
     newRecorder: () => throw UnimplementedError(),
     pickFile: ({required bool image}) async => null,
     shareText: (_) async {},

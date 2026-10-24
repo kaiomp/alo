@@ -5,6 +5,7 @@ import '../chat/voice/voice_recorder.dart';
 import '../contacts/contacts_service.dart';
 import '../services/chat_service.dart';
 import '../services/models.dart';
+import '../services/push.dart';
 
 /// Picks one file; [image] limits the picker to photos. Null when cancelled.
 typedef PickFile = Future<PickedFile?> Function({required bool image});
@@ -20,6 +21,7 @@ class Deps extends InheritedWidget {
     required this.chat,
     required this.id,
     required this.contacts,
+    required this.push,
     required this.newRecorder,
     required this.pickFile,
     required this.shareText,
@@ -29,6 +31,7 @@ class Deps extends InheritedWidget {
   final ChatService chat;
   final IdClient id;
   final ContactsService contacts;
+  final PushService push;
   final VoiceRecorder Function() newRecorder;
   final PickFile pickFile;
   final ShareText shareText;

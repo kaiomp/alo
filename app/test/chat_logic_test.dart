@@ -17,6 +17,7 @@ import 'package:chama/services/chat_session.dart';
 import 'package:chama/services/delivery.dart';
 import 'package:chama/services/models.dart';
 import 'package:chama/services/ticks.dart';
+import 'package:chama/services/push.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -332,6 +333,7 @@ Widget _host(ChatService service, Widget child) => Deps(
   chat: service,
   id: service.id,
   contacts: ContactsService(service, NoAddressBook(), _prefs),
+  push: PushService(service, _prefs),
   newRecorder: () => throw UnimplementedError(),
   pickFile: ({required bool image}) async => null,
   shareText: (_) async {},

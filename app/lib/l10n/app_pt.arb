@@ -303,7 +303,6 @@
   "profileRowSub": "Nome e foto",
   "theme": "Tema",
   "themeSystem": "Padrão do sistema",
-  "comingSoonShort": "Em breve",
   "about": "Sobre o Chama",
   "aboutBody": "Mensageiro livre e de código aberto, com criptografia de ponta a ponta. Licença AGPL-3.0.",
   "technicalId": "ID técnico",
@@ -414,5 +413,7 @@
   "contactsRationaleTitle": "Encontre seus contatos no Chama",
   "contactsRationale": "Para mostrar quem da sua agenda já usa o Chama, o app envia ao servidor cada número da agenda em forma codificada (hash). Nomes e outros dados não saem do seu celular, e o servidor não guarda a lista. Sem isso, você ainda pode conversar digitando o número.",
   "contactsAllow": "Permitir acesso aos contatos",
-  "contactsOpenSettings": "Abrir configurações"
+  "contactsOpenSettings": "Abrir configurações",
+  "notificationsOn": "Ativadas",
+  "notificationsNeedApp": "Para receber notificações, instale um app UnifiedPush, como o ntfy, e abra o Chama de novo."
 }
