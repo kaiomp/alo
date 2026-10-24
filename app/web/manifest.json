@@ -4,7 +4,7 @@
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FFFBF8",
-    "theme_color": "#E8590C",
+    "theme_color": "#FFFBF8",
     "description": "Chama, mensageiro livre com criptografia de ponta a ponta.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
