@@ -428,12 +428,14 @@ class ChatService {
   }
 
   /// [userId]'s join came after [ts]. A later member event that only
-  /// changed the name or photo (it was "join" before too) does not count.
+  /// changed the name or photo (it was "join" before too) does not count,
+  /// nor does a join after an invite: someone invited when the message went
+  /// out gets it once they join.
   bool _joinedAfter(Room room, String userId, int ts) {
     final state = room.getState(EventTypes.RoomMember, userId);
-    return state is Event &&
-        state.originServerTs.millisecondsSinceEpoch > ts &&
-        state.prevContent?['membership'] != Membership.join.name;
+    if (state is! Event || state.originServerTs.millisecondsSinceEpoch <= ts) return false;
+    final prev = state.prevContent?['membership'];
+    return prev != Membership.join.name && prev != Membership.invite.name;
   }
 
   Room _room(String roomId) => client.getRoomById(roomId)!;

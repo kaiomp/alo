@@ -268,6 +268,12 @@ void main() {
       r.setState(member(r, carol, 3000, prev: {'membership': 'join'}));
       expect(service.tickOf(r, mine, {mine.eventId: 2000}), Tick.sent);
     });
+
+    test('someone invited when the message went out and who joins later gets it and reads it (final review 3)', () {
+      r.setState(member(r, bob, 3000, prev: {'membership': 'invite'}));
+      r.receiptState.global.otherUsers[bob] = LatestReceiptStateData(mine.eventId, 3100);
+      expect(service.tickOf(r, mine, {mine.eventId: 2000}), Tick.read);
+    });
   });
 
   test('file sizes use the decimal comma in Portuguese (finding 25)', () {
