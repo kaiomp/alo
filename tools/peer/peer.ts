@@ -2,7 +2,7 @@
 // cross-signing like a real Chama device (spec §5: keys only reach verified
 // devices), joins every invite, and answers like a real person would:
 //   - says "oi, entrei" after joining a chat,
-//   - acks each message with to-device chat.chama.delivered (grey ✓✓),
+//   - acks each message with Olm-encrypted to-device chat.chama.delivered (grey ✓✓),
 //   - sends a read receipt 3 s later (blue ✓✓),
 //   - replies "eco: <text>" to text (not to edits), "recebi: foto criptografada" to an
 //     encrypted image and "recebi: voz criptografada" to an encrypted voice note.
@@ -70,9 +70,14 @@ async function answer(ev: sdk.MatrixEvent, roomId: string): Promise<void> {
   answered.add(ev.getId()!);
   const sender = ev.getSender()!;
   const content = ev.getContent();
-  await client.sendToDevice(
-    'chat.chama.delivered',
-    new Map([[sender, new Map([['*', { room_id: roomId, event_ids: [ev.getId()], ts: ev.getTs() }]])]]),
+  // Olm-encrypted, as the app sends them: it ignores plaintext acks.
+  const devices = [...((await client.getCrypto()!.getUserDeviceInfo([sender])).get(sender)?.keys() ?? [])];
+  await client.queueToDevice(
+    await client.getCrypto()!.encryptToDeviceMessages(
+      'chat.chama.delivered',
+      devices.map((deviceId) => ({ userId: sender, deviceId })),
+      { room_id: roomId, event_ids: [ev.getId()], ts: ev.getTs() },
+    ),
   );
   await sleep(3000);
   await client.sendReadReceipt(ev, sdk.ReceiptType.Read, true);

@@ -28,6 +28,10 @@ class ChatSession extends ChangeNotifier {
   String get name => _room.getLocalizedDisplayname();
   Uri? get avatar => _room.avatar;
   bool get isGroup => !_room.isDirectChat;
+
+  /// Messages here are end-to-end encrypted. False for a chat whose
+  /// encryption I cannot switch on: the screen says so and sending is off.
+  bool get encrypted => _room.encrypted && _service.client.encryptionEnabled;
   bool get canLoadMore => _timeline?.canRequestHistory ?? false;
 
   /// Older messages remain on the server, not just in the local database
@@ -63,6 +67,7 @@ class ChatSession extends ChangeNotifier {
           .listen((_) => notifyListeners()),
     );
     _service.delivery.revision.addListener(_rebuild);
+    _service.securityCodes.revision.addListener(_rebuild);
     final other = _room.directChatMatrixID;
     if (other != null) {
       _subs.add(_service.client.onPresenceChanged.stream.where((p) => p.userid == other).listen(_setPresence));
@@ -102,6 +107,7 @@ class ChatSession extends ChangeNotifier {
       for (final e in timeline.events)
         if (isVisible(e, isGroup: isGroup, hidden: hidden)) _toMessage(e, timeline, knownTs),
     ];
+    _insertSecurityNotices();
     notifyListeners();
     if (_visible) unawaited(markRead());
   }
@@ -149,6 +155,34 @@ class ChatSession extends ChangeNotifier {
     );
   }
 
+  /// Local "security code changed" lines, placed by time among the messages
+  /// (newest first). Only those within the loaded range, so they do not
+  /// pile up above the oldest loaded message.
+  void _insertSecurityNotices() {
+    final notices = _service.securityCodes.noticesIn(_room.id);
+    if (notices.isEmpty) return;
+    final list = [...messages];
+    for (final n in notices) {
+      final time = DateTime.fromMillisecondsSinceEpoch(n.ts);
+      if (list.isNotEmpty && canLoadMore && time.isBefore(list.last.time)) continue;
+      final at = list.indexWhere((m) => !m.time.isAfter(time));
+      list.insert(
+        at < 0 ? list.length : at,
+        Message(
+          id: 'security_${n.userId}_${n.ts}',
+          senderId: n.userId,
+          senderName: _room.unsafeGetUserFromMemoryOrFallback(n.userId).calcDisplayname(),
+          isMine: false,
+          time: time,
+          kind: MessageKind.system,
+          systemKind: SystemKind.securityCodeChanged,
+          systemTargetId: n.userId,
+        ),
+      );
+    }
+    messages = list;
+  }
+
   /// Old clients put "> quoted text" in the body of replies; drop it.
   String _bodyWithoutReplyFallback(Event e) {
     final body = previewText(e);
@@ -161,8 +195,8 @@ class ChatSession extends ChangeNotifier {
   List<Reaction> _reactions(Event e, Timeline timeline) {
     final byKey = <String, List<Event>>{};
     for (final r in e.aggregatedEvents(timeline, RelationshipTypes.reaction)) {
-      final key = r.content.tryGetMap<String, Object?>('m.relates_to')?['key'];
-      if (key is String) (byKey[key] ??= []).add(r);
+      final key = reactionKey(r);
+      if (key != null) (byKey[key] ??= []).add(r);
     }
     return [
       for (final MapEntry(:key, value: events) in byKey.entries)
@@ -196,10 +230,40 @@ class ChatSession extends ChangeNotifier {
     final t = _timeline;
     if (t == null || t.events.isEmpty) return;
     if (_room.notificationCount == 0 && !_room.markedUnread && !_room.hasNewMessages) return;
-    await t.setReadMarker(public: _service.readReceipts);
+    final newest = newestReadable(t.events);
+    if (newest == null) return;
+    await t.setReadMarker(eventId: newest.eventId, public: _service.readReceipts);
+  }
+
+  /// Spec §5: nothing goes out in clear. The SDK would send plaintext into a
+  /// room without m.room.encryption, or when its encryption is off.
+  void _mustBeEncrypted() {
+    if (!encrypted) throw StateError('Chat ${_room.id} is not end-to-end encrypted');
+  }
+
+  /// The SDK makes the room key for the devices in the members' device
+  /// lists. A list still loading counts as "no devices": a member left out
+  /// then can never read the message (the key is re-shared only from the
+  /// next message on). So load stale lists first. Members are the joined and
+  /// the invited (a new chat's peer is only invited at first).
+  /// Offline it gives up quietly: the message still queues, as before.
+  Future<void> _deviceListsReady() async {
+    final client = _service.client;
+    try {
+      final members = await _room.requestParticipants(const [Membership.join, Membership.invite], true);
+      final stale = {
+        for (final u in members)
+          if (client.userDeviceKeys[u.id]?.outdated != false) u.id,
+      };
+      if (stale.isNotEmpty) await client.updateUserDeviceKeys(additionalUsers: stale);
+    } catch (e) {
+      Logs().w('Could not refresh device lists before sending', e);
+    }
   }
 
   Future<void> sendText(String text, {String? replyTo, String? editOf}) async {
+    _mustBeEncrypted();
+    await _deviceListsReady();
     await _room.sendTextEvent(
       text,
       inReplyTo: replyTo == null ? null : _event(replyTo),
@@ -211,6 +275,8 @@ class ChatSession extends ChangeNotifier {
   }
 
   Future<void> sendImage(PickedFile file, {String? replyTo}) async {
+    _mustBeEncrypted();
+    await _deviceListsReady();
     final image = await MatrixImageFile.create(
       bytes: Uint8List.fromList(file.bytes),
       name: file.name,
@@ -224,10 +290,14 @@ class ChatSession extends ChangeNotifier {
     );
   }
 
-  Future<void> sendFile(PickedFile file, {String? replyTo}) => _room.sendFileEvent(
-    MatrixFile(bytes: Uint8List.fromList(file.bytes), name: file.name, mimeType: file.mimeType),
-    inReplyTo: replyTo == null ? null : _event(replyTo),
-  );
+  Future<void> sendFile(PickedFile file, {String? replyTo}) async {
+    _mustBeEncrypted();
+    await _deviceListsReady();
+    await _room.sendFileEvent(
+      MatrixFile(bytes: Uint8List.fromList(file.bytes), name: file.name, mimeType: file.mimeType),
+      inReplyTo: replyTo == null ? null : _event(replyTo),
+    );
+  }
 
   /// Voice note as FluffyChat sends it (lib/pages/chat/chat.dart,
   /// onVoiceMessageSend): m.audio + MSC3245 voice flag + MSC1767 waveform.
@@ -237,7 +307,9 @@ class ChatSession extends ChangeNotifier {
     required int durationMs,
     required List<int> waveform,
     String? replyTo,
-  }) {
+  }) async {
+    _mustBeEncrypted();
+    await _deviceListsReady();
     final ext = ['wav', 'ogg', 'webm'].firstWhere(mimeType.contains, orElse: () => 'm4a');
     final file = MatrixAudioFile(
       bytes: bytes,
@@ -245,7 +317,7 @@ class ChatSession extends ChangeNotifier {
       mimeType: mimeType,
       duration: durationMs,
     );
-    return _room.sendFileEvent(
+    await _room.sendFileEvent(
       file,
       inReplyTo: replyTo == null ? null : _event(replyTo),
       extraContent: {
@@ -263,15 +335,27 @@ class ChatSession extends ChangeNotifier {
     if (e == null || t == null) return;
     final mine = e
         .aggregatedEvents(t, RelationshipTypes.reaction)
-        .where(
-          (r) => r.senderId == _service.myUserId && r.content.tryGetMap<String, Object?>('m.relates_to')?['key'] == key,
-        )
+        .where((r) => r.senderId == _service.myUserId && reactionKey(r) == key)
         .firstOrNull;
     if (mine != null) {
       await _room.redactEvent(mine.eventId);
-    } else {
-      await _room.sendReaction(messageId, key);
+      return;
     }
+    _mustBeEncrypted();
+    await _deviceListsReady();
+    // The SDK sends a reaction (only m.relates_to) unencrypted, emoji in
+    // clear. With another field it encrypts, keeping m.relates_to outside the
+    // ciphertext; Synapse needs a key there, so it gets a random one.
+    // Limit: the server still sees who reacted to which message, and other
+    // Matrix clients show the placeholder instead of the emoji.
+    await _room.sendEvent({
+      'm.relates_to': {
+        'rel_type': RelationshipTypes.reaction,
+        'event_id': messageId,
+        'key': _service.client.generateUniqueTransactionId(),
+      },
+      reactionKeyField: key,
+    }, type: EventTypes.Reaction);
   }
 
   Future<void> deleteForEveryone(String messageId) => _room.redactEvent(messageId);
@@ -296,6 +380,8 @@ class ChatSession extends ChangeNotifier {
     if (on && now.difference(_lastTypingSent) < const Duration(seconds: 10)) return;
     _lastTypingSent = on ? now : DateTime(0);
     try {
+      // The SDK prepares the room key when typing starts: device lists first.
+      if (on) await _deviceListsReady();
       await _room.setTyping(on, timeout: 15000);
     } catch (e) {
       Logs().v('Typing notice failed', e);
@@ -330,6 +416,7 @@ class ChatSession extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _service.delivery.revision.removeListener(_rebuild);
+    _service.securityCodes.revision.removeListener(_rebuild);
     for (final s in _subs) {
       s.cancel();
     }

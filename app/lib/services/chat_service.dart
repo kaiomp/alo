@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_vodozemac/flutter_vodozemac.dart' as vod;
 import 'package:matrix/encryption.dart';
 import 'package:matrix/matrix.dart';
@@ -13,6 +14,7 @@ import 'database.dart';
 import 'delivery.dart';
 import 'event_mapping.dart';
 import 'models.dart';
+import 'security_code.dart';
 import 'ticks.dart';
 
 const jwtLoginType = 'org.matrix.login.jwt';
@@ -30,12 +32,25 @@ enum CryptoStatus {
 
   /// The account has keys but this device is new: recovery key or reset.
   unlock,
+
+  /// A setup was cut off after the master key reached the server (network
+  /// drop, app killed). Running setup again needs a password Chama accounts
+  /// do not have, so the only way on is the SMS reset.
+  repair,
+}
+
+/// [CryptoStatus] from the SDK's identity state and whether the server
+/// already holds a master key for this account.
+CryptoStatus cryptoStatusOf({required bool initialized, required bool connected, required bool hasMasterKey}) {
+  if (!initialized) return hasMasterKey ? CryptoStatus.repair : CryptoStatus.setUp;
+  return connected ? CryptoStatus.ready : CryptoStatus.unlock;
 }
 
 /// The only door from the UI to the Matrix SDK. Widgets get plain models and
 /// call methods here or on [ChatSession]; they never import package:matrix.
 class ChatService {
-  ChatService(this.client, this.delivery, this.id, this._prefs, {required this.homeserver}) {
+  ChatService(this.client, this.delivery, this.id, this._prefs, {required this.homeserver})
+    : securityCodes = SecurityCodeWatch(client, _prefs) {
     _subs.add(client.onSync.stream.listen((_) => _onSync()));
     _subs.add(
       client.onSyncStatus.stream.listen((s) {
@@ -43,7 +58,17 @@ class ChatService {
         if (s.status == SyncStatus.finished) connected.value = true;
       }),
     );
-    _subs.add(client.onLoginStateChanged.stream.listen((s) => loggedIn.value = s == LoginState.loggedIn));
+    _subs.add(
+      client.onLoginStateChanged.stream.listen((s) {
+        loggedIn.value = s == LoginState.loggedIn;
+        // The next account must not see this one's chats while its first
+        // sync loads (or fails).
+        if (s == LoginState.loggedOut) {
+          chats.value = const [];
+          _thumbs.clear();
+        }
+      }),
+    );
     loggedIn.value = client.isLogged();
     _onSync();
   }
@@ -79,12 +104,16 @@ class ChatService {
 
   final ChamaClient client;
   final DeliveryTracker delivery;
+  final SecurityCodeWatch securityCodes;
   final IdClient id;
   final SharedPreferences _prefs;
   final Uri homeserver;
   final _subs = <StreamSubscription>[];
   final _thumbs = <String, Future<Uint8List?>>{};
   final _joining = <String>{};
+  final _encrypting = <String>{};
+  static const _secrets = FlutterSecureStorage();
+  static const _pendingKey = 'pending_recovery_key';
 
   final loggedIn = ValueNotifier<bool>(false);
 
@@ -123,6 +152,8 @@ class ChatService {
       if (client.isLogged()) rethrow;
     }
     await _prefs.remove(_phoneKey);
+    await _secrets.delete(key: _pendingKey);
+    await securityCodes.clear();
   }
 
   /// True until the user picks a name: Synapse starts the display name as
@@ -136,13 +167,31 @@ class ChatService {
 
   Future<CryptoStatus> cryptoStatus() async {
     final s = await client.getCryptoIdentityState();
-    if (!s.initialized) return CryptoStatus.setUp;
-    return s.connected ? CryptoStatus.ready : CryptoStatus.unlock;
+    var hasMasterKey = false;
+    if (!s.initialized) {
+      // Ask the server: the local copy of my keys may not be loaded yet.
+      await client.updateUserDeviceKeys(additionalUsers: {myUserId});
+      hasMasterKey = client.userDeviceKeys[myUserId]?.masterKey != null;
+    }
+    return cryptoStatusOf(initialized: s.initialized, connected: s.connected, hasMasterKey: hasMasterKey);
   }
 
   /// Creates cross-signing keys, secret storage and the online key backup,
   /// and signs this device. Returns the recovery key to show the user once.
-  Future<String> setUpEncryption() => client.initCryptoIdentity();
+  Future<String> setUpEncryption() async => _keepUntilSaved(await client.initCryptoIdentity());
+
+  /// A recovery key the user has not confirmed saving yet. Kept in the
+  /// system keystore so it survives Android killing the app while the user
+  /// copies it elsewhere; shown again on the next launch.
+  Future<String?> pendingRecoveryKey() => _secrets.read(key: _pendingKey);
+
+  /// The user ticked "Guardei" and continued.
+  Future<void> recoveryKeySaved() => _secrets.delete(key: _pendingKey);
+
+  Future<String> _keepUntilSaved(String key) async {
+    await _secrets.write(key: _pendingKey, value: key);
+    return key;
+  }
 
   /// Verifies this new device with the recovery key; it then gets old keys
   /// from the backup and new keys from contacts.
@@ -176,7 +225,7 @@ class ChatService {
       }
     };
     try {
-      return await client.initCryptoIdentity();
+      return await _keepUntilSaved(await client.initCryptoIdentity());
     } catch (_) {
       // The SDK's bootstrap wraps the upload error; ChamaClient recovers
       // from no_identity by itself.
@@ -233,9 +282,12 @@ class ChatService {
     client.receiptsPublicByDefault = readReceipts;
     final list = <ChatSummary>[];
     for (final room in client.rooms) {
-      // WhatsApp has no invites: people you are added to just appear.
+      // WhatsApp has no invites: people you are added to just appear. Only
+      // into encrypted chats (spec §5): an invite to an unencrypted room
+      // (server setting turned off, or someone acting for a contact) stays
+      // unanswered and out of the list.
       if (room.membership == Membership.invite) {
-        if (_joining.add(room.id)) {
+        if (room.encrypted && _joining.add(room.id)) {
           unawaited(
             room
                 .join()
@@ -246,6 +298,7 @@ class ChatService {
         continue;
       }
       if (room.membership != Membership.join) continue;
+      _encrypt(room);
       list.add(summaryOf(room));
     }
     list.sort((a, b) {
@@ -253,6 +306,14 @@ class ChatService {
       return b.lastTime.compareTo(a.lastTime);
     });
     chats.value = list;
+  }
+
+  /// An unencrypted chat I am already in gets encryption switched on when my
+  /// power level allows it, once per run. Otherwise it stays marked "not
+  /// encrypted" and the app sends nothing into it.
+  void _encrypt(Room room) {
+    if (room.encrypted || !room.canChangeStateEvent(EventTypes.Encryption) || !_encrypting.add(room.id)) return;
+    unawaited(room.enableEncryption().catchError((Object e) => Logs().w('Could not enable encryption', e)));
   }
 
   ChatSummary summaryOf(Room room) {
@@ -263,6 +324,7 @@ class ChatService {
       id: room.id,
       name: room.getLocalizedDisplayname(),
       isGroup: !room.isDirectChat,
+      encrypted: room.encrypted,
       avatar: room.avatar,
       lastTime: room.latestEventReceivedTime,
       preview: last == null || lastKind == MessageKind.system ? null : previewText(last),
@@ -319,8 +381,17 @@ class ChatService {
   Future<String?> findByPhone(String phoneDigits) async =>
       (await id.lookup([phoneDigits], accessToken: client.accessToken!))[phoneDigits];
 
-  /// Opens (or creates) the encrypted 1:1 chat with [userId].
-  Future<String> startDirectChat(String userId) => client.startDirectChat(userId, enableEncryption: true);
+  /// Opens (or creates) the encrypted 1:1 chat with [userId]. An existing
+  /// chat without encryption is reused only when I can switch it on; an
+  /// invite to one is never joined (spec §5).
+  Future<String> startDirectChat(String userId) async {
+    final existing = client.getRoomById(client.getDirectChatFromUserId(userId) ?? '');
+    final reuse = existing == null || existing.encrypted || existing.canChangeStateEvent(EventTypes.Encryption);
+    final roomId = await client.startDirectChat(userId, enableEncryption: true, skipExistingChat: !reuse);
+    final room = client.getRoomById(roomId);
+    if (room != null && !room.encrypted) await room.enableEncryption();
+    return roomId;
+  }
 
   Future<String> createGroup(String name, List<String> userIds) =>
       client.createGroupChat(groupName: name, invite: userIds, enableEncryption: true);
@@ -353,5 +424,6 @@ class ChatService {
       await s.cancel();
     }
     await delivery.dispose();
+    await securityCodes.dispose();
   }
 }

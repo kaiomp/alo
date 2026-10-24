@@ -7,6 +7,7 @@ class ChatSummary {
     required this.name,
     required this.isGroup,
     required this.lastTime,
+    this.encrypted = true,
     this.avatar,
     this.preview,
     this.previewSender,
@@ -24,6 +25,10 @@ class ChatSummary {
   final String name;
   final bool isGroup;
   final DateTime lastTime;
+
+  /// False for a chat without end-to-end encryption that I cannot switch
+  /// on: shown as "not encrypted", and nothing can be sent into it.
+  final bool encrypted;
   final Uri? avatar;
   final String? preview;
 
@@ -46,7 +51,17 @@ class ChatSummary {
 
 enum MessageKind { text, image, file, voice, deleted, undecryptable, system }
 
-enum SystemKind { created, joined, left, invited, removed, renamed }
+enum SystemKind {
+  created,
+  joined,
+  left,
+  invited,
+  removed,
+  renamed,
+
+  /// Local line: a contact's master key changed (identity reset).
+  securityCodeChanged,
+}
 
 class Reaction {
   const Reaction(this.key, this.count, {this.mine = false, this.senders = const []});

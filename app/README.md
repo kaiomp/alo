@@ -28,4 +28,7 @@ Sign in with any Brazilian mobile number (for example `11 91234-5678`) and the c
 
 ## Release APKs
 
-`make app-apk` builds one APK per ABI (arm64-v8a, armeabi-v7a, x86_64).
+`make app-apk CHAMA_BASE_URL=https://chama.example` builds one APK per ABI (arm64-v8a,
+armeabi-v7a, x86_64). `CHAMA_BASE_URL` is required and must be `https://`: release and profile
+builds refuse to start without it. Android's `network_security_config.xml` (HTTPS only) does not
+cover Dart's own HTTP client, so this check is what keeps codes and tokens off cleartext HTTP.

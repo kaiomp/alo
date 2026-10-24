@@ -40,11 +40,13 @@ void main() {
     await t.tap(const Key('new_chat'));
     await t.enter(const Key('new_chat_phone'), peerPhone.substring(2));
     await t.tap(const Key('new_chat_phone_go'));
-    await t.waitFor(find.text('oi, entrei'), timeout: const Duration(seconds: 60));
 
-    // Text: clock → ✓ → grey ✓✓ → blue ✓✓, and the peer's echo decrypts here.
+    // Text, sent the moment the new chat opens: the peer is only invited and
+    // its device list may still be loading, and it must still be able to
+    // read it. Clock → ✓ → grey ✓✓ → blue ✓✓, and the peer's echo decrypts here.
     await t.enter(const Key('composer_text'), 'Olá, peer!');
     await t.tap(const Key('send'));
+    await t.waitFor(find.text('oi, entrei'), timeout: const Duration(seconds: 60));
     await t.waitFor(find.byKey(const Key('tick_delivered')));
     await t.waitFor(find.byKey(const Key('tick_read')));
     await t.waitFor(find.text('eco: Olá, peer!'));

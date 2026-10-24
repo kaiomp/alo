@@ -59,6 +59,7 @@ class MessageBubble extends StatelessWidget {
       SystemKind.removed when m.isMine => l.youRemoved(target),
       SystemKind.removed => aboutMe ? l.removedYou(m.senderName) : l.userRemoved(m.senderName, target),
       SystemKind.renamed => m.isMine ? l.youRenamed(target) : l.groupRenamed(m.senderName, target),
+      SystemKind.securityCodeChanged => l.securityCodeChanged(m.senderName),
       null => '',
     };
   }

@@ -5,6 +5,7 @@ import 'package:chama/services/models.dart';
 import 'package:chama/services/ticks.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:matrix/matrix.dart';
 
 import 'wait.dart';
 
@@ -37,6 +38,14 @@ void main() {
 
     await s.toggleReaction(echo.id, '👍');
     await until(() => byBody('eco: Olá, peer!')!.reactions.any((r) => r.key == '👍' && r.mine), what: 'reaction');
+    // On the server the reaction is ciphertext; the cleartext key is a placeholder.
+    final raw = (await chat.client.getRoomEvents(
+      roomId,
+      Direction.b,
+      limit: 20,
+    )).chunk.firstWhere((e) => (e.content['m.relates_to'] as Map?)?['event_id'] == echo.id);
+    expect(raw.type, EventTypes.Encrypted);
+    expect((raw.content['m.relates_to'] as Map)['key'], isNot('👍'));
 
     final mine = byBody('respondendo')!;
     await s.sendText('editado', editOf: mine.id);

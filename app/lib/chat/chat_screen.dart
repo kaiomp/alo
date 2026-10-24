@@ -286,7 +286,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                     child: Center(child: CircularProgressIndicator()),
                   );
                 }
-                return E2eNotice(text: l.e2eNotice);
+                return _session.encrypted
+                    ? E2eNotice(text: l.e2eNotice)
+                    : E2eNotice(text: l.notEncryptedNotice, encrypted: false);
               }
               return switch (items[i]) {
                 DayDivider(:final day) => SystemChip(
@@ -327,7 +329,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               Expanded(
                 child: _session.loading ? const Center(child: CircularProgressIndicator()) : _timeline(context, l),
               ),
-              Composer(key: _composer, session: _session, wide: _wide),
+              if (_session.encrypted)
+                Composer(key: _composer, session: _session, wide: _wide)
+              else
+                _NotEncryptedBar(text: l.notEncryptedNoSend),
             ],
           ),
         ),
@@ -373,6 +378,33 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 ),
         ),
       ],
+    );
+  }
+}
+
+/// In place of the composer in a chat without encryption (spec §5: the app
+/// sends nothing in clear).
+class _NotEncryptedBar extends StatelessWidget {
+  const _NotEncryptedBar({required this.text});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      key: const Key('not_encrypted_bar'),
+      color: scheme.surfaceContainer,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Text(
+            text,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
+          ),
+        ),
+      ),
     );
   }
 }

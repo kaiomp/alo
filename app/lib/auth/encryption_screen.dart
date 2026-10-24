@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../common/deps.dart';
+import '../common/secure_clipboard.dart';
 import '../common/theme.dart';
 import '../common/widgets.dart';
 import '../l10n/app_localizations.dart';
@@ -13,11 +13,15 @@ import 'onboarding.dart';
 
 /// Runs once per device after sign-in (spec §5):
 /// - first device of the account: makes the keys and shows the recovery key;
-/// - new device: unlock with the recovery key, or reset with an SMS code.
+/// - new device: unlock with the recovery key, or reset with an SMS code;
+/// - setup cut off half way: straight to the SMS reset.
+/// A recovery key the user has not confirmed saving comes back as
+/// [recoveryKey] on the next launch.
 class EncryptionScreen extends StatefulWidget {
-  const EncryptionScreen({super.key, required this.status, required this.onDone});
+  const EncryptionScreen({super.key, required this.status, required this.onDone, this.recoveryKey});
   final CryptoStatus status;
   final VoidCallback onDone;
+  final String? recoveryKey;
 
   @override
   State<EncryptionScreen> createState() => _EncryptionScreenState();
@@ -36,8 +40,20 @@ class _EncryptionScreenState extends State<EncryptionScreen> {
   @override
   void initState() {
     super.initState();
+    _recoveryKey = widget.recoveryKey;
+    if (_recoveryKey != null) return;
     if (widget.status == CryptoStatus.setUp) _run(() async => _recoveryKey = await _chat.setUpEncryption());
+    if (widget.status == CryptoStatus.repair) {
+      _resetting = true;
+      _requestCode();
+    }
   }
+
+  Future<void> _keySaved(String key) => _run(() async {
+    unawaited(clearSecret(key));
+    await _chat.recoveryKeySaved();
+    widget.onDone();
+  });
 
   @override
   void dispose() {
@@ -97,7 +113,7 @@ class _EncryptionScreenState extends State<EncryptionScreen> {
       return OnboardingScaffold(
         cta: FilledButton(
           key: const Key('recovery_key_done'),
-          onPressed: _saved ? widget.onDone : null,
+          onPressed: _saved && !_busy ? () => _keySaved(key) : null,
           child: Text(l.continueLabel),
         ),
         children: [
@@ -111,7 +127,7 @@ class _EncryptionScreenState extends State<EncryptionScreen> {
               icon: const Icon(Icons.copy, size: 18),
               label: Text(l.copy),
               onPressed: () async {
-                await Clipboard.setData(ClipboardData(text: key));
+                await copySecret(key);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l.copied)));
                 }
@@ -170,7 +186,10 @@ class _EncryptionScreenState extends State<EncryptionScreen> {
       ),
       below: [signOut],
       children: [
-        OnboardingTitle(title: l.newDeviceTitle, body: _resetting ? l.resetExplain : l.newDeviceExplain),
+        if (widget.status == CryptoStatus.repair)
+          OnboardingTitle(title: l.repairTitle, body: l.repairExplain)
+        else
+          OnboardingTitle(title: l.newDeviceTitle, body: _resetting ? l.resetExplain : l.newDeviceExplain),
         TextField(
           key: const Key('encryption_input'),
           controller: _input,

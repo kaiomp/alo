@@ -185,5 +185,10 @@
   "addedYou": "{name} added you",
   "youRemoved": "You removed {target}",
   "removedYou": "{name} removed you",
-  "youRenamed": "You changed the group name to \"{name}\""
+  "youRenamed": "You changed the group name to \"{name}\"",
+  "repairTitle": "Finish protecting your account",
+  "repairExplain": "Encryption setup did not finish. To complete it, confirm with the code we sent by SMS. Your contacts will see that your security code changed.",
+  "securityCodeChanged": "{name}'s security code changed",
+  "notEncryptedNotice": "This chat is not encrypted. Chama does not send messages in it.",
+  "notEncryptedNoSend": "Messages cannot be sent in a chat without encryption."
 }

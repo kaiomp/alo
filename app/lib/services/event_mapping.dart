@@ -54,3 +54,24 @@ bool isVisible(Event e, {required bool isGroup, required Set<String> hidden}) {
   }
   return isGroup && systemKindOf(e) != null;
 }
+
+/// Where an encrypted reaction keeps its emoji, inside the ciphertext.
+const reactionKeyField = 'chat.chama.reaction';
+
+/// The emoji of reaction [r], or null while it cannot be decrypted. In
+/// encrypted rooms the cleartext `m.relates_to.key` is a random placeholder
+/// (the server needs one) and the emoji travels encrypted in
+/// [reactionKeyField]; plaintext reactions carry it in `m.relates_to.key`.
+String? reactionKey(Event r) {
+  if (r.type == EventTypes.Encrypted) return null;
+  final own = r.content[reactionKeyField];
+  if (own is String) return own;
+  final key = r.content.tryGetMap<String, Object?>('m.relates_to')?['key'];
+  return key is String ? key : null;
+}
+
+/// Where my read receipt goes: the newest message this device has and can
+/// read (timeline order, newest first). One it cannot decrypt yet is not
+/// read, so the sender gets no blue ticks for it.
+Event? newestReadable(Iterable<Event> events) =>
+    events.where((e) => e.status.isSynced && e.type != EventTypes.Encrypted).firstOrNull;

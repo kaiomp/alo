@@ -28,8 +28,9 @@ class ChamaApp extends StatelessWidget {
   );
 }
 
-/// Signed out → sign-in; then encryption setup for this device; then the
-/// profile once; then the chat list.
+/// Signed out → sign-in; then encryption setup for this device (and a
+/// recovery key not yet confirmed as saved); then the profile once; then the
+/// chat list.
 class _AuthGate extends StatefulWidget {
   const _AuthGate();
 
@@ -38,9 +39,10 @@ class _AuthGate extends StatefulWidget {
 }
 
 class _AuthGateState extends State<_AuthGate> {
-  Future<(CryptoStatus, bool)>? _state;
+  Future<(CryptoStatus, bool, String?)>? _state;
 
-  Future<(CryptoStatus, bool)> _load(ChatService chat) async => (await chat.cryptoStatus(), await chat.needsProfile());
+  Future<(CryptoStatus, bool, String?)> _load(ChatService chat) async =>
+      (await chat.cryptoStatus(), await chat.needsProfile(), await chat.pendingRecoveryKey());
 
   @override
   Widget build(BuildContext context) {
@@ -53,24 +55,27 @@ class _AuthGateState extends State<_AuthGate> {
           return const SignInScreen();
         }
         _state ??= _load(chat);
-        return FutureBuilder<(CryptoStatus, bool)>(
+        return FutureBuilder<(CryptoStatus, bool, String?)>(
           future: _state,
           builder: (context, snap) {
             final state = snap.data;
             if (state == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-            final (crypto, needsProfile) = state;
-            if (crypto != CryptoStatus.ready) {
+            final (crypto, needsProfile, pendingKey) = state;
+            // A key left from an identity that is no longer this device's is stale.
+            final showKey = crypto == CryptoStatus.ready ? pendingKey : null;
+            if (crypto != CryptoStatus.ready || showKey != null) {
               return EncryptionScreen(
                 status: crypto,
+                recoveryKey: showKey,
                 onDone: () => setState(() {
-                  _state = Future.value((CryptoStatus.ready, needsProfile));
+                  _state = Future.value((CryptoStatus.ready, needsProfile, null));
                 }),
               );
             }
             if (needsProfile) {
               return ProfileScreen(
                 onDone: () => setState(() {
-                  _state = Future.value((CryptoStatus.ready, false));
+                  _state = Future.value((CryptoStatus.ready, false, null));
                 }),
               );
             }

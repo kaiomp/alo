@@ -46,5 +46,8 @@ app-e2e-android:
 
 # Release APKs, one per ABI. pub get first: a GeneratedPluginRegistrant left by
 # an integration-test run still names the test-only plugin and breaks javac.
+# CHAMA_BASE_URL (https) is required: release builds refuse anything else.
 app-apk:
-	cd app && flutter pub get && flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64,android-x64
+	@case "$(CHAMA_BASE_URL)" in https://?*) ;; *) echo "Set CHAMA_BASE_URL=https://… (make app-apk CHAMA_BASE_URL=https://chama.example)"; exit 1 ;; esac
+	cd app && flutter pub get && flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64,android-x64 \
+	  --dart-define=CHAMA_BASE_URL=$(CHAMA_BASE_URL)

@@ -14,10 +14,12 @@ const deliveryMaxMembers = 32;
 
 /// Sends and receives `chat.chama.delivered`.
 ///
-/// Outgoing: every message from someone else that arrives by sync is acked to
-/// the sender's devices, batched per sender and room once a second.
+/// Outgoing: every message from someone else that arrives by sync and
+/// decrypts is acked to the sender's devices, batched per sender and room
+/// once a second, Olm-encrypted so the server can neither read nor forge it.
 /// Incoming: keeps, per room and member, the newest message timestamp that
 /// member confirmed, saved in shared preferences so ticks survive a restart.
+/// Only Olm-encrypted acks count.
 class DeliveryTracker {
   DeliveryTracker(this._client, this._prefs) {
     final saved = _prefs.getString(_prefsKey);
@@ -49,7 +51,11 @@ class DeliveryTracker {
 
   void _onTimelineEvent(Event e) {
     if (e.senderId == _client.userID) return;
-    if (e.type != EventTypes.Message && e.type != EventTypes.Encrypted) return;
+    // Still encrypted = this device cannot read it (yet): no grey ✓✓ for a
+    // message the other side would see as "Aguardando esta mensagem".
+    // Limit: a message that decrypts later is not acked by itself; the ack
+    // of the next message covers it (acks are a timestamp watermark).
+    if (e.type != EventTypes.Message) return;
     // Large groups get no delivery acks (spec §6): too many to-device messages.
     if ((e.room.summary.mJoinedMemberCount ?? 0) > deliveryMaxMembers) return;
     final perRoom = _queue.putIfAbsent(e.senderId, () => {});
@@ -66,8 +72,8 @@ class DeliveryTracker {
     for (final MapEntry(key: sender, value: rooms) in batch.entries) {
       for (final MapEntry(key: roomId, value: item) in rooms.entries) {
         try {
-          await _client.sendToDevicesOfUserIds(
-            {sender},
+          await _client.sendToDeviceEncrypted(
+            _client.userDeviceKeys[sender]?.deviceKeys.values.toList() ?? [],
             deliveredEventType,
             {'room_id': roomId, 'event_ids': item.ids, 'ts': item.ts},
           );
@@ -83,9 +89,12 @@ class DeliveryTracker {
     final ts = e.content['ts'];
     final room = roomId is String ? _client.getRoomById(roomId) : null;
     if (room == null || ts is! int || e.sender == _client.userID) return;
-    // A forged ack only changes a tick colour, so a membership check is
-    // enough. Memory or the local database (rooms load partially): encrypted
-    // rooms keep their full member list, so no server call is needed.
+    // A plaintext ack could come from the server itself; an Olm one comes
+    // from a device in the sender's device list. A forged ack only changes a
+    // tick colour, so on top of that a membership check is enough.
+    if (e.encryptedContent == null) return;
+    // Membership from memory or the local database (rooms load partially):
+    // encrypted rooms keep their full member list, so no server call is needed.
     // The SDK handles to-device events before room state in the same sync, so
     // an ack can arrive before the sender's join (a peer that just accepted
     // the chat). Acks are sent once, so re-check after that sync is applied.

@@ -372,5 +372,17 @@
         "type": "String"
       }
     }
-  }
+  },
+  "repairTitle": "Termine de proteger sua conta",
+  "repairExplain": "A configuração da criptografia não terminou. Para concluí-la, confirme com o código que enviamos por SMS. Seus contatos verão que seu código de segurança mudou.",
+  "securityCodeChanged": "O código de segurança de {name} mudou",
+  "@securityCodeChanged": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notEncryptedNotice": "Esta conversa não é criptografada. O Chama não envia mensagens nela.",
+  "notEncryptedNoSend": "Não é possível enviar mensagens em uma conversa sem criptografia."
 }

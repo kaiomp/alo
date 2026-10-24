@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:cross_file/cross_file.dart';
 import 'package:flutter/foundation.dart';
@@ -66,7 +67,7 @@ class RecordVoiceRecorder implements VoiceRecorder {
     final path = await _rec.stop();
     final started = _startedAt;
     if (path == null || started == null) return null;
-    final bytes = await XFile(path).readAsBytes();
+    final bytes = await readAndDelete(path);
     return RecordedVoice(
       bytes: bytes,
       mimeType: _mime ?? lookupMimeType('x.$_ext', headerBytes: bytes) ?? 'audio/ogg',
@@ -86,5 +87,32 @@ class RecordVoiceRecorder implements VoiceRecorder {
   void dispose() {
     _amp?.cancel();
     _rec.dispose();
+  }
+}
+
+/// Reads the recording at [path], then deletes the file on native: a voice
+/// note must not stay in the cache in clear once it is sent. (On the web the
+/// path is a blob URL that goes away with the page.)
+Future<Uint8List> readAndDelete(String path) async {
+  final bytes = await XFile(path).readAsBytes();
+  if (!kIsWeb) {
+    try {
+      await File(path).delete();
+    } on FileSystemException {
+      // Gone already.
+    }
+  }
+  return bytes;
+}
+
+/// Startup on native: deletes the voice files ("voz_…") left in [dir] by a
+/// crash or a killed app: recordings and the player's decrypted copies.
+Future<void> sweepVoiceFiles(Directory dir) async {
+  try {
+    await for (final f in dir.list()) {
+      if (f is File && p.basename(f.path).startsWith('voz_')) await f.delete();
+    }
+  } on FileSystemException {
+    // A file in use or gone already: the next start tries again.
   }
 }

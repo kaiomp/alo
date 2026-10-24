@@ -96,6 +96,16 @@ class ChatTile extends StatelessWidget {
                         const SizedBox(height: 2),
                         Row(
                           children: [
+                            if (!chat.encrypted) ...[
+                              Icon(
+                                Icons.lock_open,
+                                key: const Key('not_encrypted_icon'),
+                                size: 16,
+                                color: muted,
+                                semanticLabel: l.notEncryptedNotice,
+                              ),
+                              const SizedBox(width: 3),
+                            ],
                             if (chat.lastTick != null) ...[TickIcon(chat.lastTick!), const SizedBox(width: 3)],
                             if (kindIcon != null) ...[Icon(kindIcon, size: 16, color: muted), const SizedBox(width: 3)],
                             Expanded(

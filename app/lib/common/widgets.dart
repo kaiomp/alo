@@ -148,10 +148,12 @@ ButtonStyle tonalButton(BuildContext context) {
 }
 
 /// The end-to-end encryption notice: top of every chat and the empty pane.
-/// Tap explains it.
+/// Tap explains it. With [encrypted] false it says the chat is not
+/// encrypted instead (open lock, nothing to explain).
 class E2eNotice extends StatelessWidget {
-  const E2eNotice({super.key, required this.text});
+  const E2eNotice({super.key, required this.text, this.encrypted = true});
   final String text;
+  final bool encrypted;
 
   @override
   Widget build(BuildContext context) {
@@ -166,9 +168,9 @@ class E2eNotice extends StatelessWidget {
             color: colors.notice,
             borderRadius: BorderRadius.circular(10),
             child: InkWell(
-              key: const Key('e2e_notice'),
+              key: Key(encrypted ? 'e2e_notice' : 'not_encrypted_notice'),
               borderRadius: BorderRadius.circular(10),
-              onTap: () => showE2eExplainer(context),
+              onTap: encrypted ? () => showE2eExplainer(context) : null,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: Text.rich(
@@ -178,7 +180,7 @@ class E2eNotice extends StatelessWidget {
                         alignment: PlaceholderAlignment.middle,
                         child: Padding(
                           padding: const EdgeInsets.only(right: 4),
-                          child: Icon(Icons.lock, size: 12, color: colors.onNotice),
+                          child: Icon(encrypted ? Icons.lock : Icons.lock_open, size: 12, color: colors.onNotice),
                         ),
                       ),
                       TextSpan(text: text),
