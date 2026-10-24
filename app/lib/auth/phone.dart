@@ -27,6 +27,31 @@ String? normalizePhone(String countryCode, String number) {
   return digits;
 }
 
+/// E.164 digits for a number saved in the address book, or null when it
+/// cannot be a phone number. Numbers without a country code are Brazilian.
+/// Two Brazilian habits are undone: a long-distance carrier code in front
+/// (`0 15 11 98765-4321`) and mobiles saved before the ninth digit
+/// (`11 8765-4321`, from before 2016).
+String? normalizeContactPhone(String raw) {
+  final s = raw.trim();
+  String? digits;
+  if (s.startsWith('+')) {
+    digits = normalizePhone('', s);
+  } else {
+    var national = s.replaceAll(RegExp(r'\D'), '').replaceFirst(RegExp(r'^0+'), '');
+    // 0 + carrier (2 digits) + area code + number. 55 in front is the country code instead.
+    if ((national.length == 12 || national.length == 13) && !national.startsWith('55')) {
+      national = national.substring(2);
+    }
+    digits = normalizePhone('55', national);
+  }
+  // Old mobile: 8 local digits starting with 6-9 (landlines start with 2-5).
+  if (digits != null && digits.length == 12 && digits.startsWith('55') && '6789'.contains(digits[4])) {
+    return '${digits.substring(0, 4)}9${digits.substring(4)}';
+  }
+  return digits;
+}
+
 /// Pretty form for display: `+55 11 98765-4321`. Other countries: `+<digits>`.
 String formatPhone(String digits) {
   if (digits.startsWith('55') && (digits.length == 12 || digits.length == 13)) {

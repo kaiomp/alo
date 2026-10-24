@@ -51,4 +51,23 @@ void main() {
     expect(maskBrPhone('+4917662096183'), '+4917662096183');
     expect(normalizePhone('+55', maskBrPhone('11987654321')), '5511987654321');
   });
+
+  test('address-book numbers: national, international, carrier code, old mobiles', () {
+    expect(normalizeContactPhone('(11) 98765-4321'), '5511987654321');
+    expect(normalizeContactPhone('+55 11 98765-4321'), '5511987654321');
+    expect(normalizeContactPhone('011 98765-4321'), '5511987654321');
+    expect(normalizeContactPhone('0 15 11 98765-4321'), '5511987654321'); // carrier 15
+    expect(normalizeContactPhone('0xx21 3456-7890'), '552134567890');
+    expect(normalizeContactPhone('11 8765-4321'), '5511987654321'); // saved before the ninth digit
+    expect(normalizeContactPhone('+55 11 8765-4321'), '5511987654321');
+    expect(normalizeContactPhone('(21) 3456-7890'), '552134567890'); // landline stays
+    expect(normalizeContactPhone('+49 176 62096183'), '4917662096183');
+  });
+
+  test('address-book entries that are not phone numbers', () {
+    expect(normalizeContactPhone('190'), isNull);
+    expect(normalizeContactPhone('*144'), isNull);
+    expect(normalizeContactPhone(''), isNull);
+    expect(normalizeContactPhone('98765-4321'), isNull); // no area code
+  });
 }
