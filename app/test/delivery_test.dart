@@ -50,10 +50,25 @@ void main() {
     expect(tracker.deliveredUpTo(roomId), {'@b:chama.test': 100});
   });
 
+  Future<void> syncDone() async {
+    client.onSync.add(SyncUpdate(nextBatch: 'next'));
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+  }
+
   test('acks from people not joined to the room are ignored', () async {
     member('@left:chama.test', 'leave');
     await ack('@left:chama.test', 100);
     await ack('@stranger:chama.test', 100);
+    await syncDone();
     expect(tracker.deliveredUpTo(roomId), isEmpty);
+  });
+
+  test('an ack that arrives in the same sync as the join counts', () async {
+    member('@b:chama.test', 'invite');
+    await ack('@b:chama.test', 100);
+    expect(tracker.deliveredUpTo(roomId), isEmpty);
+    member('@b:chama.test', 'join'); // the sync's room state, applied after its to-device events
+    await syncDone();
+    expect(tracker.deliveredUpTo(roomId), {'@b:chama.test': 100});
   });
 }

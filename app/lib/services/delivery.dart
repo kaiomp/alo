@@ -86,13 +86,27 @@ class DeliveryTracker {
     // A forged ack only changes a tick colour, so a membership check is
     // enough. Memory or the local database (rooms load partially): encrypted
     // rooms keep their full member list, so no server call is needed.
-    final member = await room.requestUser(e.sender, ignoreErrors: true, requestState: false, requestProfile: false);
-    if (member?.membership != Membership.join) return;
+    // The SDK handles to-device events before room state in the same sync, so
+    // an ack can arrive before the sender's join (a peer that just accepted
+    // the chat). Acks are sent once, so re-check after that sync is applied.
+    if (!await _isJoined(room, e.sender)) {
+      try {
+        await _client.onSync.stream.first;
+      } on StateError {
+        return; // client closed
+      }
+      if (!await _isJoined(room, e.sender)) return;
+    }
     final users = _upTo.putIfAbsent(room.id, () => {});
     if ((users[e.sender] ?? -1) >= ts) return;
     users[e.sender] = ts;
     _prefs.setString(_prefsKey, jsonEncode(_upTo));
     revision.value++;
+  }
+
+  Future<bool> _isJoined(Room room, String userId) async {
+    final member = await room.requestUser(userId, ignoreErrors: true, requestState: false, requestProfile: false);
+    return member?.membership == Membership.join;
   }
 
   Future<void> dispose() async {
