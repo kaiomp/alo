@@ -7,11 +7,14 @@ plugins {
 // Release signing key, from the environment (CI secret or a file outside the
 // repo): CHAMA_KEYSTORE (path to a .jks or .p12 file), CHAMA_KEYSTORE_PASSWORD,
 // CHAMA_KEY_ALIAS, CHAMA_KEY_PASSWORD. Without it a release build fails, unless
-// CHAMA_ALLOW_DEBUG_KEY=1 asks for the debug key (local testing only: the
-// stores refuse it, and a store-signed build cannot update it).
+// CHAMA_UNSIGNED=1 asks for an unsigned build (the F-Droid build server signs
+// it with its own key) or CHAMA_ALLOW_DEBUG_KEY=1 asks for the debug key
+// (local testing only: the stores refuse it, and a store-signed build cannot
+// update it).
 fun env(name: String) = System.getenv(name)?.takeIf { it.isNotEmpty() }
-val keystore = env("CHAMA_KEYSTORE")?.let { file(it) }
-val debugKey = keystore == null && env("CHAMA_ALLOW_DEBUG_KEY") == "1"
+val unsigned = env("CHAMA_UNSIGNED") == "1"
+val keystore = env("CHAMA_KEYSTORE")?.takeUnless { unsigned }?.let { file(it) }
+val debugKey = !unsigned && keystore == null && env("CHAMA_ALLOW_DEBUG_KEY") == "1"
 
 android {
     namespace = "chat.chama.app"
@@ -74,17 +77,17 @@ android {
 // Fail before compiling, with a clear message, instead of producing an
 // unsigned or debug-signed release build nobody asked for.
 gradle.taskGraph.whenReady {
-    if (allTasks.none { it.project == project && it.name.endsWith("Release") } || debugKey) return@whenReady
+    if (allTasks.none { it.project == project && it.name.endsWith("Release") } || debugKey || unsigned) return@whenReady
     if (keystore == null) {
         throw GradleException(
             "Release builds need a signing key: set CHAMA_KEYSTORE, CHAMA_KEYSTORE_PASSWORD, CHAMA_KEY_ALIAS " +
-                "and CHAMA_KEY_PASSWORD (app/README.md). For local testing only, CHAMA_ALLOW_DEBUG_KEY=1 " +
-                "signs with the debug key.",
+                "and CHAMA_KEY_PASSWORD (app/README.md). CHAMA_UNSIGNED=1 builds unsigned (for a store that " +
+                "signs, like F-Droid); for local testing only, CHAMA_ALLOW_DEBUG_KEY=1 signs with the debug key.",
         )
     }
     if (!keystore.isFile) throw GradleException("CHAMA_KEYSTORE: no file at $keystore")
     val missing = listOf("CHAMA_KEYSTORE_PASSWORD", "CHAMA_KEY_ALIAS", "CHAMA_KEY_PASSWORD").filter { env(it) == null }
-    if (missing.isNotEmpty()) throw GradleException("CHAMA_KEYSTORE is set but ${missing.joinToString()} not")
+    if (missing.isNotEmpty()) throw GradleException("CHAMA_KEYSTORE is set but ${missing.joinToString()} not set")
 }
 
 kotlin {
