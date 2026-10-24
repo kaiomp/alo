@@ -8,11 +8,16 @@ const DAY = 86400;
 class FakeAdmin implements SynapseAdmin {
   active = new Map<string, number | null>();
   deactivated: string[] = [];
+  deactivatedElsewhere = new Set<string>();
   failDeactivate = false;
   async whoami(): Promise<never> { throw new Error('unused'); }
   async hasMasterKey(): Promise<never> { throw new Error('unused'); }
   async logoutOtherDevices(): Promise<never> { throw new Error('unused'); }
-  async lastActiveMs(u: string) { return this.active.get(u) ?? null; }
+  async deleteDevices(): Promise<never> { throw new Error('unused'); }
+  async activity(u: string) {
+    const ms = this.active.get(u);
+    return ms === undefined || ms === null ? null : { lastActiveMs: ms, deactivated: this.deactivatedElsewhere.has(u) };
+  }
   async deactivate(u: string) { if (this.failDeactivate) throw new Error('synapse down'); this.deactivated.push(u); }
   async uploadCrossSigningKeys(): Promise<never> { throw new Error('unused'); }
 }
@@ -128,4 +133,15 @@ test('keep (the account has a PIN): never retired for inactivity, and the sign-i
   assert.equal(at(), before + 100 * DAY);
   assert.equal(accounts.phoneOf(a.localpart), PHONE);
   assert.equal(accounts.phoneOf('unobody'), null);
+});
+test('an account deactivated outside the retire path gets a fresh account at the next sign-in, PIN or not', async () => {
+  const { accounts, admin, tick, nowMs } = setup();
+  const a = await accounts.resolve(PHONE);
+  tick(DAY);
+  admin.active.set(a.userId, nowMs());
+  admin.deactivatedElsewhere.add(a.userId);
+  const b = await accounts.resolve(PHONE, { keep: true });
+  assert.equal(b.created, true);
+  assert.notEqual(b.localpart, a.localpart);
+  assert.deepEqual(admin.deactivated, [], 'already deactivated: not called again');
 });

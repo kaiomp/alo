@@ -151,12 +151,23 @@ SIM swap, em que alguém consegue um chip com o número da vítima.
 - **"Esqueci meu PIN":** quem esqueceu o PIN e não tem outro aparelho conectado pede a
   redefinição, e o chama-id espera **7 dias** antes de deixar entrar só com o SMS. Durante a
   espera, os aparelhos já conectados da conta veem o pedido e podem cancelá-lo. Um golpista que
-  pedir a redefinição é barrado pelo dono, que ainda está com o celular.
+  pedir a redefinição é barrado pelo dono, que ainda está com o celular. Digitar o PIN certo
+  (ao entrar ou no lembrete periódico do app) também cancela o pedido: se o dono provou que sabe
+  o PIN durante os 7 dias, o pedido do golpista não apaga o PIN, mesmo que o dono não tenha
+  visto o aviso.
 - **Números reciclados:** uma conta com PIN nunca é aposentada por inatividade. O PIN pertence à
-  conta, não ao número, então a conta nova de um número reciclado não herda o PIN de ninguém.
+  conta, não ao número, então a conta nova de um número reciclado não herda o PIN de ninguém. Uma
+  conta que o operador desativou é a exceção: o número ganha uma conta nova na próxima entrada,
+  com ou sem PIN.
 - **Mudanças no PIN:** criar, trocar ou remover o PIN só vale de um aparelho conectado da conta,
   com o token conferido na hora, no máximo 20 mudanças por hora. Trocar ou remover pede o PIN
   atual ou um código SMS novo.
+- **Aparelhos conectados:** desconectar outros aparelhos (um por um, ou "Sair de todos os outros
+  aparelhos") também só vale de um aparelho conectado da conta e pede o PIN ou um código SMS
+  novo. O chama-id apaga os aparelhos pela API admin do Synapse, e os tokens deles param de
+  funcionar na hora. Um token sem aparelho (o "entrar como usuário" do administrador do Synapse
+  cria tokens assim, e apagar aparelhos não os encerra) é recusado por todas as rotas que mudam
+  a conta.
 - **Guarda:** o chama-id guarda só um hash argon2id do PIN, com um sal aleatório por conta e um
   segredo do servidor (o *pepper*). O PIN nunca vai para o log.
 
@@ -170,6 +181,7 @@ flowchart TD
     pin -- "Esqueci meu PIN" --> wait["Espera de 7 dias"]
     wait --> seen["Os aparelhos da vítima<br/>veem o pedido"]
     seen -- "a vítima cancela" --> stop["O PIN continua valendo"]
+    wait -- "a vítima digita o PIN certo<br/>(entrada ou lembrete)" --> stop
     seen -- "ninguém cancela" --> in
 ```
 
@@ -183,7 +195,9 @@ digitar e lembrar o PIN chegam nesta mesma etapa M4; a API está na
 
 O ID da conta é aleatório (`@u` + 16 caracteres) e não contém o número. Se um número entra e a
 conta ligada a ele está parada há 45 dias, o chama-id desativa a conta antiga e cria uma nova:
-quem recebeu o número da operadora não herda as conversas e os grupos do dono anterior. Nos
+quem recebeu o número da operadora não herda as conversas e os grupos do dono anterior. Se a
+conta antiga já foi desativada de outro jeito (por exemplo pelo operador), o número também
+ganha uma conta nova na próxima entrada. Nos
 celulares dos contatos, o nome salvo não passa para a conta nova, e as conversas com a conta
 antiga avisam "O número de {nome} agora é de outra conta".
 

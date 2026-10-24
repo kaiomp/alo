@@ -19,15 +19,17 @@ import { connect } from 'node:net';
 // Any token `tok-<x>` belongs to `@<x>:chama.test`, on device DEV-<x>; `nodev-<x>` too, without a device.
 class FakeAdmin implements SynapseAdmin {
   whoamiCalls = 0; uploads: [string, unknown][] = []; logouts: [string, string][] = []; noMasterKey = new Set<string>();
+  deleted: [string, string[]][] = []; loggedOut = new Set<string>();
   async whoami(t: string) {
     this.whoamiCalls++;
     if (t.startsWith('nodev-')) return { userId: `@${t.slice(6)}:chama.test` }; // e.g. an admin "log in as" token
-    if (!t.startsWith('tok-')) throw new AppError('invalid_token');
+    if (!t.startsWith('tok-') || this.loggedOut.has(t)) throw new AppError('invalid_token');
     return { userId: `@${t.slice(4)}:chama.test`, deviceId: `DEV-${t.slice(4)}` };
   }
   async hasMasterKey(_t: string, u: string) { return !this.noMasterKey.has(u); }
   async logoutOtherDevices(u: string, keep: string) { this.logouts.push([u, keep]); return 2; }
-  async lastActiveMs() { return null; }
+  async deleteDevices(u: string, ids: string[]) { this.deleted.push([u, ids]); return ids.length; }
+  async activity() { return null; }
   async deactivate() {}
   async uploadCrossSigningKeys(u: string, keys: unknown) { this.uploads.push([u, keys]); }
 }
@@ -455,6 +457,30 @@ test('forgotten PIN: after 7 days the SMS code alone signs in and the PIN is gon
     assert.deepEqual((await json(await post('/id/v1/pin/status', {}, bearer(lp), at))).body, { set: false, reset_at: null });
   } finally { m.server.close(); }
 });
+test('proving the PIN (pin/login or pin/check) ends a pending "Esqueci meu PIN" wait', async () => {
+  let clock = 1_000_000;
+  const m = make({ now: () => clock });
+  const at = await listen(m.server);
+  try {
+    const { lp } = await withPin(m, at, '11955550007');
+    const status = async () => (await json(await post('/id/v1/pin/status', {}, bearer(lp), at))).body;
+    const pinToken = async () => {
+      clock += 61;
+      await post('/id/v1/otp/request', { phone: '11955550007' }, {}, at);
+      return (await (await post('/id/v1/otp/verify', { phone: '11955550007', code: m.codes.get('5511955550007') }, {}, at)).json()).pin_token;
+    };
+    let t = await pinToken();
+    assert.equal((await post('/id/v1/pin/forgot', { pin_token: t }, {}, at)).status, 200, 'e.g. a thief with the SIM');
+    assert.equal((await post('/id/v1/pin/login', { pin_token: t, pin: '123456' }, {}, at)).status, 200);
+    assert.deepEqual(await status(), { set: true, reset_at: null }, 'pin/login cleared it');
+    t = await pinToken();
+    assert.equal((await post('/id/v1/pin/forgot', { pin_token: t }, {}, at)).status, 200);
+    assert.equal((await post('/id/v1/pin/check', { pin: '123456' }, bearer(lp), at)).status, 200);
+    assert.deepEqual(await status(), { set: true, reset_at: null }, 'pin/check cleared it');
+    clock += 8 * 86400;
+    assert.ok(await pinToken(), 'after 7 days the PIN still holds');
+  } finally { m.server.close(); }
+});
 test('reset-identity also needs the PIN when one is set, before the code is spent', async () => {
   let clock = 1_000_000;
   const m = make({ now: () => clock });
@@ -469,6 +495,39 @@ test('reset-identity also needs the PIN when one is set, before the code is spen
     assert.deepEqual(await json(await reset('000000')), { status: 400, body: { error: 'invalid_pin' } });
     assert.deepEqual(m.admin.logouts, []);
     assert.deepEqual(await json(await reset('123456')), { status: 200, body: { logged_out_devices: 2 } }, 'the code was not spent');
+  } finally { m.server.close(); }
+});
+
+test('devices/remove deletes listed devices or all others, after proof, and ends their cached tokens at once', async () => {
+  let clock = 1_000_000;
+  const m = make({ now: () => clock });
+  const at = await listen(m.server);
+  try {
+    const me = await signIn(m, at, '11955550006');
+    const lp = me.user_id.slice(1, me.user_id.indexOf(':'));
+    const remove = (body: Record<string, unknown>, who = lp) => post('/id/v1/devices/remove', body, bearer(who), at);
+    clock += 61;
+    await post('/id/v1/otp/request', { phone: '11955550006' }, {}, at);
+    const code = m.codes.get('5511955550006');
+    for (const bad of [{ code }, { device_ids: [] }, { device_ids: 'X' }, { device_ids: [`DEV-${lp}`], code }, { device_ids: [1] }]) {
+      assert.equal((await remove(bad)).status, 400, JSON.stringify(bad));
+    }
+    assert.deepEqual(await json(await remove({ device_ids: ['WEB'], code: '000001' === code ? '000002' : '000001' })),
+      { status: 400, body: { error: 'invalid_code' } });
+    assert.deepEqual(m.admin.deleted, [], 'nothing deleted before the proof');
+    // A token of the removed device is in the whoami cache from a lookup.
+    assert.equal((await post('/id/v1/directory/lookup', { hashes: [] }, bearer(lp), at)).status, 200);
+    assert.deepEqual(await json(await remove({ device_ids: ['WEB'], code })), { status: 200, body: { removed: 1 } });
+    assert.deepEqual(m.admin.deleted, [[me.user_id, ['WEB']]]);
+    m.admin.loggedOut.add(`tok-${lp}`);
+    assert.equal((await post('/id/v1/directory/lookup', { hashes: [] }, bearer(lp), at)).status, 401, 'cache dropped');
+    m.admin.loggedOut.clear();
+    // With a PIN, the PIN is enough; "Sair de todos os outros aparelhos".
+    assert.equal((await post('/id/v1/pin/set', { pin: '123456' }, bearer(lp), at)).status, 200);
+    assert.deepEqual(await json(await remove({ all_others: true, pin: '123456' })), { status: 200, body: { removed: 2 } });
+    assert.deepEqual(m.admin.logouts, [[me.user_id, `DEV-${lp}`]]);
+    assert.equal((await post('/id/v1/devices/remove', { all_others: true, pin: '123456' }, { authorization: `Bearer nodev-${lp}` }, at)).status, 403,
+      'a token without a device cannot remove devices');
   } finally { m.server.close(); }
 });
 

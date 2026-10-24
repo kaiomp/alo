@@ -90,8 +90,8 @@ admin_check() { dc exec -T -e MXID="$MXID" chama-id node --input-type=module -e 
   import { openDb } from './src/db.ts'; import { HttpSynapseAdmin } from './src/synapse.ts';
   const e = process.env;
   const a = new HttpSynapseAdmin({ baseUrl: e.SYNAPSE_INTERNAL_URL, sharedSecret: e.REGISTRATION_SHARED_SECRET, asToken: e.SYNAPSE_AS_TOKEN, db: openDb(e.DB_PATH) });
-  const age = Date.now() - await a.lastActiveMs(e.MXID);
-  console.log(age >= 0 && age < 600_000, await a.lastActiveMs('@uzzzzzzzzzzzzzzzz:chama.test'));" | tail -1; }
+  const age = Date.now() - (await a.activity(e.MXID)).lastActiveMs;
+  console.log(age >= 0 && age < 600_000, await a.activity('@uzzzzzzzzzzzzzzzz:chama.test'));" | tail -1; }
 # Synapse writes client IPs in batches every few seconds.
 for _ in 1 2 3 4 5 6 7 8 9 10; do out=$(admin_check) || fail "admin client"; [[ $out == 'true null' ]] && break; sleep 2; done
 [[ $out == 'true null' ]] || fail "admin client after logout: want 'true null' (recently active, unknown user), got '$out'"

@@ -48,9 +48,12 @@ export class Accounts {
       if (changes) return { localpart, userId: this.userId(localpart), created: true };
       return { ...this.current(phone)!, created: false };
     }
-    if (o.keep) return { ...this.current(phone)!, created: false };
     const old = row.localpart;
-    const ms = await this.admin.lastActiveMs(this.userId(old));
+    const activity = await this.admin.activity(this.userId(old));
+    // Deactivated outside the retire path (an operator, or account deletion): map a fresh account (issue #3).
+    if (activity?.deactivated) return this.replace(phone, old, localpart, now);
+    if (o.keep) return { ...this.current(phone)!, created: false };
+    const ms = activity?.lastActiveMs ?? null;
     // Activity = newest of: current devices, user-level last_seen (Synapse keeps IP logs 7 days), and the
     // PREVIOUS sign-in through chama-id (logout deletes devices). Known gap: logged out, then away 8-45 days,
     // with the last sign-in over 45 days ago → fresh account, unless the account has a PIN (`keep`).
@@ -61,6 +64,10 @@ export class Accounts {
     }
     // Inactive too long: most likely a recycled number. Retire the old account before mapping a new one.
     await this.admin.deactivate(this.userId(old));
+    return this.replace(phone, old, localpart, now);
+  }
+
+  private replace(phone: string, old: string, localpart: string, now: number) {
     this.db.exec('BEGIN IMMEDIATE');
     try {
       const { changes } = this.db.prepare('UPDATE accounts SET localpart = ?, last_signin_at = ? WHERE phone = ? AND localpart = ?')

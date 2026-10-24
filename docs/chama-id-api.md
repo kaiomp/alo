@@ -37,6 +37,7 @@ erro tem o formato `{"error": "<código>"}`, às vezes com campos extras.
 | POST | `/id/v1/pin/remove` | `Authorization: Bearer <Matrix access token>` |
 | POST | `/id/v1/pin/check` | `Authorization: Bearer <Matrix access token>` |
 | POST | `/id/v1/pin/cancel-reset` | `Authorization: Bearer <Matrix access token>` |
+| POST | `/id/v1/devices/remove` | `Authorization: Bearer <Matrix access token>` |
 
 ### Entrada no app, do começo ao fim
 
@@ -93,8 +94,10 @@ Confere o código e depois encontra ou cria a conta do telefone.
   ```
 
   - `user_id` é opaco (`@u` + 16 caracteres base32 minúsculos). Ele nunca contém o telefone.
-  - `new_account` é `true` para um telefone novo e também para um número reciclado cuja conta
-    antiga foi aposentada (sem atividade por 45 dias).
+  - `new_account` é `true` para um telefone novo, para um número reciclado cuja conta antiga foi
+    aposentada (sem atividade por 45 dias) e quando a conta antiga foi desativada de outro jeito
+    (por exemplo pelo operador). Uma conta desativada nunca volta: o número ganha uma conta nova
+    mesmo que a antiga tivesse PIN.
   - `login_token` é um JWT para o `POST /_matrix/client/v3/login` do Matrix, com
     `{"type": "org.matrix.login.jwt", "token": "<JWT>"}`. Ele expira em 120 s.
   - `homeserver` é o endereço base público, para clientes de produção. Os clientes devem usar o
@@ -234,7 +237,9 @@ Quando a conta tem PIN:
   Quem tem só o chip da vítima (SIM swap) para no passo do PIN;
 - a redefinição de identidade exige o PIN (`reset-identity`, campo `pin`);
 - a conta nunca é aposentada por inatividade: um número reciclado só passa para uma conta nova
-  depois que o PIN for redefinido ("Esqueci meu PIN", 7 dias) ou removido.
+  depois que o PIN for redefinido ("Esqueci meu PIN", 7 dias) ou removido. A exceção é uma conta
+  já desativada de outro jeito (por exemplo pelo operador): o número ganha uma conta nova na
+  próxima entrada.
 
 ### Entrada com PIN
 
@@ -253,7 +258,7 @@ sequenceDiagram
         ID->>ID: conta a tentativa (e o bloqueio)<br/>antes de calcular o hash
         ID-->>App: 400 invalid_pin (ou 429 pin_locked, com retry_after)
     else PIN certo
-        ID->>ID: zera as tentativas e conta a entrada
+        ID->>ID: zera as tentativas, encerra um "Esqueci meu PIN"<br/>pendente e conta a entrada
         ID-->>App: {"user_id", "new_account": false, "login_token" (JWT, 120 s)}
         App->>S: POST /_matrix/client/v3/login<br/>{"type": "org.matrix.login.jwt", "token"}
         S-->>App: access_token, device_id
@@ -274,7 +279,8 @@ certo zera a contagem.
   não libera novas tentativas.
 - Cada tentativa é contada, e o próximo bloqueio é gravado, **antes** do cálculo do hash. Uma
   rajada de tentativas em paralelo não passa do bloqueio.
-- `pin/login`, `pin/check`, `pin/set`, `pin/remove` e `reset-identity` somam na mesma contagem.
+- `pin/login`, `pin/check`, `pin/set`, `pin/remove`, `devices/remove` e `reset-identity` somam
+  na mesma contagem.
 
 ### "Esqueci meu PIN": espera de 7 dias
 
@@ -300,6 +306,11 @@ sequenceDiagram
         D->>ID: POST /id/v1/pin/cancel-reset
         ID-->>D: {}
         Note over N,ID: o PIN continua exigido na entrada
+    else o dono digita o PIN certo (pin/check ou pin/login)
+        D->>ID: POST /id/v1/pin/check {"pin"}
+        ID->>ID: zera reset_at
+        ID-->>D: {}
+        Note over N,ID: o pedido cai sozinho e o PIN continua exigido
     else ninguém cancela e os 7 dias passam
         N->>ID: POST /id/v1/otp/verify {"phone", "code"} (código novo)
         ID->>ID: apaga o PIN
@@ -311,12 +322,20 @@ Depois que a espera termina, a próxima entrada com o código SMS apaga o PIN e 
 partir daí a regra de 45 dias de inatividade volta a valer para a conta. Criar um PIN novo
 também encerra uma espera em andamento.
 
+Digitar o PIN certo em qualquer rota (`pin/login`, `pin/check`, `pin/set`, `pin/remove`,
+`devices/remove`, `reset-identity`) também encerra a espera: quem sabe o PIN não precisa
+redefini-lo. Assim, se um golpista com o chip pedir "Esqueci meu PIN" e o dono entrar ou
+responder ao lembrete do PIN durante os 7 dias, o pedido cai sozinho, mesmo que o dono não o
+tenha visto.
+
 ### Provas nos aparelhos conectados
 
-As rotas que mudam a conta (`pin/set`, `pin/remove`, `pin/check`, `pin/cancel-reset`) exigem:
+As rotas que mudam a conta (`pin/set`, `pin/remove`, `pin/check`, `pin/cancel-reset`,
+`devices/remove`) exigem:
 
-- um token de acesso de um **aparelho real**: um token sem aparelho (por exemplo um token de
-  administrador "entrar como") recebe `forbidden` 403;
+- um token de acesso de um **aparelho real**: um token sem aparelho recebe `forbidden` 403. O
+  "entrar como usuário" da API admin do Synapse cria tokens assim, e apagar aparelhos não os
+  encerra. O chama-id nunca cria um. `reset-identity` também recusa esses tokens;
 - um token **conferido na hora** com o Synapse, sem o cache de 60 s da busca de contatos, para
   que um token desconectado agora há pouco falhe na mesma hora;
 - no máximo 20 mudanças por conta por hora (contadas por conta, não por IP, por causa do CGNAT).
@@ -329,6 +348,7 @@ mas ainda tem um aparelho conectado.
 
 - Requisição: `{"pin_token": "<JWT do otp/verify>", "pin": "123456"}`
 - Resposta: o mesmo corpo do `otp/verify` sem PIN (`login_token`, `user_id`, `new_account`, …).
+  O PIN certo também encerra um "Esqueci meu PIN" pendente.
 - Erros: `invalid_token` 401 (`pin_token` inválido ou expirado; um `login_token` também é
   recusado), `pin_required` 403 (`pin` ausente), `invalid_pin` 400 (com `retry_after` quando esta
   tentativa iniciou um bloqueio), `pin_locked` 429 (com `retry_after`), `forbidden` 403 (o número
@@ -373,7 +393,8 @@ Desliga a confirmação em duas etapas.
 O lembrete periódico do app ("Digite seu PIN"), para a pessoa não esquecer. Tentativas erradas
 somam na contagem de bloqueio.
 
-- Requisição: `{"pin": "123456"}`. Resposta: `{}`.
+- Requisição: `{"pin": "123456"}`. Resposta: `{}`. O PIN certo também encerra um "Esqueci meu
+  PIN" pendente.
 - Erros: `bad_request` 400 (a conta não tem PIN), `pin_required` 403, `invalid_pin` 400,
   `pin_locked` 429, `forbidden` 403, `rate_limited` 429.
 
@@ -383,6 +404,53 @@ Cancela uma espera de "Esqueci meu PIN" (não faz nada se não houver).
 
 - Requisição: `{}`. Resposta: `{}`.
 - Erros: `forbidden` 403, `rate_limited` 429.
+
+## Aparelhos conectados
+
+### `POST /id/v1/devices/remove`
+
+A tela "Aparelhos conectados" do app. Para apagar um aparelho, o Matrix pede autenticação
+interativa (senha), que uma conta do Chama não tem (arquitetura,
+[seção 4](design/2026-10-24-architecture.md#4-identidade-e-entrada)). Por isso o chama-id
+apaga os aparelhos pela API admin do Synapse, depois de uma prova. Os tokens de acesso dos
+aparelhos apagados param de funcionar na hora.
+
+- Requisição: a lista de aparelhos, `{"device_ids": ["ABCDEFGHIJ"], "pin": "123456"}`, ou, para
+  "Sair de todos os outros aparelhos", `{"all_others": true, "code": "123456"}`. A prova é a de
+  [Provas nos aparelhos conectados](#provas-nos-aparelhos-conectados): `pin` quando a conta tem
+  PIN, ou `code` (um código SMS novo, pedido com `otp/request`). A lista tem de 1 a 100 IDs de
+  texto, e o aparelho de quem chama não pode estar nela (para sair dele, o app faz o logout
+  Matrix normal).
+- Resposta: `{"removed": 1}`: quantos aparelhos existiam na conta e foram apagados. Um ID que a
+  conta não tem é ignorado.
+- O formato da lista é conferido **antes** da prova, então uma lista errada não gasta o código
+  SMS nem conta como tentativa de PIN.
+- O chama-id também tira do cache de 60 s da busca de contatos todos os tokens da conta, para
+  que um aparelho apagado não continue buscando contatos até o cache expirar. A
+  redefinição de identidade, que também desconecta os outros aparelhos, faz o mesmo.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant App as App (aparelho conectado)
+    participant ID as chama-id
+    participant S as Synapse
+    App->>ID: POST /id/v1/devices/remove<br/>Bearer token + {"device_ids" ou "all_others", "pin" ou "code"}
+    ID->>S: whoami com o token (sem cache)
+    S-->>ID: user_id, device_id
+    ID->>ID: token sem aparelho? → 403 forbidden<br/>lista válida e sem o próprio aparelho?
+    ID->>ID: confere a prova (PIN ou código SMS)
+    ID->>S: API admin: lista os aparelhos da conta
+    ID->>S: API admin: delete_devices (os pedidos,<br/>ou todos menos o de quem chama)
+    ID->>ID: tira os tokens da conta do cache
+    ID-->>App: {"removed": n}
+```
+
+- Erros: `invalid_token` 401, `bad_request` 400 (nem `device_ids` nem `all_others: true`, lista
+  vazia, com mais de 100 itens, com um item que não é texto, ou com o próprio aparelho; ou falta
+  a prova), `forbidden` 403 (token sem aparelho, ou o número passou para outra conta),
+  `invalid_pin` 400, `pin_locked` 429, `invalid_code` 400, `expired` 400,
+  `too_many_attempts` 429, `rate_limited` 429.
 
 ## Limites
 
@@ -397,7 +465,7 @@ Cancela uma espera de "Esqueci meu PIN" (não faz nada se não houver).
 | Hashes buscados por conta | 10.000 em 24 h (janela fixa a partir da primeira busca) | ×100 |
 | Tokens de acesso inválidos na busca, por IP | 100 por hora (tokens válidos não contam) | ×100 |
 | Chamadas de reset-identity por IP | 10 por hora | ×100 |
-| Mudanças na conta (`pin/set`, `remove`, `check`, `cancel-reset`) por conta | 20 por hora | ×100 |
+| Mudanças na conta (`pin/set`, `remove`, `check`, `cancel-reset`, `devices/remove`) por conta | 20 por hora | ×100 |
 | Validade do `pin_token` | 300 s | igual |
 | PINs errados por conta | 4 livres, depois bloqueios de 1 min, 5 min, 1 h, 24 h, 24 h, … | igual |
 | Espera de "Esqueci meu PIN" | 7 dias | igual |
@@ -452,20 +520,20 @@ Risco residual, aceito por enquanto:
 | Código | HTTP | Rotas |
 |---|---|---|
 | `invalid_phone` | 400 | `otp/request`, `otp/verify`, `reset-identity` |
-| `invalid_code` | 400 | `otp/verify`, `reset-identity`, `pin/set`, `pin/remove` |
-| `expired` | 400 | `otp/verify`, `reset-identity`, `pin/set`, `pin/remove` |
+| `invalid_code` | 400 | `otp/verify`, `reset-identity`, `pin/set`, `pin/remove`, `devices/remove` |
+| `expired` | 400 | `otp/verify`, `reset-identity`, `pin/set`, `pin/remove`, `devices/remove` |
 | `invalid_keys` | 400 | `reset-identity` |
-| `invalid_pin` | 400 | `pin/login`, `pin/set`, `pin/remove`, `pin/check`, `reset-identity` |
+| `invalid_pin` | 400 | `pin/login`, `pin/set`, `pin/remove`, `pin/check`, `reset-identity`, `devices/remove` |
 | `bad_request` | 400 | todas as rotas POST |
-| `invalid_token` | 401 | `directory/lookup`, `reset-identity`, todas as rotas `pin/*` |
-| `forbidden` | 403 | `reset-identity`, `pin/login`, `pin/set`, `pin/remove`, `pin/check`, `pin/cancel-reset` |
+| `invalid_token` | 401 | `directory/lookup`, `reset-identity`, `devices/remove`, todas as rotas `pin/*` |
+| `forbidden` | 403 | `reset-identity`, `pin/login`, `pin/set`, `pin/remove`, `pin/check`, `pin/cancel-reset`, `devices/remove` |
 | `pin_required` | 403 | `pin/login`, `pin/check`, `reset-identity` |
 | `not_found` | 404 | rota desconhecida |
 | `no_identity` | 409 | `reset-identity` |
 | `conflict` | 409 | reservado para as rotas de vinculação de aparelhos |
-| `too_many_attempts` | 429 | `otp/verify`, `reset-identity`, `pin/set`, `pin/remove` |
-| `rate_limited` | 429 | `otp/request`, `otp/verify`, `directory/lookup`, `reset-identity`, `pin/set`, `pin/remove`, `pin/check`, `pin/cancel-reset` |
-| `pin_locked` | 429 | `pin/login`, `pin/set`, `pin/remove`, `pin/check`, `reset-identity` |
+| `too_many_attempts` | 429 | `otp/verify`, `reset-identity`, `pin/set`, `pin/remove`, `devices/remove` |
+| `rate_limited` | 429 | `otp/request`, `otp/verify`, `directory/lookup`, `reset-identity`, `pin/set`, `pin/remove`, `pin/check`, `pin/cancel-reset`, `devices/remove` |
+| `pin_locked` | 429 | `pin/login`, `pin/set`, `pin/remove`, `pin/check`, `reset-identity`, `devices/remove` |
 | `internal` | 500 | qualquer rota |
 
 O app traduz cada código para uma mensagem em português (por exemplo `errInvalidCode`:

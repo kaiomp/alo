@@ -88,6 +88,9 @@ export function ttlCache<V>(o: { ttl: number; maxKeys: number; now: () => number
       if (m.size >= o.maxKeys) m.delete(m.keys().next().value!);
       m.set(k, { v, exp: o.now() + o.ttl });
     },
+    deleteWhere(drop: (v: V) => boolean) {
+      for (const [k, e] of m) if (drop(e.v)) m.delete(k);
+    },
   };
 }
 

@@ -9,8 +9,11 @@ export interface SynapseAdmin {
   hasMasterKey(accessToken: string, userId: string): Promise<boolean>;
   /** Deletes every device of the user except `keepDeviceId` (this also kills their access tokens); returns how many. */
   logoutOtherDevices(userId: string, keepDeviceId: string): Promise<number>;
-  /** Last activity in ms (devices and user-level last_seen); 0 when none is left; null when Synapse does not know the user. */
-  lastActiveMs(userId: string): Promise<number | null>;
+  /** Deletes those of `deviceIds` the user has (and their access tokens); returns how many. */
+  deleteDevices(userId: string, deviceIds: string[]): Promise<number>;
+  /** Last activity in ms (devices and user-level last_seen; 0 when none is left) and whether the account
+   *  is deactivated; null when Synapse does not know the user. */
+  activity(userId: string): Promise<{ lastActiveMs: number; deactivated: boolean } | null>;
   deactivate(userId: string): Promise<void>;
   /** Uploads public cross-signing keys as the user, through the application service, so no UIA is asked. */
   uploadCrossSigningKeys(userId: string, keys: CrossSigningKeys): Promise<void>;
@@ -94,25 +97,27 @@ export class HttpSynapseAdmin implements SynapseAdmin {
     return !!b.master_keys?.[userId];
   }
 
-  async logoutOtherDevices(userId: string, keepDeviceId: string): Promise<number> {
+  private async removeDevices(userId: string, which: (deviceId: string) => boolean): Promise<number> {
     const id = encodeURIComponent(userId);
     const { devices } = await this.ok(await this.admin(`/_synapse/admin/v2/users/${id}/devices`), 'devices') as { devices: { device_id: string }[] };
-    const others = devices.map((d) => d.device_id).filter((d) => d !== keepDeviceId);
-    if (others.length) await this.ok(await this.admin(`/_synapse/admin/v2/users/${id}/delete_devices`, 'POST', { devices: others }), 'delete devices');
-    return others.length;
+    const gone = devices.map((d) => d.device_id).filter(which);
+    if (gone.length) await this.ok(await this.admin(`/_synapse/admin/v2/users/${id}/delete_devices`, 'POST', { devices: gone }), 'delete devices');
+    return gone.length;
   }
+  logoutOtherDevices(userId: string, keepDeviceId: string) { return this.removeDevices(userId, (d) => d !== keepDeviceId); }
+  deleteDevices(userId: string, deviceIds: string[]) { return this.removeDevices(userId, (d) => deviceIds.includes(d)); }
 
   // Newest of: any current device's last_seen_ts, and the user-level last_seen_ts (MAX over user_ips,
   // which survives logout until Synapse prunes it after user_ips_max_age).
-  async lastActiveMs(userId: string): Promise<number | null> {
+  async activity(userId: string): Promise<{ lastActiveMs: number; deactivated: boolean } | null> {
     const id = encodeURIComponent(userId);
     const u = await this.admin(`/_synapse/admin/v2/users/${id}`);
     if (u.status === 404) return null;
-    const { last_seen_ts } = await this.ok(u, 'user') as { last_seen_ts: number | null };
+    const { last_seen_ts, deactivated } = await this.ok(u, 'user') as { last_seen_ts: number | null; deactivated: boolean };
     const r = await this.admin(`/_synapse/admin/v2/users/${id}/devices`);
     if (r.status === 404) return null;
     const { devices } = await this.ok(r, 'devices') as { devices: { last_seen_ts: number | null }[] };
-    return Math.max(0, last_seen_ts ?? 0, ...devices.map((d) => d.last_seen_ts ?? 0));
+    return { lastActiveMs: Math.max(0, last_seen_ts ?? 0, ...devices.map((d) => d.last_seen_ts ?? 0)), deactivated: !!deactivated };
   }
 
   async deactivate(userId: string): Promise<void> {

@@ -15,7 +15,7 @@ async function stub() {
   const s = {
     nonces: new Set<string>(), taken: new Set<string>(), registered: [] as string[],
     adminTokens: new Set<string>(), users: new Map<string, Device[]>(), userLastSeen: new Map<string, number | null>(),
-    deactivated: [] as { user: string; body: unknown }[], uploads: [] as { user: string; body: unknown }[], masterKeys: new Set<string>(),
+    deactivated: [] as { user: string; body: unknown }[], dead: new Set<string>(), uploads: [] as { user: string; body: unknown }[], masterKeys: new Set<string>(),
     badMacs: 0, base: '', close: () => {},
   };
   const server = http.createServer(async (req, res) => {
@@ -55,7 +55,7 @@ async function stub() {
     let m;
     if (req.method === 'GET' && (m = p.match(/^\/_synapse\/admin\/v2\/users\/([^/]+)$/))) {
       const user = decodeURIComponent(m[1]);
-      return s.users.has(user) ? send(200, { name: user, deactivated: false, last_seen_ts: s.userLastSeen.get(user) ?? null })
+      return s.users.has(user) ? send(200, { name: user, deactivated: s.dead.has(user), last_seen_ts: s.userLastSeen.get(user) ?? null })
         : send(404, { errcode: 'M_NOT_FOUND', error: 'User not found' });
     }
     if (req.method === 'GET' && (m = p.match(/^\/_synapse\/admin\/v2\/users\/([^/]+)\/devices$/))) {
@@ -82,6 +82,7 @@ function setup(s: Awaited<ReturnType<typeof stub>>) {
   const db = openDb(':memory:');
   return { db, admin: new HttpSynapseAdmin({ baseUrl: s.base, sharedSecret: SECRET, asToken: AS_TOKEN, db }) };
 }
+const lastMs = async (admin: HttpSynapseAdmin, u: string) => (await admin.activity(u))?.lastActiveMs ?? null;
 const storedTokens = (db: ReturnType<typeof openDb>) => db.prepare('SELECT token FROM admin_token').all().map((r: any) => r.token);
 
 test('registers an admin with a correct HMAC once, stores and reuses its token', async () => {
@@ -89,13 +90,13 @@ test('registers an admin with a correct HMAC once, stores and reuses its token',
   try {
     const { db, admin } = setup(s);
     s.users.set('@ua:chama.test', []);
-    assert.equal(await admin.lastActiveMs('@ua:chama.test'), 0);
-    assert.equal(await admin.lastActiveMs('@ua:chama.test'), 0);
+    assert.equal(await lastMs(admin, '@ua:chama.test'), 0);
+    assert.equal(await lastMs(admin, '@ua:chama.test'), 0);
     assert.deepEqual(s.registered, ['chama-admin']);
     assert.equal(s.badMacs, 0);
     assert.deepEqual(storedTokens(db), ['admin-chama-admin']);
     // A new instance on the same DB (a restart) reuses the stored token.
-    await new HttpSynapseAdmin({ baseUrl: s.base, sharedSecret: SECRET, asToken: AS_TOKEN, db }).lastActiveMs('@ua:chama.test');
+    await new HttpSynapseAdmin({ baseUrl: s.base, sharedSecret: SECRET, asToken: AS_TOKEN, db }).activity('@ua:chama.test');
     assert.deepEqual(s.registered, ['chama-admin']);
   } finally { s.close(); }
 });
@@ -104,7 +105,7 @@ test('concurrent first calls register only one admin', async () => {
   try {
     const { admin } = setup(s);
     s.users.set('@ua:chama.test', []);
-    await Promise.all([admin.lastActiveMs('@ua:chama.test'), admin.lastActiveMs('@ua:chama.test'), admin.deactivate('@ua:chama.test')]);
+    await Promise.all([admin.activity('@ua:chama.test'), admin.activity('@ua:chama.test'), admin.deactivate('@ua:chama.test')]);
     assert.deepEqual(s.registered, ['chama-admin']);
   } finally { s.close(); }
 });
@@ -123,9 +124,9 @@ test('a stored token that gets 401 is discarded and a new admin registered', asy
   try {
     const { db, admin } = setup(s);
     s.users.set('@ua:chama.test', []);
-    await admin.lastActiveMs('@ua:chama.test');
+    await admin.activity('@ua:chama.test');
     s.adminTokens.clear(); // e.g. the admin was logged out
-    assert.equal(await admin.lastActiveMs('@ua:chama.test'), 0);
+    assert.equal(await lastMs(admin, '@ua:chama.test'), 0);
     assert.deepEqual(s.registered, ['chama-admin', 'chama-admin-2']);
     assert.deepEqual(storedTokens(db), ['admin-chama-admin-2']);
   } finally { s.close(); }
@@ -143,10 +144,29 @@ test('lastActiveMs is the newest device last_seen_ts; unknown user is null', asy
   try {
     const { admin } = setup(s);
     s.users.set('@ua:chama.test', [{ device_id: 'A', last_seen_ts: 1000 }, { device_id: 'B', last_seen_ts: 5000 }, { device_id: 'C', last_seen_ts: null }]);
-    assert.equal(await admin.lastActiveMs('@ua:chama.test'), 5000);
+    assert.equal(await lastMs(admin, '@ua:chama.test'), 5000);
     s.users.set('@ub:chama.test', [{ device_id: 'C', last_seen_ts: null }]);
-    assert.equal(await admin.lastActiveMs('@ub:chama.test'), 0);
-    assert.equal(await admin.lastActiveMs('@nobody:chama.test'), null);
+    assert.equal(await lastMs(admin, '@ub:chama.test'), 0);
+    assert.equal(await lastMs(admin, '@nobody:chama.test'), null);
+  } finally { s.close(); }
+});
+test('activity says whether the account is deactivated', async () => {
+  const s = await stub();
+  try {
+    const { admin } = setup(s);
+    s.users.set('@ua:chama.test', []);
+    assert.deepEqual(await admin.activity('@ua:chama.test'), { lastActiveMs: 0, deactivated: false });
+    s.dead.add('@ua:chama.test');
+    assert.deepEqual(await admin.activity('@ua:chama.test'), { lastActiveMs: 0, deactivated: true });
+  } finally { s.close(); }
+});
+test('deleteDevices deletes only the listed devices the user has', async () => {
+  const s = await stub();
+  try {
+    const { admin } = setup(s);
+    s.users.set('@ua:chama.test', [{ device_id: 'A', last_seen_ts: 1 }, { device_id: 'B', last_seen_ts: 2 }]);
+    assert.equal(await admin.deleteDevices('@ua:chama.test', ['A', 'Z']), 1);
+    assert.deepEqual(s.users.get('@ua:chama.test')!.map((d) => d.device_id), ['B']);
   } finally { s.close(); }
 });
 test('deactivate does not erase', async () => {
@@ -184,11 +204,11 @@ test('lastActiveMs also counts the user-level last_seen_ts, which survives logou
     const { admin } = setup(s);
     s.users.set('@ua:chama.test', [{ device_id: 'A', last_seen_ts: 1000 }]);
     s.userLastSeen.set('@ua:chama.test', 9000);
-    assert.equal(await admin.lastActiveMs('@ua:chama.test'), 9000);
+    assert.equal(await lastMs(admin, '@ua:chama.test'), 9000);
     s.users.set('@ua:chama.test', []); // logged out
-    assert.equal(await admin.lastActiveMs('@ua:chama.test'), 9000);
+    assert.equal(await lastMs(admin, '@ua:chama.test'), 9000);
     s.userLastSeen.set('@ua:chama.test', null); // user_ips pruned
-    assert.equal(await admin.lastActiveMs('@ua:chama.test'), 0);
+    assert.equal(await lastMs(admin, '@ua:chama.test'), 0);
   } finally { s.close(); }
 });
 test('active 100 days, logged out to switch phones, signs in 2 days later: same account', async () => {

@@ -30,6 +30,9 @@ function crossSigningKeys(v: unknown, userId: string): CrossSigningKeys {
   return v as CrossSigningKeys;
 }
 
+// @localpart:server → localpart
+const localpartOf = (userId: string) => userId.slice(1, userId.indexOf(':'));
+
 const bearer = (req: IncomingMessage) => {
   const m = req.headers.authorization?.match(/^Bearer +(\S+)$/i);
   if (!m) throw new AppError('invalid_token');
@@ -86,7 +89,7 @@ export function createServer(d: {
     const me = await whoami(req, { fresh: true });
     if (!me.deviceId) throw new AppError('forbidden');
     accountActions.hit(me.userId);
-    return { userId: me.userId, deviceId: me.deviceId, localpart: me.userId.slice(1, me.userId.indexOf(':')) };
+    return { userId: me.userId, deviceId: me.deviceId, localpart: localpartOf(me.userId) };
   };
   // Second factor on a signed-in device: the PIN when the account has one, or a fresh SMS code.
   const proof = async (localpart: string, b: Record<string, unknown>) => {
@@ -95,6 +98,9 @@ export function createServer(d: {
     if (!phone) throw new AppError('forbidden'); // the number now belongs to another account
     d.otp.verify(phone, str(b.code));
   };
+  // Their tokens stop working here at once, not when the whoami cache entry expires.
+  // Limit: a device that logs itself out stays cached up to 60 s (only lookups use the cache).
+  const dropCached = (userId: string) => whoamiCache.deleteWhere((me) => me.userId === userId);
   const login = (phone: string, account: { localpart: string; userId: string; created: boolean }) => ({
     // `homeserver` is the public URL, for production clients. Dev clients use their own configured
     // base URL instead (the Android emulator reaches the host stack at http://10.0.2.2:8080).
@@ -143,7 +149,7 @@ export function createServer(d: {
     'POST /id/v1/pin/forgot': (b) => ({ reset_at: d.pins.requestReset(pinClaims(b.pin_token).localpart) }),
     'POST /id/v1/pin/status': async (_b, req) => {
       const { userId } = await whoami(req);
-      return d.pins.status(userId.slice(1, userId.indexOf(':')));
+      return d.pins.status(localpartOf(userId));
     },
     // A new PIN; changing one needs the current PIN or a fresh SMS code.
     'POST /id/v1/pin/set': async (b, req) => {
@@ -169,6 +175,18 @@ export function createServer(d: {
       d.pins.cancelReset((await owner(req)).localpart);
       return {};
     },
+    // "Aparelhos conectados": Matrix asks user-interactive auth to delete a device, which Chama
+    // accounts cannot do (spec §4), so chama-id deletes it through the admin API after proof.
+    'POST /id/v1/devices/remove': async (b, req) => {
+      const me = await owner(req);
+      const ids = b.all_others === true ? null : b.device_ids;
+      if (ids !== null && (!Array.isArray(ids) || !ids.length || ids.length > 100 ||
+        ids.some((x) => typeof x !== 'string' || !x || x.length > 255 || x === me.deviceId))) throw new AppError('bad_request');
+      await proof(me.localpart, b);
+      const removed = ids === null ? await d.admin.logoutOtherDevices(me.userId, me.deviceId) : await d.admin.deleteDevices(me.userId, ids);
+      dropCached(me.userId);
+      return { removed };
+    },
     'POST /id/v1/directory/lookup': async (b, req) => {
       const { userId } = await whoami(req);
       userLookups.hit(userId);
@@ -188,10 +206,11 @@ export function createServer(d: {
       const keys = crossSigningKeys(b.keys, userId);
       // No master key yet: the client uploads its first keys itself, which needs no UIA.
       if (!await d.admin.hasMasterKey(token, userId)) throw new AppError('no_identity');
-      await d.pins.check(userId.slice(1, userId.indexOf(':')), b.pin); // spec §5: the PIN also gates resets
+      await d.pins.check(localpartOf(userId), b.pin); // spec §5: the PIN also gates resets
       d.otp.verify(phone, code);
       // Logout first: a reset must never leave another device signed in.
       const loggedOut = await d.admin.logoutOtherDevices(userId, deviceId);
+      dropCached(userId);
       await d.admin.uploadCrossSigningKeys(userId, keys);
       return { logged_out_devices: loggedOut };
     },

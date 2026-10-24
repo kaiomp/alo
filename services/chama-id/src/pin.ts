@@ -53,7 +53,8 @@ export class Pins {
   remove(localpart: string) { this.db.prepare('DELETE FROM pins WHERE localpart = ?').run(localpart); }
 
   // Passes when no PIN is set. A try is counted and the next lock set before the slow hash runs,
-  // so parallel guesses cannot slip past the lock; a right PIN clears both.
+  // so parallel guesses cannot slip past the lock; a right PIN clears both. A right PIN also ends a
+  // pending "Esqueci meu PIN" wait: the owner still knows it, so a reset asked by a SIM thief must not run.
   async check(localpart: string, pin: unknown) {
     if (!this.row(localpart)) return;
     if (typeof pin !== 'string' || !pin) throw new AppError('pin_required');
@@ -68,7 +69,7 @@ export class Pins {
     if (wait) this.db.prepare('UPDATE pins SET locked_until = ? WHERE localpart = ?').run(now + wait, localpart);
     const got = /^\d{6}$/.test(pin) ? await this.hash(pin, Buffer.from(r.salt, 'hex')) : Buffer.alloc(32);
     if (timingSafeEqual(got, Buffer.from(r.hash, 'hex'))) {
-      this.db.prepare('UPDATE pins SET fails = 0, locked_until = 0 WHERE localpart = ?').run(localpart);
+      this.db.prepare('UPDATE pins SET fails = 0, locked_until = 0, reset_at = NULL WHERE localpart = ?').run(localpart);
       return;
     }
     throw new AppError('invalid_pin', wait ? { retry_after: wait } : undefined);

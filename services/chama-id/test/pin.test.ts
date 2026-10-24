@@ -81,3 +81,12 @@ test('a forgotten PIN: the reset is due after 7 days; asking again keeps the dat
   pins.remove(LP);
   assert.equal(pins.state(LP), 'none');
 });
+test('the right PIN ends a pending reset; a wrong one does not', async () => {
+  const { pins } = setup();
+  await pins.set(LP, '123456');
+  const at = pins.requestReset(LP);
+  await assert.rejects(pins.check(LP, '000000'));
+  assert.deepEqual(pins.status(LP), { set: true, reset_at: at });
+  await pins.check(LP, '123456');
+  assert.deepEqual(pins.status(LP), { set: true, reset_at: null });
+});
