@@ -509,7 +509,8 @@ test('devices/remove deletes listed devices or all others, after proof, and ends
     clock += 61;
     await post('/id/v1/otp/request', { phone: '11955550006' }, {}, at);
     const code = m.codes.get('5511955550006');
-    for (const bad of [{ code }, { device_ids: [] }, { device_ids: 'X' }, { device_ids: [`DEV-${lp}`], code }, { device_ids: [1] }]) {
+    for (const bad of [{ code }, { device_ids: [] }, { device_ids: 'X' }, { device_ids: [`DEV-${lp}`], code }, { device_ids: [1] },
+      { device_ids: Array(101).fill('X'), code }, { device_ids: ['x'.repeat(256)], code }, { device_ids: [''], code }]) {
       assert.equal((await remove(bad)).status, 400, JSON.stringify(bad));
     }
     assert.deepEqual(await json(await remove({ device_ids: ['WEB'], code: '000001' === code ? '000002' : '000001' })),

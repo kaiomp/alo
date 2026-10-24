@@ -419,8 +419,8 @@ aparelhos apagados param de funcionar na hora.
   "Sair de todos os outros aparelhos", `{"all_others": true, "code": "123456"}`. A prova é a de
   [Provas nos aparelhos conectados](#provas-nos-aparelhos-conectados): `pin` quando a conta tem
   PIN, ou `code` (um código SMS novo, pedido com `otp/request`). A lista tem de 1 a 100 IDs de
-  texto, e o aparelho de quem chama não pode estar nela (para sair dele, o app faz o logout
-  Matrix normal).
+  texto, cada um com 1 a 255 caracteres, e o aparelho de quem chama não pode estar nela (para
+  sair dele, o app faz o logout Matrix normal).
 - Resposta: `{"removed": 1}`: quantos aparelhos existiam na conta e foram apagados. Um ID que a
   conta não tem é ignorado.
 - O formato da lista é conferido **antes** da prova, então uma lista errada não gasta o código
@@ -447,7 +447,8 @@ sequenceDiagram
 ```
 
 - Erros: `invalid_token` 401, `bad_request` 400 (nem `device_ids` nem `all_others: true`, lista
-  vazia, com mais de 100 itens, com um item que não é texto, ou com o próprio aparelho; ou falta
+  vazia, com mais de 100 itens, com um item que não é texto, vazio ou com mais de 255
+  caracteres, ou com o próprio aparelho; ou falta
   a prova), `forbidden` 403 (token sem aparelho, ou o número passou para outra conta),
   `invalid_pin` 400, `pin_locked` 429, `invalid_code` 400, `expired` 400,
   `too_many_attempts` 429, `rate_limited` 429.
