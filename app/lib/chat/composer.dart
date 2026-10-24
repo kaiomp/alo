@@ -1,16 +1,24 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../common/actions.dart';
+import '../common/deps.dart';
+import '../common/theme.dart';
 import '../l10n/app_localizations.dart';
 import '../services/chat_session.dart';
 import '../services/models.dart';
+import 'voice/voice_recorder.dart';
 
-/// Text field and send button, with a reply/edit banner above it.
-/// The media task adds the attach button and the hold-to-record mic.
+/// WhatsApp composer: a pill with emoji, text, attach and camera, and a round
+/// button that is a mic while the field is empty and send once there is text.
+/// The reply/edit banner sits inside the pill.
 class Composer extends StatefulWidget {
-  const Composer({super.key, required this.session});
+  const Composer({super.key, required this.session, this.wide = false});
   final ChatSession session;
+  final bool wide;
 
   @override
   State<Composer> createState() => ComposerState();
@@ -21,6 +29,10 @@ class ComposerState extends State<Composer> {
   final _focus = FocusNode();
   Message? _replyTo;
   Message? _editing;
+
+  VoiceRecorder? _recorder;
+  DateTime? _recordingSince;
+  Timer? _tick;
 
   void replyTo(Message m) {
     setState(() {
@@ -44,11 +56,13 @@ class ComposerState extends State<Composer> {
     _editing = null;
   });
 
+  void _snack(String text) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+
   Future<void> _guard(Future<void> Function() action) async {
     try {
       await action();
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(L10n.of(context).sendFailed)));
+      if (mounted) _snack(L10n.of(context).sendFailed);
     }
   }
 
@@ -62,8 +76,82 @@ class ComposerState extends State<Composer> {
     await _guard(() => widget.session.sendText(text, replyTo: reply, editOf: edit));
   }
 
+  Future<void> _sendPicked({required bool image}) async {
+    final file = await Deps.of(context).pickFile(image: image);
+    if (file == null || !mounted) return;
+    final reply = _replyTo?.id;
+    _clearContext();
+    await _guard(
+      () => image ? widget.session.sendImage(file, replyTo: reply) : widget.session.sendFile(file, replyTo: reply),
+    );
+  }
+
+  Future<void> _attach(BuildContext button) async {
+    final l = L10n.of(context);
+    final image = await showActions<bool>(
+      button,
+      anchor: rectOf(button),
+      actions: [
+        MenuAction(true, Icons.photo_outlined, l.attachPhoto, key: const Key('attach_photo')),
+        MenuAction(false, Icons.insert_drive_file_outlined, l.attachDocument, key: const Key('attach_document')),
+      ],
+    );
+    if (image != null) await _sendPicked(image: image);
+  }
+
+  // Voice notes: hold the mic, release to send (shorter than 0.5 s is dropped).
+  Future<void> _startRecording() async {
+    final recorder = Deps.of(context).newRecorder();
+    if (!await recorder.start()) {
+      recorder.dispose();
+      if (mounted) _snack(L10n.of(context).micDenied);
+      return;
+    }
+    if (!mounted) return recorder.dispose();
+    setState(() {
+      _recorder = recorder;
+      _recordingSince = DateTime.now();
+    });
+    _tick = Timer.periodic(const Duration(milliseconds: 250), (_) => setState(() {}));
+  }
+
+  Future<void> _stopRecording() async {
+    final recorder = _recorder;
+    final since = _recordingSince;
+    _tick?.cancel();
+    setState(() {
+      _recorder = null;
+      _recordingSince = null;
+    });
+    if (recorder == null || since == null) return;
+    try {
+      if (DateTime.now().difference(since) < const Duration(milliseconds: 500)) {
+        await recorder.cancel();
+        return;
+      }
+      final voice = await recorder.stop();
+      if (voice == null) return;
+      final reply = _replyTo?.id;
+      _clearContext();
+      await _guard(
+        () => widget.session.sendVoice(
+          bytes: voice.bytes,
+          mimeType: voice.mimeType,
+          durationMs: voice.durationMs,
+          waveform: voice.waveform,
+          replyTo: reply,
+        ),
+      );
+    } finally {
+      recorder.dispose();
+    }
+  }
+
   @override
   void dispose() {
+    _tick?.cancel();
+    _recorder?.cancel();
+    _recorder?.dispose();
     _text.dispose();
     _focus.dispose();
     super.dispose();
@@ -72,67 +160,266 @@ class ComposerState extends State<Composer> {
   @override
   Widget build(BuildContext context) {
     final l = L10n.of(context);
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final colors = ChatColors.of(context);
     final context_ = _editing ?? _replyTo;
     final hasText = _text.text.trim().isNotEmpty;
+    final since = _recordingSince;
+    final iconColor = scheme.onSurfaceVariant;
+
+    final Widget field;
+    if (since != null) {
+      final s = DateTime.now().difference(since).inSeconds;
+      field = SizedBox(
+        height: 48,
+        child: Row(
+          children: [
+            const SizedBox(width: 14),
+            Icon(Icons.mic, color: scheme.error),
+            const SizedBox(width: 10),
+            Text(
+              '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}',
+              key: const Key('recording_timer'),
+              style: TextStyle(fontSize: 16, fontFeatures: tabularFigures, color: scheme.onSurface),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                l.holdToRecord,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 14, color: iconColor),
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      field = Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          IconButton(
+            tooltip: l.emoji,
+            icon: const Icon(Icons.emoji_emotions_outlined),
+            color: iconColor,
+            // The system keyboard has the emoji picker: bring it up.
+            onPressed: _focus.requestFocus,
+          ),
+          Expanded(
+            child: CallbackShortcuts(
+              // Wide screens: Enter sends, Shift+Enter breaks the line (WhatsApp Web).
+              bindings: {if (kIsWeb) const SingleActivator(LogicalKeyboardKey.enter): _send},
+              child: TextField(
+                key: const Key('composer_text'),
+                controller: _text,
+                focusNode: _focus,
+                minLines: 1,
+                maxLines: 6,
+                keyboardType: TextInputType.multiline,
+                textCapitalization: TextCapitalization.sentences,
+                style: TextStyle(fontSize: 16, height: 22 / 16, color: scheme.onSurface),
+                decoration: InputDecoration(
+                  hintText: l.messageHint,
+                  filled: false,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 13),
+                ),
+                onChanged: (v) {
+                  setState(() {});
+                  if (v.isNotEmpty) widget.session.setTyping(true);
+                },
+              ),
+            ),
+          ),
+          Builder(
+            builder: (button) => IconButton(
+              key: const Key('attach'),
+              tooltip: l.attach,
+              icon: const Icon(Icons.attach_file),
+              color: iconColor,
+              onPressed: () => _attach(button),
+            ),
+          ),
+          if (!hasText)
+            IconButton(
+              key: const Key('camera'),
+              tooltip: l.attachPhoto,
+              icon: const Icon(Icons.photo_camera_outlined),
+              color: iconColor,
+              onPressed: () => _sendPicked(image: true),
+            ),
+          const SizedBox(width: 2),
+        ],
+      );
+    }
+
+    final send = hasText || _editing != null;
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.all(6),
+        padding: widget.wide ? const EdgeInsets.all(12) : const EdgeInsets.fromLTRB(8, 6, 8, 8),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Expanded(
               child: Container(
-                decoration: BoxDecoration(color: scheme.surface, borderRadius: BorderRadius.circular(24)),
+                constraints: const BoxConstraints(minHeight: 48),
+                decoration: BoxDecoration(
+                  color: colors.other,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    if (colors.bubbleShadow != null)
+                      BoxShadow(color: colors.bubbleShadow!, blurRadius: 0.5, offset: const Offset(0, 1)),
+                  ],
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (context_ != null)
-                      ListTile(
-                        dense: true,
-                        leading: Icon(_editing != null ? Icons.edit : Icons.reply),
-                        title: Text(_editing != null ? l.editing : context_.senderName),
-                        subtitle: Text(context_.body, maxLines: 1, overflow: TextOverflow.ellipsis),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () {
-                            if (_editing != null) _text.clear();
-                            _clearContext();
-                          },
-                        ),
+                    if (context_ != null && since == null)
+                      _ContextBanner(
+                        title: _editing != null ? l.editing : context_.senderName,
+                        body: context_.body,
+                        onClose: () {
+                          if (_editing != null) _text.clear();
+                          _clearContext();
+                        },
                       ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: CallbackShortcuts(
-                        // Wide screens: Enter sends, Shift+Enter breaks the line (WhatsApp Web).
-                        bindings: {if (kIsWeb) const SingleActivator(LogicalKeyboardKey.enter): _send},
-                        child: TextField(
-                          key: const Key('composer_text'),
-                          controller: _text,
-                          focusNode: _focus,
-                          minLines: 1,
-                          maxLines: 6,
-                          keyboardType: TextInputType.multiline,
-                          textCapitalization: TextCapitalization.sentences,
-                          decoration: InputDecoration(hintText: l.messageHint, border: InputBorder.none),
-                          onChanged: (v) {
-                            setState(() {});
-                            if (v.isNotEmpty) widget.session.setTyping(true);
-                          },
-                        ),
-                      ),
-                    ),
+                    field,
                   ],
                 ),
               ),
             ),
             const SizedBox(width: 6),
-            FloatingActionButton.small(
-              key: const Key('send'),
-              heroTag: null,
-              onPressed: hasText ? _send : null,
-              child: Icon(_editing != null ? Icons.check : Icons.send),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 150),
+              transitionBuilder: (child, a) => ScaleTransition(scale: a, child: child),
+              child: send
+                  ? _RoundButton(
+                      key: const ValueKey('send_switch'),
+                      buttonKey: const Key('send'),
+                      icon: _editing != null ? Icons.check : Icons.send,
+                      tooltip: l.messageHint,
+                      onPressed: hasText ? _send : null,
+                    )
+                  : GestureDetector(
+                      key: const ValueKey('mic_hold'),
+                      onLongPressStart: (_) => _startRecording(),
+                      onLongPressEnd: (_) => _stopRecording(),
+                      child: _RoundButton(
+                        buttonKey: const Key('mic'),
+                        icon: Icons.mic,
+                        tooltip: l.voiceMessage,
+                        onPressed: () => _snack(l.holdToRecord),
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 48 px orange circle with a white icon; shrinks a little while pressed.
+class _RoundButton extends StatefulWidget {
+  const _RoundButton({
+    super.key,
+    required this.buttonKey,
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+  final Key buttonKey;
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+
+  @override
+  State<_RoundButton> createState() => _RoundButtonState();
+}
+
+class _RoundButtonState extends State<_RoundButton> {
+  bool _down = false;
+
+  @override
+  Widget build(BuildContext context) => Listener(
+    onPointerDown: (_) => setState(() => _down = true),
+    onPointerUp: (_) => setState(() => _down = false),
+    onPointerCancel: (_) => setState(() => _down = false),
+    child: AnimatedScale(
+      scale: _down ? 0.97 : 1,
+      duration: const Duration(milliseconds: 100),
+      child: IconButton(
+        key: widget.buttonKey,
+        tooltip: widget.tooltip,
+        onPressed: widget.onPressed,
+        style: IconButton.styleFrom(
+          backgroundColor: Tokens.flame,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: Tokens.flame,
+          disabledForegroundColor: Colors.white,
+          fixedSize: const Size.square(48),
+          shape: const CircleBorder(),
+        ),
+        icon: Icon(widget.icon, size: 22),
+      ),
+    ),
+  );
+}
+
+class _ContextBanner extends StatelessWidget {
+  const _ContextBanner({required this.title, required this.body, required this.onClose});
+  final String title;
+  final String body;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = ChatColors.of(context);
+    final dark = theme.brightness == Brightness.dark;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(6, 6, 6, 0),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: (dark ? Colors.white : Colors.black).withValues(alpha: dark ? 0.06 : 0.05),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(width: 4, color: Tokens.flame),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(10, 6, 0, 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.accent),
+                    ),
+                    Text(
+                      body,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.close, size: 20),
+              color: theme.colorScheme.onSurfaceVariant,
+              tooltip: L10n.of(context).close,
+              onPressed: onClose,
             ),
           ],
         ),

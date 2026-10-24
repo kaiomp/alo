@@ -40,4 +40,15 @@ void main() {
     expect(formatPhone('552134567890'), '+55 21 3456-7890');
     expect(formatPhone('4917662096183'), '+4917662096183');
   });
+
+  test('masks a Brazilian number while typing', () {
+    expect(maskBrPhone(''), '');
+    expect(maskBrPhone('1'), '(1');
+    expect(maskBrPhone('119'), '(11) 9');
+    expect(maskBrPhone('1134567890'), '(11) 3456-7890');
+    expect(maskBrPhone('11987654321'), '(11) 98765-4321');
+    expect(maskBrPhone('(11) 98765-43210'), '(11) 98765-4321'); // extra digit dropped
+    expect(maskBrPhone('+4917662096183'), '+4917662096183');
+    expect(normalizePhone('+55', maskBrPhone('11987654321')), '5511987654321');
+  });
 }

@@ -37,3 +37,20 @@ String formatPhone(String digits) {
   }
   return '+$digits';
 }
+
+/// Brazilian national number as typed: "(11) 98765-4321" (or "(11) 3456-7890"
+/// for landlines). Anything starting with '+' is left alone (pasted
+/// international number).
+String maskBrPhone(String input) {
+  if (input.trimLeft().startsWith('+')) return input;
+  final d = input.replaceAll(RegExp(r'\D'), '');
+  final digits = d.length > 11 ? d.substring(0, 11) : d;
+  if (digits.isEmpty) return '';
+  if (digits.length <= 2) return '($digits';
+  final area = digits.substring(0, 2);
+  final local = digits.substring(2);
+  // Mobiles have 9 digits after the area code, landlines 8.
+  final cut = local.length > 8 ? 5 : 4;
+  if (local.length <= cut) return '($area) $local';
+  return '($area) ${local.substring(0, cut)}-${local.substring(cut)}';
+}

@@ -26,4 +26,27 @@ void main() {
     ]);
     expect((items[0] as MessageItem).startsGroup, isTrue);
   });
+
+  test('group creation folds into one line', () {
+    final t = DateTime(2026, 10, 24, 9);
+    Message sys(String id, SystemKind k, String sender, {String? target, int sec = 0}) => Message(
+      id: id,
+      senderId: sender,
+      senderName: sender,
+      isMine: false,
+      time: t.add(Duration(seconds: sec)),
+      kind: MessageKind.system,
+      systemKind: k,
+      systemTarget: target,
+    );
+    final out = collapseSystemLines([
+      sys('e', SystemKind.joined, '@b', sec: 5),
+      sys('d', SystemKind.invited, '@a', target: 'B', sec: 3),
+      sys('c', SystemKind.renamed, '@a', target: 'Almoço', sec: 2),
+      sys('b', SystemKind.joined, '@a', sec: 1),
+      sys('a', SystemKind.created, '@a'),
+    ]);
+    expect(out.map((m) => m.id), ['e', 'd', 'a']);
+    expect(out.last.systemTarget, 'Almoço');
+  });
 }

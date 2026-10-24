@@ -1,23 +1,22 @@
 import 'package:flutter/material.dart';
 
 import '../chat/tick_icon.dart';
+import '../common/actions.dart';
 import '../common/avatar.dart';
+import '../common/theme.dart';
 import '../common/time_format.dart';
 import '../l10n/app_localizations.dart';
 import '../services/models.dart';
 
+/// One chat in the list: 72 px row, avatar, name and time, preview and badges.
 class ChatTile extends StatelessWidget {
-  const ChatTile({
-    super.key,
-    required this.chat,
-    required this.onTap,
-    required this.onLongPress,
-    this.selected = false,
-  });
+  const ChatTile({super.key, required this.chat, required this.onTap, required this.onActions, this.selected = false});
 
   final ChatSummary chat;
   final VoidCallback onTap;
-  final VoidCallback onLongPress;
+
+  /// Long press or right click; [anchor] is where the menu opens.
+  final void Function(Rect anchor, bool pointer) onActions;
   final bool selected;
 
   static String previewOf(ChatSummary c, L10n l) => switch (c.previewKind) {
@@ -32,8 +31,8 @@ class ChatTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = L10n.of(context);
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final scheme = Theme.of(context).colorScheme;
+    final colors = ChatColors.of(context);
     final unread = chat.isUnread;
     final sender = chat.lastTick != null ? null : chat.previewSender;
     final kindIcon = switch (chat.previewKind) {
@@ -44,59 +43,119 @@ class ChatTile extends StatelessWidget {
       MessageKind.undecryptable => Icons.schedule,
       _ => null,
     };
-    // Right click on wide screens opens the same menu as a long press.
-    return GestureDetector(
-      onSecondaryTap: onLongPress,
-      child: ListTile(
-        key: Key('chat_${chat.name}'),
-        selected: selected,
-        selectedTileColor: scheme.surfaceContainerHighest,
-        selectedColor: scheme.onSurface, // the tint marks the open chat; orange text on it is hard to read
-        onTap: onTap,
-        onLongPress: onLongPress,
-        leading: Avatar(name: chat.name, mxc: chat.avatar, group: chat.isGroup),
-        title: Row(
-          children: [
-            Expanded(
-              child: Text(
-                chat.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontWeight: unread ? FontWeight.bold : FontWeight.w500),
+    final muted = scheme.onSurfaceVariant;
+    final faint = muted.withValues(alpha: 0.7);
+    return Material(
+      color: selected ? scheme.surfaceContainerHigh : Colors.transparent,
+      child: Builder(
+        builder: (context) => InkWell(
+          key: Key('chat_${chat.name}'),
+          onTap: onTap,
+          onLongPress: () => onActions(rectOf(context), false),
+          onSecondaryTapDown: (d) => onActions(d.globalPosition & Size.zero, true),
+          child: SizedBox(
+            height: 72,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Avatar(name: chat.name, seed: chat.id, mxc: chat.avatar, group: chat.isGroup),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                chat.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  height: 22 / 16,
+                                  fontWeight: unread ? FontWeight.w600 : FontWeight.w500,
+                                  color: scheme.onSurface,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              listTime(chat.lastTime, DateTime.now(), l),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: unread ? FontWeight.w600 : FontWeight.w400,
+                                fontFeatures: tabularFigures,
+                                color: unread ? colors.accent : muted,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            if (chat.lastTick != null) ...[TickIcon(chat.lastTick!), const SizedBox(width: 3)],
+                            if (kindIcon != null) ...[Icon(kindIcon, size: 16, color: muted), const SizedBox(width: 3)],
+                            Expanded(
+                              child: Text(
+                                sender == null ? previewOf(chat, l) : '$sender: ${previewOf(chat, l)}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  height: 20 / 14,
+                                  color: unread ? scheme.onSurface : muted,
+                                ),
+                              ),
+                            ),
+                            if (chat.isMuted) ...[
+                              const SizedBox(width: 6),
+                              Icon(Icons.volume_off, size: 18, color: faint),
+                            ],
+                            if (chat.isPinned) ...[
+                              const SizedBox(width: 6),
+                              Icon(Icons.push_pin, size: 18, color: faint),
+                            ],
+                            if (unread) ...[const SizedBox(width: 6), _Badge(count: chat.unread)],
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            Text(
-              listTime(chat.lastTime, DateTime.now(), l),
-              style: theme.textTheme.labelSmall?.copyWith(color: unread ? scheme.primary : null),
-            ),
-          ],
-        ),
-        subtitle: Row(
-          children: [
-            if (chat.lastTick != null) ...[TickIcon(chat.lastTick!), const SizedBox(width: 2)],
-            if (kindIcon != null) ...[Icon(kindIcon, size: 16), const SizedBox(width: 2)],
-            Expanded(
-              child: Text(
-                sender == null ? previewOf(chat, l) : '$sender: ${previewOf(chat, l)}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            if (chat.isMuted) const Icon(Icons.volume_off, size: 16),
-            if (chat.isPinned) const Icon(Icons.push_pin, size: 16),
-            if (unread)
-              Container(
-                margin: const EdgeInsets.only(left: 4),
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(color: scheme.primary, borderRadius: BorderRadius.circular(10)),
-                child: Text(
-                  chat.unread > 0 ? '${chat.unread}' : ' ',
-                  style: TextStyle(color: scheme.onPrimary, fontSize: 12),
-                ),
-              ),
-          ],
+          ),
         ),
       ),
     );
   }
+}
+
+class _Badge extends StatelessWidget {
+  const _Badge({required this.count});
+  final int count;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+    padding: const EdgeInsets.symmetric(horizontal: 6),
+    alignment: Alignment.center,
+    decoration: const ShapeDecoration(color: Tokens.flameText, shape: StadiumBorder()),
+    child: count > 0
+        ? Text(
+            '$count',
+            textScaler: TextScaler.noScaling,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              height: 1,
+              fontWeight: FontWeight.w700,
+              fontFeatures: tabularFigures,
+            ),
+          )
+        : null,
+  );
 }

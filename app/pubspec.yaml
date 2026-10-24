@@ -38,6 +38,26 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   generate: true
+  # Inter (text) and JetBrains Mono (recovery key), both SIL OFL 1.1 (licences
+  # next to the files). Static weights subset to Latin, built from the
+  # variable fonts with fontTools.
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-300.ttf
+          weight: 300
+        - asset: assets/fonts/Inter-400.ttf
+          weight: 400
+        - asset: assets/fonts/Inter-500.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-600.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-700.ttf
+          weight: 700
+    - family: JetBrainsMono
+      fonts:
+        - asset: assets/fonts/JetBrainsMono-Medium.ttf
+          weight: 500
 
 hooks:
   user_defines:

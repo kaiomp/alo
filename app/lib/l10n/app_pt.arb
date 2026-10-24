@@ -49,14 +49,12 @@
   "tabUpdates": "Atualizações",
   "tabCommunities": "Comunidades",
   "tabCalls": "Ligações",
-  "comingSoon": "Em breve no Chama.",
   "search": "Pesquisar",
   "filterAll": "Todas",
   "filterUnread": "Não lidas",
   "filterFavourites": "Favoritas",
   "filterGroups": "Grupos",
   "archived": "Arquivadas",
-  "noChats": "Nenhuma conversa ainda. Toque em + para começar.",
   "noResults": "Nenhuma conversa encontrada.",
   "connecting": "Conectando…",
   "you": "Você",
@@ -230,5 +228,149 @@
   "resetConfirm": "Redefinir e continuar",
   "errSessionExpired": "Sua sessão expirou. Saia e entre de novo.",
   "errNoIdentity": "Esta conta ainda não tem chaves para redefinir. Tente de novo.",
-  "errInvalidKeys": "Não foi possível salvar as novas chaves. Peça um novo código e tente de novo."
+  "errInvalidKeys": "Não foi possível salvar as novas chaves. Peça um novo código e tente de novo.",
+  "wordmark": "chama",
+  "countryBrazil": "BR",
+  "trustLine": "Criptografado de ponta a ponta · Código aberto",
+  "e2eShort": "Criptografado de ponta a ponta",
+  "e2eTitle": "Criptografia de ponta a ponta",
+  "e2eExplain": "As mensagens desta conversa ficam só entre você e as pessoas que estão nela. Nem o Chama consegue lê-las: as chaves ficam nos seus aparelhos.",
+  "gotIt": "Entendi",
+  "noChatsTitle": "Nenhuma conversa ainda",
+  "noChatsBody": "Toque em + para começar.",
+  "noChatsBodyWide": "Clique em + para começar.",
+  "startConversation": "Iniciar conversa",
+  "updatesSoonTitle": "Status chegam em breve",
+  "updatesSoonBody": "Compartilhe fotos e textos que somem depois de 24 horas.",
+  "communitiesSoonTitle": "Comunidades chegam em breve",
+  "communitiesSoonBody": "Reúna grupos do mesmo assunto em um só lugar, como os da escola ou do bairro.",
+  "callsSoonTitle": "Ligações chegam em breve",
+  "callsSoonBody": "Ligações de voz e vídeo com a mesma criptografia das mensagens.",
+  "chamaForWeb": "Chama para web",
+  "emoji": "Emoji",
+  "attach": "Anexar",
+  "deleteBodyEveryone": "A mensagem será apagada para todos nesta conversa.",
+  "deleteBodyMe": "A mensagem será apagada só para você.",
+  "reactions": "Reações",
+  "call": "Ligar",
+  "soon": "em breve",
+  "encryption": "Criptografia",
+  "encryptionRow": "As mensagens são protegidas com a criptografia de ponta a ponta. Toque para saber mais.",
+  "mediaLinksDocs": "Arquivos, links e docs",
+  "none": "Nenhum",
+  "block": "Bloquear {name}",
+  "@block": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "unblock": "Desbloquear {name}",
+  "@unblock": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "blockQuestion": "Bloquear {name}?",
+  "@blockQuestion": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "blockExplain": "Você não verá mais mensagens de {name}. A conversa continua na sua lista.",
+  "@blockExplain": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "blockAction": "Bloquear",
+  "groupLabel": "Grupo",
+  "addParticipants": "Adicionar participantes",
+  "newContact": "Novo contato",
+  "leaveExplain": "Você não vai mais receber mensagens deste grupo.",
+  "sectionAccount": "Conta",
+  "sectionPrivacy": "Privacidade",
+  "sectionNotifications": "Notificações",
+  "sectionHelp": "Ajuda",
+  "profileRowSub": "Nome e foto",
+  "theme": "Tema",
+  "themeSystem": "Padrão do sistema",
+  "comingSoonShort": "Em breve",
+  "about": "Sobre o Chama",
+  "aboutBody": "Mensageiro livre e de código aberto, com criptografia de ponta a ponta. Licença AGPL-3.0.",
+  "technicalId": "ID técnico",
+  "copied": "Copiado",
+  "signOutQuestion": "Sair do Chama?",
+  "signOutExplain": "Para ler suas conversas de novo neste aparelho, você vai precisar da chave de recuperação.",
+  "close": "Fechar",
+  "recoveryKeySaved": "Guardei minha chave em lugar seguro",
+  "youCreatedGroup": "Você criou o grupo",
+  "youCreatedGroupNamed": "Você criou o grupo \"{name}\"",
+  "@youCreatedGroupNamed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "groupCreatedNamed": "{name} criou o grupo \"{title}\"",
+  "@groupCreatedNamed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "youJoined": "Você entrou",
+  "youLeft": "Você saiu",
+  "youAdded": "Você adicionou {target}",
+  "@youAdded": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "addedYou": "{name} adicionou você",
+  "@addedYou": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "youRemoved": "Você removeu {target}",
+  "@youRemoved": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "removedYou": "{name} removeu você",
+  "@removedYou": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "youRenamed": "Você mudou o nome do grupo para \"{name}\"",
+  "@youRenamed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  }
 }

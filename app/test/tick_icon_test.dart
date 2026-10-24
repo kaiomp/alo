@@ -18,7 +18,7 @@ void main() {
     expect(icon(Tick.sent).icon, Icons.done);
     expect(icon(Tick.delivered).icon, Icons.done_all);
     expect(icon(Tick.read).icon, Icons.done_all);
-    expect(icon(Tick.read).color, Tokens.readTick);
-    expect(icon(Tick.delivered).color, isNot(Tokens.readTick));
+    expect(icon(Tick.read).color, ChatColors.light.readTick);
+    expect(icon(Tick.delivered).color, isNot(ChatColors.light.readTick));
   });
 }

@@ -49,10 +49,13 @@ enum MessageKind { text, image, file, voice, deleted, undecryptable, system }
 enum SystemKind { created, joined, left, invited, removed, renamed }
 
 class Reaction {
-  const Reaction(this.key, this.count, {this.mine = false});
+  const Reaction(this.key, this.count, {this.mine = false, this.senders = const []});
   final String key;
   final int count;
   final bool mine;
+
+  /// Display names of who reacted (for the "who reacted" list).
+  final List<String> senders;
 }
 
 class ReplyPreview {
@@ -85,6 +88,7 @@ class Message {
     this.mimeType,
     this.systemKind,
     this.systemTarget,
+    this.systemTargetId,
   });
 
   /// Event ID, or the transaction ID while it is still sending.
@@ -111,6 +115,9 @@ class Message {
 
   /// Name of the member a system line is about, or the new group name.
   final String? systemTarget;
+
+  /// User ID of the member a system line is about.
+  final String? systemTargetId;
 }
 
 /// Online state of the other person in a 1:1 chat.

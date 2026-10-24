@@ -12,7 +12,7 @@ Widget host(ChatSummary c) => MaterialApp(
   supportedLocales: L10n.supportedLocales,
   localizationsDelegates: L10n.localizationsDelegates,
   home: Scaffold(
-    body: ChatTile(chat: c, onTap: () {}, onLongPress: () {}),
+    body: ChatTile(chat: c, onTap: () {}, onActions: (_, _) {}),
   ),
 );
 

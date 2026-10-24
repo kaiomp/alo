@@ -1,18 +1,22 @@
 import 'package:flutter/material.dart';
 
 import '../auth/phone.dart';
+import '../auth/phone_formatter.dart';
 import '../common/deps.dart';
 import '../l10n/app_localizations.dart';
 
-/// "+55" + number field with a button. Calls [onUser] with the Chama user ID
-/// (found through the chama-id directory) and the digits once the number is
-/// valid and has an account; shows an error otherwise.
+/// "+55" number field with a full-width button under it. Calls [onUser] with
+/// the Chama user ID (found through the chama-id directory) and the digits
+/// once the number is valid and has an account; shows an error otherwise.
 class PhoneLookupField extends StatefulWidget {
-  const PhoneLookupField({super.key, required this.buttonLabel, required this.onUser, this.fieldKey});
+  const PhoneLookupField({super.key, required this.buttonLabel, required this.onUser, this.fieldKey, this.focusNode});
 
   final String buttonLabel;
   final Future<void> Function(String userId, String phoneDigits) onUser;
-  final Key? fieldKey;
+
+  /// Key of the field; the button gets `<value>_go`.
+  final ValueKey<String>? fieldKey;
+  final FocusNode? focusNode;
 
   @override
   State<PhoneLookupField> createState() => _PhoneLookupFieldState();
@@ -54,27 +58,35 @@ class _PhoneLookupFieldState extends State<PhoneLookupField> {
   }
 
   @override
-  Widget build(BuildContext context) => Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Expanded(
-        child: TextField(
-          key: widget.fieldKey,
+  Widget build(BuildContext context) {
+    final key = widget.fieldKey;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          key: key,
           controller: _number,
+          focusNode: widget.focusNode,
           keyboardType: TextInputType.phone,
-          decoration: InputDecoration(labelText: L10n.of(context).phoneNumber, prefixText: '+55 ', errorText: _error),
+          autofillHints: const [AutofillHints.telephoneNumberNational],
+          inputFormatters: [BrPhoneFormatter()],
+          decoration: InputDecoration(
+            labelText: L10n.of(context).phoneNumber,
+            hintText: '(11) 98765-4321',
+            prefixText: '+55 ',
+            errorText: _error,
+          ),
           onSubmitted: (_) => _submit(),
         ),
-      ),
-      const SizedBox(width: 8),
-      Padding(
-        padding: const EdgeInsets.only(top: 8),
-        child: FilledButton(
-          key: widget.fieldKey == null ? null : Key('${(widget.fieldKey as ValueKey).value}_go'),
+        const SizedBox(height: 12),
+        FilledButton(
+          key: key == null ? null : Key('${key.value}_go'),
           onPressed: _busy ? null : _submit,
-          child: Text(widget.buttonLabel),
+          child: _busy
+              ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
+              : Text(widget.buttonLabel),
         ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 }

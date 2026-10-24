@@ -136,6 +136,7 @@ class ChatSession extends ChangeNotifier {
         EventTypes.RoomMember => _room.unsafeGetUserFromMemoryOrFallback(raw.stateKey ?? '').calcDisplayname(),
         _ => null,
       },
+      systemTargetId: raw.type == EventTypes.RoomMember ? raw.stateKey : null,
     );
   }
 
@@ -149,14 +150,20 @@ class ChatSession extends ChangeNotifier {
   }
 
   List<Reaction> _reactions(Event e, Timeline timeline) {
-    final byKey = <String, ({int count, bool mine})>{};
+    final byKey = <String, List<Event>>{};
     for (final r in e.aggregatedEvents(timeline, RelationshipTypes.reaction)) {
       final key = r.content.tryGetMap<String, Object?>('m.relates_to')?['key'];
-      if (key is! String) continue;
-      final prev = byKey[key];
-      byKey[key] = (count: (prev?.count ?? 0) + 1, mine: (prev?.mine ?? false) || r.senderId == _service.myUserId);
+      if (key is String) (byKey[key] ??= []).add(r);
     }
-    return [for (final MapEntry(:key, :value) in byKey.entries) Reaction(key, value.count, mine: value.mine)];
+    return [
+      for (final MapEntry(:key, value: events) in byKey.entries)
+        Reaction(
+          key,
+          events.length,
+          mine: events.any((r) => r.senderId == _service.myUserId),
+          senders: [for (final r in events) r.senderFromMemoryOrFallback.calcDisplayname()],
+        ),
+    ];
   }
 
   Event? _event(String id) => _timeline?.events.where((e) => e.eventId == id).firstOrNull;

@@ -191,6 +191,20 @@ class ChatService {
   Future<String> myName() async =>
       (await client.getUserProfile(myUserId, maxCacheAge: Duration.zero)).displayname ?? '';
 
+  /// My name and photo for the settings row and the wide header.
+  Future<({String name, Uri? avatar})> myProfile() async {
+    final p = await client.getUserProfile(myUserId, maxCacheAge: Duration.zero);
+    return (name: p.displayname ?? '', avatar: p.avatarUrl);
+  }
+
+  // ---- blocking (Matrix ignore list) ----
+
+  bool isBlocked(String userId) => client.ignoredUsers.contains(userId);
+
+  /// Blocking hides the person's messages and invites; the chat stays.
+  Future<void> setBlocked(String userId, bool on) =>
+      on ? client.ignoreUser(userId, leaveRooms: false) : client.unignoreUser(userId);
+
   // ---- privacy ----
 
   /// When off, read receipts are private (`m.read.private`) and blue ticks
