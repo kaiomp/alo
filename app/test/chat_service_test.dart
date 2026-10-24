@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:chama/auth/encryption_screen.dart';
 import 'package:chama/auth/id_client.dart';
+import 'package:chama/auth/sign_in_screen.dart';
 import 'package:chama/common/deps.dart';
 import 'package:chama/l10n/app_localizations.dart';
 import 'package:chama/services/chama_client.dart';
@@ -111,6 +112,46 @@ void main() {
     expect(find.text('Reenviar SMS em 59 s'), findsOneWidget);
     await tester.pump(const Duration(seconds: 59));
     expect(find.text('Reenviar SMS'), findsOneWidget);
+  });
+
+  testWidgets('screen readers find the SMS code field', (tester) async {
+    final handle = tester.ensureSemantics();
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final idServer = MockClient(
+      (req) async => http.Response(jsonEncode({'phone': '5511987654321', 'retry_after': 60}), 200),
+    );
+    final service = (await tester.runAsync(
+      () =>
+          _service(prefs, MockClient((_) async => http.Response('{}', 200)), id: IdClient(_base, httpClient: idServer)),
+    ))!;
+    await tester.pumpWidget(
+      Deps(
+        chat: service,
+        id: service.id,
+        newRecorder: () => throw UnimplementedError(),
+        pickFile: ({required bool image}) async => null,
+        child: MaterialApp(
+          locale: const Locale('pt'),
+          supportedLocales: L10n.supportedLocales,
+          localizationsDelegates: L10n.localizationsDelegates,
+          home: const SignInScreen(),
+        ),
+      ),
+    );
+    await tester.enterText(find.byKey(const Key('phone_number')), '11987654321');
+    await tester.tap(find.byKey(const Key('sign_in_next')));
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await tester.pump();
+    await tester.enterText(find.byKey(const Key('sms_code')), '12');
+    await tester.pump();
+
+    final field = find.bySemanticsLabel('Código do SMS');
+    expect(field, findsOneWidget);
+    expect(tester.getSemantics(field), isSemantics(isTextField: true, value: '12'));
+    // The six boxes are drawing only: no stray "1" and "2" nodes.
+    expect(find.bySemanticsLabel('1'), findsNothing);
+    handle.dispose();
   });
 
   testWidgets('a phone lost to a killed sign-in sends the user back to sign in', (tester) async {

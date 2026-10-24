@@ -39,6 +39,13 @@ void main() {
       expect(contrast(c.accent, surface), greaterThanOrEqualTo(4.5)); // unread time, headers
       expect(contrast(c.onTint, c.tint), greaterThanOrEqualTo(4.5)); // selected chip
       expect(contrast(c.onNotice, c.notice), greaterThanOrEqualTo(4.5));
+      expect(contrast(c.onBanner, c.banner), greaterThanOrEqualTo(4.5)); // "Conectando…"
+      // Reply quote, file card and composer banner: cardTint over a bubble.
+      for (final bubble in [c.mine, c.other]) {
+        final card = Color.alphaBlend(c.cardTint, bubble);
+        expect(contrast(c.quoteName, card), greaterThanOrEqualTo(4.5)); // 13 px author
+        expect(contrast(c.meta, card), greaterThanOrEqualTo(4.5)); // 12 px quote and file details
+      }
     });
   }
 

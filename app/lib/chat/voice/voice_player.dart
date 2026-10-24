@@ -117,14 +117,15 @@ class _VoicePlayerState extends State<VoicePlayer> {
       child: Row(
         children: [
           SizedBox.square(
-            dimension: 40,
+            dimension: 48,
             child: _loading
                 ? Padding(
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.all(14),
                     child: CircularProgressIndicator(strokeWidth: 2, color: colors.meta),
                   )
                 : IconButton(
                     key: Key('voice_play_${m.id}'),
+                    tooltip: player?.playing == true ? L10n.of(context).pause : L10n.of(context).play,
                     padding: EdgeInsets.zero,
                     iconSize: 32,
                     color: colors.meta,
@@ -132,7 +133,6 @@ class _VoicePlayerState extends State<VoicePlayer> {
                     icon: Icon(player?.playing == true ? Icons.pause_rounded : Icons.play_arrow_rounded),
                   ),
           ),
-          const SizedBox(width: 4),
           Expanded(
             child: StreamBuilder<Duration>(
               stream: player?.positionStream,

@@ -161,13 +161,10 @@ class MessageBubble extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 for (final r in reactions)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 4),
-                    child: _ReactionPill(
-                      key: Key('reaction_${m.id}_${r.key}'),
-                      reaction: r,
-                      onTap: () => runOrSnack(context, () => session.toggleReaction(m.id, r.key)),
-                    ),
+                  _ReactionPill(
+                    key: Key('reaction_${m.id}_${r.key}'),
+                    reaction: r,
+                    onTap: () => runOrSnack(context, () => session.toggleReaction(m.id, r.key)),
                   ),
               ],
             ),
@@ -393,44 +390,62 @@ class _ReactionPill extends StatelessWidget {
     final colors = ChatColors.of(context);
     final scheme = Theme.of(context).colorScheme;
     final r = reaction;
-    return GestureDetector(
-      onTap: onTap,
-      onLongPress: () => showSheetOrDialog<void>(
-        context,
-        title: '${r.key}  ${L10n.of(context).reactions}',
-        builder: (context) => Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (final name in r.senders) Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: Text(name)),
-          ],
-        ),
-        action: L10n.of(context).close,
+    void who() => showSheetOrDialog<void>(
+      context,
+      title: '${r.key}  ${L10n.of(context).reactions}',
+      builder: (context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final name in r.senders) Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: Text(name)),
+        ],
       ),
-      child: Container(
-        height: 24,
-        padding: const EdgeInsets.symmetric(horizontal: 6),
-        decoration: ShapeDecoration(
-          color: r.mine ? colors.tint : colors.other,
-          shape: StadiumBorder(side: r.mine ? BorderSide.none : BorderSide(color: colors.background, width: 2)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(r.key, style: const TextStyle(fontSize: 14, height: 1)),
-            if (r.count > 1) ...[
-              const SizedBox(width: 3),
-              Text(
-                '${r.count}',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: scheme.onSurfaceVariant,
-                  fontFeatures: tabularFigures,
-                ),
+      action: L10n.of(context).close,
+    );
+    return Semantics(
+      button: true,
+      selected: r.mine,
+      label: '${r.key} ${r.count}',
+      onTap: onTap,
+      onLongPress: who,
+      excludeSemantics: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        onLongPress: who,
+        // A 40 px target: the gap to the next pill and 16 px over the bubble.
+        child: Padding(padding: const EdgeInsets.only(top: 16, right: 4), child: _pill(colors, scheme)),
+      ),
+    );
+  }
+
+  Widget _pill(ChatColors colors, ColorScheme scheme) {
+    final r = reaction;
+    return Container(
+      height: 24,
+      constraints: const BoxConstraints(minWidth: 36),
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      decoration: ShapeDecoration(
+        color: r.mine ? colors.tint : colors.other,
+        shape: StadiumBorder(side: r.mine ? BorderSide.none : BorderSide(color: colors.background, width: 2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(r.key, style: const TextStyle(fontSize: 14, height: 1)),
+          if (r.count > 1) ...[
+            const SizedBox(width: 3),
+            Text(
+              '${r.count}',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: scheme.onSurfaceVariant,
+                fontFeatures: tabularFigures,
               ),
-            ],
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -443,7 +458,6 @@ class _ReplyBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = L10n.of(context);
-    final theme = Theme.of(context);
     final colors = ChatColors.of(context);
     final body = switch (reply.kind) {
       MessageKind.image => l.photo,
@@ -471,13 +485,13 @@ class _ReplyBox extends StatelessWidget {
                       reply.senderName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.accent),
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.quoteName),
                     ),
                     Text(
                       body,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 13, height: 18 / 13, color: theme.colorScheme.onSurfaceVariant),
+                      style: TextStyle(fontSize: 13, height: 18 / 13, color: colors.meta),
                     ),
                   ],
                 ),
@@ -614,7 +628,8 @@ class _FileCardState extends State<_FileCard> {
     final details = [if (m.size != null) fileSize(m.size!, L10n.of(context).localeName), ?type].join(' · ');
     return Container(
       width: widget.width,
-      padding: const EdgeInsets.fromLTRB(8, 8, 4, 8),
+      // The 48 px button fills the vertical and right padding: same card size.
+      padding: const EdgeInsets.fromLTRB(8, 4, 0, 4),
       decoration: BoxDecoration(color: colors.cardTint, borderRadius: BorderRadius.circular(6)),
       child: Row(
         children: [
@@ -650,10 +665,10 @@ class _FileCardState extends State<_FileCard> {
             ),
           ),
           SizedBox.square(
-            dimension: 40,
+            dimension: 48,
             child: _busy
                 ? Padding(
-                    padding: const EdgeInsets.all(11),
+                    padding: const EdgeInsets.all(15),
                     child: CircularProgressIndicator(strokeWidth: 2, color: colors.meta),
                   )
                 : IconButton(

@@ -42,7 +42,6 @@ class _NewGroupScreenState extends State<NewGroupScreen> {
   @override
   Widget build(BuildContext context) {
     final l = L10n.of(context);
-    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(title: Text(l.newGroup)),
       floatingActionButton: FloatingActionButton(
@@ -77,44 +76,11 @@ class _NewGroupScreenState extends State<NewGroupScreen> {
                   scrollDirection: Axis.horizontal,
                   children: [
                     for (final MapEntry(key: id, value: digits) in _members.entries)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 12),
-                        child: SizedBox(
-                          width: 72,
-                          child: Column(
-                            children: [
-                              Stack(
-                                clipBehavior: Clip.none,
-                                children: [
-                                  Avatar(name: '', seed: id, radius: 28),
-                                  Positioned(
-                                    right: -2,
-                                    bottom: -2,
-                                    child: Material(
-                                      color: scheme.onSurfaceVariant,
-                                      shape: CircleBorder(side: BorderSide(color: scheme.surface, width: 2)),
-                                      child: InkWell(
-                                        customBorder: const CircleBorder(),
-                                        onTap: () => setState(() => _members.remove(id)),
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(2),
-                                          child: Icon(Icons.close, size: 14, color: scheme.surface),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                formatPhone(digits),
-                                maxLines: 2,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant),
-                              ),
-                            ],
-                          ),
-                        ),
+                      MemberChip(
+                        key: ValueKey('member_$id'),
+                        seed: id,
+                        digits: digits,
+                        onRemove: () => setState(() => _members.remove(id)),
                       ),
                   ],
                 ),
@@ -128,6 +94,72 @@ class _NewGroupScreenState extends State<NewGroupScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// A picked member: avatar, phone and a remove mark on the avatar's corner.
+class MemberChip extends StatelessWidget {
+  const MemberChip({super.key, required this.seed, required this.digits, required this.onRemove});
+  final String seed;
+  final String digits;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final l = L10n.of(context);
+    return Stack(
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(right: 12),
+          child: SizedBox(
+            width: 72,
+            child: Column(
+              children: [
+                Avatar(name: '', seed: seed, radius: 28),
+                const SizedBox(height: 6),
+                Text(
+                  formatPhone(digits),
+                  maxLines: 2,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+        ),
+        // A 48 px target centred on the 18 px mark at the avatar's corner. It
+        // lies inside this Stack: taps outside a Stack's box are not seen.
+        Positioned(
+          left: 33,
+          top: 25,
+          child: Semantics(
+            button: true,
+            label: '${l.removeMember} ${formatPhone(digits)}',
+            onTap: onRemove,
+            excludeSemantics: true,
+            child: GestureDetector(
+              key: const Key('remove_member'),
+              behavior: HitTestBehavior.opaque,
+              onTap: onRemove,
+              child: SizedBox.square(
+                dimension: 48,
+                child: Center(
+                  child: Material(
+                    color: scheme.onSurfaceVariant,
+                    shape: CircleBorder(side: BorderSide(color: scheme.surface, width: 2)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(2),
+                      child: Icon(Icons.close, size: 14, color: scheme.surface),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

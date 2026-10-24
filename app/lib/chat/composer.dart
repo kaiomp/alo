@@ -41,6 +41,10 @@ class ComposerState extends State<Composer> {
   /// A recorder is asking for the mic; a second hold must not start another.
   bool _starting = false;
 
+  /// Screen reader on: a tap on the mic started this recording, and Send or
+  /// Cancel ends it (a screen reader's long press ends as soon as it starts).
+  bool _locked = false;
+
   void replyTo(Message m) {
     setState(() {
       _editing = null;
@@ -107,8 +111,8 @@ class ComposerState extends State<Composer> {
   }
 
   // Voice notes: hold the mic, release to send, slide left to cancel
-  // (shorter than 0.5 s is dropped).
-  Future<void> _startRecording() async {
+  // (shorter than 0.5 s is dropped). [locked]: tap to start, see [_locked].
+  Future<void> _startRecording({bool locked = false}) async {
     if (_recorder != null || _starting) return;
     _holding = true;
     _starting = true;
@@ -131,6 +135,7 @@ class ComposerState extends State<Composer> {
     setState(() {
       _recorder = recorder;
       _recordingSince = DateTime.now();
+      _locked = locked;
     });
     _tick = Timer.periodic(const Duration(milliseconds: 250), (_) => setState(() {}));
   }
@@ -143,6 +148,7 @@ class ComposerState extends State<Composer> {
     setState(() {
       _recorder = null;
       _recordingSince = null;
+      _locked = false;
     });
     if (recorder == null || since == null) return;
     try {
@@ -188,6 +194,7 @@ class ComposerState extends State<Composer> {
     final hasText = _text.text.trim().isNotEmpty;
     final since = _recordingSince;
     final iconColor = scheme.onSurfaceVariant;
+    final screenReader = MediaQuery.accessibleNavigationOf(context);
 
     final Widget field;
     if (since != null) {
@@ -205,14 +212,24 @@ class ComposerState extends State<Composer> {
               style: TextStyle(fontSize: 16, fontFeatures: tabularFigures, color: scheme.onSurface),
             ),
             const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                '‹ ${l.slideToCancel}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 14, color: iconColor),
+            if (_locked) ...[
+              const Spacer(),
+              IconButton(
+                key: const Key('cancel_recording'),
+                tooltip: l.cancelRecording,
+                icon: const Icon(Icons.delete_outline),
+                color: iconColor,
+                onPressed: () => _stopRecording(cancel: true),
               ),
-            ),
+            ] else
+              Expanded(
+                child: Text(
+                  '‹ ${l.slideToCancel}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 14, color: iconColor),
+                ),
+              ),
           ],
         ),
       );
@@ -332,19 +349,29 @@ class ComposerState extends State<Composer> {
                       key: const ValueKey('send_switch'),
                       buttonKey: const Key('send'),
                       icon: _editing != null ? Icons.check : Icons.send,
-                      tooltip: l.messageHint,
+                      tooltip: _editing != null ? l.saveEdit : l.send,
                       onPressed: hasText ? _send : null,
+                    )
+                  : _locked && since != null
+                  ? _RoundButton(
+                      key: const ValueKey('send_voice_switch'),
+                      buttonKey: const Key('send_voice'),
+                      icon: Icons.send,
+                      tooltip: l.sendVoice,
+                      onPressed: () => _stopRecording(),
                     )
                   : GestureDetector(
                       key: const ValueKey('mic_hold'),
-                      onLongPressStart: (_) => _startRecording(),
-                      onLongPressMoveUpdate: (d) {
-                        if (d.offsetFromOrigin.dx < -80) _stopRecording(cancel: true);
-                      },
-                      onLongPressEnd: (_) => _stopRecording(),
+                      onLongPressStart: screenReader ? null : (_) => _startRecording(),
+                      onLongPressMoveUpdate: screenReader
+                          ? null
+                          : (d) {
+                              if (d.offsetFromOrigin.dx < -80) _stopRecording(cancel: true);
+                            },
+                      onLongPressEnd: screenReader ? null : (_) => _stopRecording(),
                       // A system dialog (the mic permission prompt), a call or
                       // the notification shade cancels the pointer: no end comes.
-                      onLongPressCancel: () => _stopRecording(cancel: true),
+                      onLongPressCancel: screenReader ? null : () => _stopRecording(cancel: true),
                       // The tooltip's own long press would win the hold on
                       // touch screens: keep it to mouse hover.
                       child: TooltipTheme(
@@ -352,8 +379,8 @@ class ComposerState extends State<Composer> {
                         child: _RoundButton(
                           buttonKey: const Key('mic'),
                           icon: Icons.mic,
-                          tooltip: l.voiceMessage,
-                          onPressed: () => _snack(l.holdToRecord),
+                          tooltip: screenReader ? l.recordVoice : l.voiceMessage,
+                          onPressed: screenReader ? () => _startRecording(locked: true) : () => _snack(l.holdToRecord),
                         ),
                       ),
                     ),
@@ -440,13 +467,13 @@ class _ContextBanner extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.accent),
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.quoteName),
                     ),
                     Text(
                       body,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurfaceVariant),
+                      style: TextStyle(fontSize: 13, color: colors.meta),
                     ),
                   ],
                 ),

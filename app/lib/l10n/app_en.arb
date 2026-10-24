@@ -191,5 +191,18 @@
   "repairExplain": "Encryption setup did not finish. To complete it, confirm with the code we sent by SMS. Your contacts will see that your security code changed.",
   "securityCodeChanged": "{name}'s security code changed",
   "notEncryptedNotice": "This chat is not encrypted. Chama does not send messages in it.",
-  "notEncryptedNoSend": "Messages cannot be sent in a chat without encryption."
+  "notEncryptedNoSend": "Messages cannot be sent in a chat without encryption.",
+  "smsCodeLabel": "SMS code",
+  "send": "Send",
+  "saveEdit": "Save edit",
+  "tickPending": "Sending",
+  "tickSent": "Sent",
+  "tickDelivered": "Delivered",
+  "tickRead": "Read",
+  "tickFailed": "Not sent",
+  "play": "Play",
+  "pause": "Pause",
+  "recordVoice": "Record voice message",
+  "sendVoice": "Send voice message",
+  "cancelRecording": "Cancel recording"
 }

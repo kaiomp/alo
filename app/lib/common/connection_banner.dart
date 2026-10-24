@@ -20,7 +20,7 @@ class ConnectionBanner extends StatelessWidget {
             child: Text(
               L10n.of(context).connecting,
               key: const Key('connecting_banner'),
-              style: const TextStyle(color: Colors.black87),
+              style: TextStyle(color: ChatColors.of(context).onBanner),
             ),
           ),
   );

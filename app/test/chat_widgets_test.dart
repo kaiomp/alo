@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:chama/auth/id_client.dart';
 import 'package:chama/chat/composer.dart';
 import 'package:chama/chat/message_bubble.dart';
+import 'package:chama/chat/voice/voice_player.dart';
 import 'package:chama/chat/voice/voice_recorder.dart';
 import 'package:chama/common/deps.dart';
 import 'package:chama/common/theme.dart';
@@ -144,7 +145,110 @@ void main() {
     await again.up();
     await tester.pump();
   });
+  testWidgets('the send button says "Enviar", and "Salvar edição" while editing', (tester) async {
+    final (service, session) = (await tester.runAsync(_session))!;
+    await tester.pumpWidget(_composer(service, session, _Recorder()));
+    await tester.enterText(find.byKey(const Key('composer_text')), 'Oi');
+    await tester.pumpAndSettle();
+    String? tooltip() => tester.widget<IconButton>(find.byKey(const Key('send'))).tooltip;
+    expect(tooltip(), 'Enviar');
+
+    tester.state<ComposerState>(find.byType(Composer)).edit(_message(MessageKind.text, body: 'Oi'));
+    await tester.pumpAndSettle();
+    expect(tooltip(), 'Salvar edição');
+  });
+
+  testWidgets('with a screen reader on, a tap on the mic records and Send or Cancel ends it', (tester) async {
+    final (service, session) = (await tester.runAsync(_session))!;
+    final recorder = _Recorder();
+    await tester.pumpWidget(_composer(service, session, recorder, accessible: true));
+
+    await tester.tap(find.byKey(const Key('mic')));
+    await tester.pump();
+    expect(find.byKey(const Key('recording_timer')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('cancel_recording')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('recording_timer')), findsNothing);
+    expect(recorder.cancelled, isTrue);
+
+    recorder.cancelled = false;
+    await tester.tap(find.byKey(const Key('mic')));
+    await tester.pump();
+    expect(find.byKey(const Key('recording_timer')), findsOneWidget);
+    await tester.pump(const Duration(seconds: 2)); // a tap must not end it
+    // Shorter than 0.5 s (wall clock) is dropped.
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 600)));
+    expect(find.byKey(const Key('recording_timer')), findsOneWidget);
+    expect(tester.widget<IconButton>(find.byKey(const Key('send_voice'))).tooltip, 'Enviar mensagem de voz');
+    await tester.tap(find.byKey(const Key('send_voice')));
+    await tester.pump();
+    expect(find.byKey(const Key('recording_timer')), findsNothing);
+    expect(recorder.stopped, isTrue);
+    expect(recorder.cancelled, isFalse);
+  });
+
+  testWidgets('voice play and file download buttons are labelled 48 px targets', (tester) async {
+    final (_, session) = (await tester.runAsync(_session))!;
+    final voice = _message(MessageKind.voice, durationMs: 3000);
+    final file = _message(MessageKind.file, body: 'nota.pdf', size: 2048);
+    await tester.pumpWidget(
+      _app(
+        Column(
+          children: [
+            VoicePlayer(message: voice, load: () async => Uint8List(0), color: Tokens.flame),
+            MessageBubble(message: file, session: session, onActions: (_, _) {}, maxWidth: 400),
+          ],
+        ),
+      ),
+    );
+    final play = find.byKey(Key('voice_play_${voice.id}'));
+    expect(tester.widget<IconButton>(play).tooltip, 'Reproduzir');
+    expect(tester.getSize(play), const Size(48, 48));
+    final download = find.byKey(Key('download_${file.id}'));
+    expect(tester.widget<IconButton>(download).tooltip, 'Baixar');
+    expect(tester.getSize(download), const Size(48, 48));
+  });
+
+  testWidgets('reaction pills are buttons with a 40 px target', (tester) async {
+    final handle = tester.ensureSemantics();
+    final (_, session) = (await tester.runAsync(_session))!;
+    final m = _message(MessageKind.text, body: 'Oi', reactions: const [Reaction('👍', 2, mine: true)]);
+    await tester.pumpWidget(_app(MessageBubble(message: m, session: session, onActions: (_, _) {}, maxWidth: 400)));
+    final pill = find.byKey(Key('reaction_${m.id}_👍'));
+    expect(tester.getSize(pill).width, greaterThanOrEqualTo(40));
+    expect(tester.getSize(pill).height, greaterThanOrEqualTo(40));
+    expect(tester.getSemantics(pill), isSemantics(label: '👍 2', isButton: true, isSelected: true, hasTapAction: true));
+    handle.dispose();
+  });
 }
+
+Message _message(
+  MessageKind kind, {
+  String body = '',
+  int? durationMs,
+  int? size,
+  List<Reaction> reactions = const [],
+}) => Message(
+  id: r'$m',
+  senderId: '@me:chama.test',
+  senderName: 'Eu',
+  isMine: true,
+  time: DateTime(2026, 10, 24, 7, 29),
+  kind: kind,
+  body: body,
+  tick: Tick.sent,
+  durationMs: durationMs,
+  size: size,
+  reactions: reactions,
+);
+
+Widget _app(Widget child) => MaterialApp(
+  theme: chamaTheme(Brightness.light),
+  locale: const Locale('pt'),
+  supportedLocales: L10n.supportedLocales,
+  localizationsDelegates: L10n.localizationsDelegates,
+  home: Scaffold(body: child),
+);
 
 class _Recorder implements VoiceRecorder {
   /// How many times the composer asked for a recorder.
@@ -158,8 +262,13 @@ class _Recorder implements VoiceRecorder {
   @override
   Future<bool> start() => starting?.future ?? Future.value(true);
 
+  bool stopped = false;
+
   @override
-  Future<RecordedVoice?> stop() async => null;
+  Future<RecordedVoice?> stop() async {
+    stopped = true;
+    return null;
+  }
 
   @override
   Future<void> cancel() async => cancelled = true;
@@ -168,7 +277,7 @@ class _Recorder implements VoiceRecorder {
   void dispose() {}
 }
 
-Widget _composer(ChatService service, ChatSession session, _Recorder recorder) => Deps(
+Widget _composer(ChatService service, ChatSession session, _Recorder recorder, {bool accessible = false}) => Deps(
   chat: service,
   id: IdClient(Uri.parse('http://localhost:8080')),
   newRecorder: () => recorder..created += 1,
@@ -178,6 +287,11 @@ Widget _composer(ChatService service, ChatSession session, _Recorder recorder) =
     locale: const Locale('pt'),
     supportedLocales: L10n.supportedLocales,
     localizationsDelegates: L10n.localizationsDelegates,
+    // TalkBack or VoiceOver on.
+    builder: (context, child) => MediaQuery(
+      data: MediaQuery.of(context).copyWith(accessibleNavigation: accessible),
+      child: child!,
+    ),
     home: Scaffold(body: Composer(session: session)),
   ),
 );

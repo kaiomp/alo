@@ -385,5 +385,18 @@
     }
   },
   "notEncryptedNotice": "Esta conversa não é criptografada. O Chama não envia mensagens nela.",
-  "notEncryptedNoSend": "Não é possível enviar mensagens em uma conversa sem criptografia."
+  "notEncryptedNoSend": "Não é possível enviar mensagens em uma conversa sem criptografia.",
+  "smsCodeLabel": "Código do SMS",
+  "send": "Enviar",
+  "saveEdit": "Salvar edição",
+  "tickPending": "Enviando",
+  "tickSent": "Enviada",
+  "tickDelivered": "Entregue",
+  "tickRead": "Lida",
+  "tickFailed": "Não enviada",
+  "play": "Reproduzir",
+  "pause": "Pausar",
+  "recordVoice": "Gravar mensagem de voz",
+  "sendVoice": "Enviar mensagem de voz",
+  "cancelRecording": "Cancelar gravação"
 }

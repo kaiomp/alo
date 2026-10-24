@@ -234,39 +234,43 @@ class _CodeCellsState extends State<_CodeCells> {
     return LayoutBuilder(
       builder: (context, c) => Stack(
         children: [
-          Row(
-            children: [
-              for (var i = 0; i < 6; i++) ...[
-                if (i > 0) SizedBox(width: i == 3 ? 16 : 8),
-                Container(
-                  // 48 wide, narrower on small phones.
-                  width: ((c.maxWidth - 56) / 6).clamp(36.0, 48.0),
-                  height: 56,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: scheme.surfaceContainer,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      width: 2,
-                      color: _focus.hasFocus && i == code.length.clamp(0, 5) ? scheme.primary : Colors.transparent,
+          // Drawing only: screen readers get the field below.
+          ExcludeSemantics(
+            child: Row(
+              children: [
+                for (var i = 0; i < 6; i++) ...[
+                  if (i > 0) SizedBox(width: i == 3 ? 16 : 8),
+                  Container(
+                    // 48 wide, narrower on small phones.
+                    width: ((c.maxWidth - 56) / 6).clamp(36.0, 48.0),
+                    height: 56,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainer,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        width: 2,
+                        color: _focus.hasFocus && i == code.length.clamp(0, 5) ? scheme.primary : Colors.transparent,
+                      ),
+                    ),
+                    child: Text(
+                      i < code.length ? code[i] : '',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w600,
+                        fontFeatures: tabularFigures,
+                        color: scheme.onSurface,
+                      ),
                     ),
                   ),
-                  child: Text(
-                    i < code.length ? code[i] : '',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w600,
-                      fontFeatures: tabularFigures,
-                      color: scheme.onSurface,
-                    ),
-                  ),
-                ),
+                ],
               ],
-            ],
+            ),
           ),
           Positioned.fill(
             child: Opacity(
               opacity: 0,
+              alwaysIncludeSemantics: true,
               child: TextField(
                 key: const Key('sms_code'),
                 controller: widget.controller,
@@ -278,7 +282,13 @@ class _CodeCellsState extends State<_CodeCells> {
                 showCursor: false,
                 enableInteractiveSelection: false,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: const InputDecoration(counterText: '', filled: false, border: InputBorder.none),
+                decoration: InputDecoration(
+                  labelText: L10n.of(context).smsCodeLabel,
+                  floatingLabelBehavior: FloatingLabelBehavior.never,
+                  counterText: '',
+                  filled: false,
+                  border: InputBorder.none,
+                ),
                 onChanged: (v) {
                   if (v.length == 6) widget.onCompleted();
                 },

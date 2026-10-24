@@ -47,6 +47,7 @@ class ChatColors extends ThemeExtension<ChatColors> {
     required this.readTick,
     required this.bubbleShadow,
     required this.banner,
+    required this.onBanner,
     required this.accent,
     required this.tint,
     required this.onTint,
@@ -55,6 +56,7 @@ class ChatColors extends ThemeExtension<ChatColors> {
     required this.onNotice,
     required this.raised,
     required this.cardTint,
+    required this.quoteName,
     required this.photoShade,
     required this.onPhoto,
     required this.onPhotoRead,
@@ -72,6 +74,9 @@ class ChatColors extends ThemeExtension<ChatColors> {
   /// Light mode only: the hairline shadow under bubbles.
   final Color? bubbleShadow;
   final Color banner;
+
+  /// "Conectando…" text on [banner].
+  final Color onBanner;
 
   /// Orange for small text and icons ("primary deep"): unread times, section
   /// headers, admin labels, "digitando…".
@@ -92,6 +97,9 @@ class ChatColors extends ThemeExtension<ChatColors> {
   /// Reply quote, file card and composer context banner inside a bubble or bar.
   final Color cardTint;
 
+  /// Author name in a reply quote or the composer banner, on [cardTint].
+  final Color quoteName;
+
   /// Dark pill under the time and ticks on a photo, and the marks on it.
   final Color photoShade;
   final Color onPhoto;
@@ -102,10 +110,11 @@ class ChatColors extends ThemeExtension<ChatColors> {
     mine: Color(0xFFFFE9DC),
     other: Color(0xFFFFFFFF),
     bubbleText: Tokens.ink,
-    meta: Color(0xFF6F625A),
+    meta: Color(0xFF675A52),
     readTick: Color(0xFF1E6FD9),
     bubbleShadow: Color(0x14000000),
     banner: Tokens.warning,
+    onBanner: Tokens.ink,
     accent: Tokens.flameText,
     tint: Color(0xFFFCE3D6),
     onTint: Color(0xFF9A3412),
@@ -114,6 +123,7 @@ class ChatColors extends ThemeExtension<ChatColors> {
     onNotice: Color(0xFF6B4A33),
     raised: Color(0xFFFFFFFF),
     cardTint: Color(0x0D000000),
+    quoteName: Color(0xFF9A3412),
     photoShade: Color(0x61000000),
     onPhoto: Color(0xFFFFFFFF),
     onPhotoRead: Color(0xFF53BDEB),
@@ -128,6 +138,7 @@ class ChatColors extends ThemeExtension<ChatColors> {
     readTick: Color(0xFF53BDEB),
     bubbleShadow: null,
     banner: Color(0xFF8A6D1A),
+    onBanner: Color(0xFFFFFFFF),
     accent: Tokens.flameLight,
     tint: Color(0xFF4A2510),
     onTint: Color(0xFFFFB38A),
@@ -136,6 +147,7 @@ class ChatColors extends ThemeExtension<ChatColors> {
     onNotice: Color(0xFFE3C9B4),
     raised: Color(0xFF26211E),
     cardTint: Color(0x0FFFFFFF),
+    quoteName: Tokens.flameLight,
     photoShade: Color(0x61000000),
     onPhoto: Color(0xFFFFFFFF),
     onPhotoRead: Color(0xFF53BDEB),
@@ -363,6 +375,8 @@ ThemeData chamaTheme(Brightness brightness) {
       height: 72,
       labelTextStyle: WidgetStateProperty.resolveWith(
         (s) => text.labelMedium?.copyWith(
+          fontSize: 12,
+          letterSpacing: -0.2,
           color: s.contains(WidgetState.selected) ? scheme.onSurface : scheme.onSurfaceVariant,
           fontWeight: s.contains(WidgetState.selected) ? FontWeight.w600 : FontWeight.w500,
         ),

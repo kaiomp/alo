@@ -195,15 +195,31 @@ class _HomeScreenState extends State<HomeScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           const Divider(height: 0.5),
-          NavigationBar(
-            selectedIndex: _tab,
-            onDestinationSelected: (i) => setState(() => _tab = i),
-            destinations: [for (final (icon, label) in tabs) NavigationDestination(icon: Icon(icon), label: label)],
-          ),
+          HomeNavBar(tabs: tabs, selected: _tab, onSelected: (i) => setState(() => _tab = i)),
         ],
       ),
     );
   }
+}
+
+/// The four phone tabs.
+class HomeNavBar extends StatelessWidget {
+  const HomeNavBar({super.key, required this.tabs, required this.selected, required this.onSelected});
+  final List<(IconData, String)> tabs;
+  final int selected;
+  final ValueChanged<int> onSelected;
+
+  // Limit: labels grow only to 1.1x. A bold "Comunidades" (12 px, theme.dart)
+  // breaks mid-word on a 360 px phone above that.
+  @override
+  Widget build(BuildContext context) => MediaQuery.withClampedTextScaling(
+    maxScaleFactor: 1.1,
+    child: NavigationBar(
+      selectedIndex: selected,
+      onDestinationSelected: onSelected,
+      destinations: [for (final (icon, label) in tabs) NavigationDestination(icon: Icon(icon), label: label)],
+    ),
+  );
 }
 
 /// My photo in the wide header; opens the settings.
