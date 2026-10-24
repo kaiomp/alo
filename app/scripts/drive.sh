@@ -78,7 +78,9 @@ case $TARGET in
       ./scripts/seed-contacts.sh "$DEVICE" add "${ARGS[@]}"
     fi
     if [ -n "${TEST_DRIVER:-}" ]; then
-      flutter drive --driver="$TEST_DRIVER" --target="$TEST" -d "$DEVICE" "$@"
+      # Not paused: MainActivity takes the tool's --start-paused, and the
+      # driver's resume then never starts main().
+      flutter drive --driver="$TEST_DRIVER" --target="$TEST" -d "$DEVICE" --no-start-paused "$@"
     else
       # push_test.dart prints E2E_BACKGROUND: like a user, press Home, wait for
       # the app's notification, then open the app again so the test can check

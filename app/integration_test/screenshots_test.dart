@@ -89,6 +89,11 @@ Future<void> _walk(WidgetTester tester, _Shots t) async {
 
   // 1:1 chat with the peer, found by phone number.
   await t.tap(const Key('new_chat'));
+  if (!kIsWeb) {
+    // READ_CONTACTS was granted by scripts/drive.sh: the button asks nothing.
+    if (find.byKey(const Key('contacts_allow')).evaluate().isNotEmpty) await t.tap(const Key('contacts_allow'));
+    await t.waitFor(find.byKey(const Key('contacts_invite')), timeout: const Duration(seconds: 60));
+  }
   await t.enter(const Key('new_chat_phone'), peerPhone.substring(2));
   await t.shot('new-chat');
   await t.tap(const Key('new_chat_phone_go'));

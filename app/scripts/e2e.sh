@@ -30,6 +30,9 @@ pretty() { printf '(%s) %s-%s' "${1:2:2}" "${1:4:5}" "${1:9}"; }
 case $TEST in
   *contacts_test.dart | *push_test.dart)
     export E2E_CONTACTS="Peer Agenda=$(pretty "$PEER_PHONE"),Sem Chama=$(pretty "$(rand_phone)")" ;;
+  # Screenshots: the peer under its own name, next to two to invite.
+  *screenshots_test.dart)
+    export E2E_CONTACTS="${PEER_NAME:-Peer}=$(pretty "$PEER_PHONE"),Carla Mendes=$(pretty "$(rand_phone)"),Diego Rocha=$(pretty "$(rand_phone)")" ;;
 esac
 
 ./scripts/drive.sh "$TARGET" "$TEST" \
