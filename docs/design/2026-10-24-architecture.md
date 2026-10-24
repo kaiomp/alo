@@ -103,8 +103,13 @@ Node test tools.
 - **No password means no Matrix "user-interactive auth" (UIA).** Synapse offers UIA only
   for passwords and SSO, so actions that need it are done by chama-id through the Synapse
   admin API, after a fresh SMS code and a valid access token:
-  - reset encryption identity (`_allow_cross_signing_replacement_without_uia`), for a new
-    phone without the recovery key (M2);
+  - reset encryption identity, for a new phone without the recovery key (M2). The phone
+    makes the new cross-signing keys and sends only the **public** signed key bundle;
+    chama-id checks the SMS code, logs out the other devices and uploads the bundle as
+    the user through a Matrix application service registration (`url: null`, so Synapse
+    pushes no events to chama-id). Private keys never leave the phone. (Synapse honours
+    "replace without UIA" only with MAS; the application-service route works without it.
+    Moving sign-in to MAS is an option for M4.)
   - remove a linked device and deactivate the account (M4).
   chama-id talks to the admin API on the internal network only; the proxy blocks
   `/_synapse/admin` from outside.
