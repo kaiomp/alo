@@ -265,61 +265,86 @@ class ChatSession extends ChangeNotifier {
     if (!encrypted) throw StateError('Chat ${_room.id} is not end-to-end encrypted');
   }
 
+  /// Bound on the device-list refresh: on a stalled network the key query
+  /// would wait the SDK's 35 s request timeout.
+  @visibleForTesting
+  static Duration deviceListTimeout = const Duration(seconds: 5);
+
   /// The SDK makes the room key for the devices in the members' device
   /// lists. A list still loading counts as "no devices": a member left out
   /// then can never read the message (the key is re-shared only from the
   /// next message on). So load stale lists first. Members are the joined and
   /// the invited (a new chat's peer is only invited at first).
-  /// Offline it gives up quietly: the message still queues, as before.
+  /// Offline or slow it gives up quietly after [deviceListTimeout].
   Future<void> _deviceListsReady() async {
     final client = _service.client;
     try {
-      final members = await _room.requestParticipants(const [Membership.join, Membership.invite], true);
-      final stale = {
-        for (final u in members)
-          if (client.userDeviceKeys[u.id]?.outdated != false) u.id,
-      };
-      if (stale.isNotEmpty) await client.updateUserDeviceKeys(additionalUsers: stale);
+      await () async {
+        final members = await _room.requestParticipants(const [Membership.join, Membership.invite], true);
+        final stale = {
+          for (final u in members)
+            if (client.userDeviceKeys[u.id]?.outdated != false) u.id,
+        };
+        if (stale.isNotEmpty) await client.updateUserDeviceKeys(additionalUsers: stale);
+      }().timeout(deviceListTimeout);
     } catch (e) {
       Logs().w('Could not refresh device lists before sending', e);
     }
   }
 
-  Future<void> sendText(String text, {String? replyTo, String? editOf}) async {
+  /// Runs [send] (an SDK send) while the room's send queue is held until the
+  /// device lists are ready: the SDK shows (and stores) the pending message
+  /// at once, and encrypts it, making the room key, only once released.
+  Future<T> _send<T>(Future<T> Function() send) async {
     _mustBeEncrypted();
-    await _deviceListsReady();
-    await _room.sendTextEvent(
-      text,
-      inReplyTo: replyTo == null ? null : _event(replyTo),
-      editEventId: editOf,
-      parseCommands: false,
-      parseMarkdown: false,
+    final hold = Completer<void>();
+    _room.sendingQueue.add(hold);
+    final ready = _deviceListsReady().whenComplete(() {
+      _room.sendingQueue.remove(hold);
+      hold.complete();
+    });
+    try {
+      return await send();
+    } finally {
+      await ready;
+    }
+  }
+
+  Future<void> sendText(String text, {String? replyTo, String? editOf}) async {
+    await _send(
+      () => _room.sendTextEvent(
+        text,
+        inReplyTo: replyTo == null ? null : _event(replyTo),
+        editEventId: editOf,
+        parseCommands: false,
+        parseMarkdown: false,
+      ),
     );
     await setTyping(false);
   }
 
   Future<void> sendImage(PickedFile file, {String? replyTo}) async {
-    _mustBeEncrypted();
-    await _deviceListsReady();
-    final image = await MatrixImageFile.create(
-      bytes: Uint8List.fromList(file.bytes),
-      name: file.name,
-      mimeType: file.mimeType,
-      nativeImplementations: _service.client.nativeImplementations,
-    );
-    await _room.sendFileEvent(
-      image,
-      shrinkImageMaxDimension: 1600,
-      inReplyTo: replyTo == null ? null : _event(replyTo),
-    );
+    await _send(() async {
+      final image = await MatrixImageFile.create(
+        bytes: Uint8List.fromList(file.bytes),
+        name: file.name,
+        mimeType: file.mimeType,
+        nativeImplementations: _service.client.nativeImplementations,
+      );
+      return _room.sendFileEvent(
+        image,
+        shrinkImageMaxDimension: 1600,
+        inReplyTo: replyTo == null ? null : _event(replyTo),
+      );
+    });
   }
 
   Future<void> sendFile(PickedFile file, {String? replyTo}) async {
-    _mustBeEncrypted();
-    await _deviceListsReady();
-    await _room.sendFileEvent(
-      MatrixFile(bytes: Uint8List.fromList(file.bytes), name: file.name, mimeType: file.mimeType),
-      inReplyTo: replyTo == null ? null : _event(replyTo),
+    await _send(
+      () => _room.sendFileEvent(
+        MatrixFile(bytes: Uint8List.fromList(file.bytes), name: file.name, mimeType: file.mimeType),
+        inReplyTo: replyTo == null ? null : _event(replyTo),
+      ),
     );
   }
 
@@ -332,8 +357,6 @@ class ChatSession extends ChangeNotifier {
     required List<int> waveform,
     String? replyTo,
   }) async {
-    _mustBeEncrypted();
-    await _deviceListsReady();
     final ext = ['wav', 'ogg', 'webm'].firstWhere(mimeType.contains, orElse: () => 'm4a');
     final file = MatrixAudioFile(
       bytes: bytes,
@@ -341,14 +364,16 @@ class ChatSession extends ChangeNotifier {
       mimeType: mimeType,
       duration: durationMs,
     );
-    await _room.sendFileEvent(
-      file,
-      inReplyTo: replyTo == null ? null : _event(replyTo),
-      extraContent: {
-        'info': {...file.info, 'duration': durationMs},
-        'org.matrix.msc3245.voice': <String, Object?>{},
-        'org.matrix.msc1767.audio': {'duration': durationMs, 'waveform': waveform},
-      },
+    await _send(
+      () => _room.sendFileEvent(
+        file,
+        inReplyTo: replyTo == null ? null : _event(replyTo),
+        extraContent: {
+          'info': {...file.info, 'duration': durationMs},
+          'org.matrix.msc3245.voice': <String, Object?>{},
+          'org.matrix.msc1767.audio': {'duration': durationMs, 'waveform': waveform},
+        },
+      ),
     );
   }
 
@@ -365,21 +390,21 @@ class ChatSession extends ChangeNotifier {
       await _room.redactEvent(mine.eventId);
       return;
     }
-    _mustBeEncrypted();
-    await _deviceListsReady();
     // The SDK sends a reaction (only m.relates_to) unencrypted, emoji in
     // clear. With another field it encrypts, keeping m.relates_to outside the
     // ciphertext; Synapse needs a key there, so it gets a random one.
     // Limit: the server still sees who reacted to which message, and other
     // Matrix clients show the placeholder instead of the emoji.
-    await _room.sendEvent({
-      'm.relates_to': {
-        'rel_type': RelationshipTypes.reaction,
-        'event_id': messageId,
-        'key': _service.client.generateUniqueTransactionId(),
-      },
-      reactionKeyField: key,
-    }, type: EventTypes.Reaction);
+    await _send(
+      () => _room.sendEvent({
+        'm.relates_to': {
+          'rel_type': RelationshipTypes.reaction,
+          'event_id': messageId,
+          'key': _service.client.generateUniqueTransactionId(),
+        },
+        reactionKeyField: key,
+      }, type: EventTypes.Reaction),
+    );
   }
 
   Future<void> deleteForEveryone(String messageId) => _room.redactEvent(messageId);
@@ -394,7 +419,10 @@ class ChatSession extends ChangeNotifier {
   }
 
   /// Manual retry for a message that failed after the automatic attempts.
-  Future<void> retry(String messageId) async => _event(messageId)?.sendAgain();
+  Future<void> retry(String messageId) async {
+    final e = _event(messageId);
+    if (e != null) await _send(e.sendAgain);
+  }
 
   Future<void> discard(String messageId) async => _event(messageId)?.cancelSend();
 

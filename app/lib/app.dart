@@ -41,8 +41,10 @@ class _AuthGate extends StatefulWidget {
 class _AuthGateState extends State<_AuthGate> {
   Future<(CryptoStatus, bool, String?)>? _state;
 
-  Future<(CryptoStatus, bool, String?)> _load(ChatService chat) async =>
-      (await chat.cryptoStatus(), await chat.needsProfile(), await chat.pendingRecoveryKey());
+  Future<(CryptoStatus, bool, String?)> _load(ChatService chat) async {
+    final crypto = await chat.cryptoStatus();
+    return (crypto, await chat.needsProfile(), await chat.pendingRecoveryKey(crypto));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,12 +63,10 @@ class _AuthGateState extends State<_AuthGate> {
             final state = snap.data;
             if (state == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
             final (crypto, needsProfile, pendingKey) = state;
-            // A key left from an identity that is no longer this device's is stale.
-            final showKey = crypto == CryptoStatus.ready ? pendingKey : null;
-            if (crypto != CryptoStatus.ready || showKey != null) {
+            if (crypto != CryptoStatus.ready || pendingKey != null) {
               return EncryptionScreen(
                 status: crypto,
-                recoveryKey: showKey,
+                recoveryKey: pendingKey,
                 onDone: () => setState(() {
                   _state = Future.value((CryptoStatus.ready, needsProfile, null));
                 }),

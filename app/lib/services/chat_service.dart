@@ -189,8 +189,15 @@ class ChatService {
 
   /// A recovery key the user has not confirmed saving yet. Kept in the
   /// system keystore so it survives Android killing the app while the user
-  /// copies it elsewhere; shown again on the next launch.
-  Future<String?> pendingRecoveryKey() => _secrets.read(key: _pendingKey);
+  /// copies it elsewhere; shown again on the next launch. Only while
+  /// [crypto] is ready: otherwise it is from an identity that is no longer
+  /// this device's (reset elsewhere, or set up again), so it is deleted rather
+  /// than kept until sign-out.
+  Future<String?> pendingRecoveryKey(CryptoStatus crypto) async {
+    if (crypto == CryptoStatus.ready) return _secrets.read(key: _pendingKey);
+    await _secrets.delete(key: _pendingKey);
+    return null;
+  }
 
   /// The user ticked "Guardei" and continued.
   Future<void> recoveryKeySaved() => _secrets.delete(key: _pendingKey);

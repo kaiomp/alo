@@ -35,7 +35,7 @@ void main() {
       (_) async => null,
     );
     final service = (await tester.runAsync(() => _service(MockClient((_) async => http.Response('{}', 200)))))!;
-    expect(await tester.runAsync(service.pendingRecoveryKey), key);
+    expect(await tester.runAsync(() => service.pendingRecoveryKey(CryptoStatus.ready)), key);
     var done = false;
     await tester.pumpWidget(
       _app(service, EncryptionScreen(status: CryptoStatus.ready, recoveryKey: key, onDone: () => done = true)),
@@ -55,7 +55,14 @@ void main() {
       await tester.pump();
     }
     expect(done, isTrue);
-    expect(await tester.runAsync(service.pendingRecoveryKey), isNull);
+    expect(await tester.runAsync(() => service.pendingRecoveryKey(CryptoStatus.ready)), isNull);
+  });
+
+  test('a key left while encryption is not ready is deleted, not kept until sign-out', () async {
+    FlutterSecureStorage.setMockInitialValues({'pending_recovery_key': key});
+    final service = await _service(MockClient((_) async => http.Response('{}', 200)));
+    expect(await service.pendingRecoveryKey(CryptoStatus.unlock), isNull);
+    expect(await service.pendingRecoveryKey(CryptoStatus.ready), isNull);
   });
 
   testWidgets('repair goes straight to the SMS reset', (tester) async {

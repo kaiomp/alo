@@ -156,6 +156,7 @@ void main() {
     tester.state<ComposerState>(find.byType(Composer)).edit(_message(MessageKind.text, body: 'Oi'));
     await tester.pumpAndSettle();
     expect(tooltip(), 'Salvar edição');
+    await tester.pump(ChatSession.deviceListTimeout); // typing's device-list refresh gives up
   });
 
   testWidgets('with a screen reader on, a tap on the mic records and Send or Cancel ends it', (tester) async {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -11,6 +12,10 @@ import 'package:chama/services/models.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:matrix/encryption.dart';
+// OlmManager is not exported; the fake encryption needs one.
+// ignore: implementation_imports
+import 'package:matrix/encryption/olm_manager.dart';
 import 'package:matrix/matrix.dart';
 // TimelineChunk is not exported, and a Timeline cannot be built without one.
 // ignore: implementation_imports
@@ -42,18 +47,64 @@ class _FixedRoom extends Room {
   );
 }
 
+/// Encryption that only records when the SDK encrypts (makes the room key).
+class _FakeEncryption extends Fake implements Encryption {
+  _FakeEncryption(this.log);
+  final List<String> log;
+
+  @override
+  bool get enabled => true;
+
+  @override
+  OlmManager get olmManager => _FakeOlm();
+
+  @override
+  void handleDeviceOneTimeKeysCount(Map<String, int>? countJson, List<String>? unusedFallbackKeyTypes) {}
+
+  @override
+  Future<void> handleEventUpdate(Event event, EventUpdateType type) async {}
+
+  @override
+  Future<Map<String, dynamic>> encryptGroupMessagePayload(
+    String roomId,
+    Map<String, dynamic> payload, {
+    String type = EventTypes.Message,
+  }) async {
+    log.add('encrypt');
+    return {'algorithm': AlgorithmTypes.megolmV1AesSha2, 'ciphertext': 'x'};
+  }
+}
+
+class _FakeOlm extends Fake implements OlmManager {
+  @override
+  int? get maxNumberOfOneTimeKeys => 100;
+}
+
+class _TestClient extends ChamaClient {
+  _TestClient(super.clientName, {required super.database, super.httpClient});
+
+  Encryption? fake;
+
+  @override
+  Encryption? get encryption => fake ?? super.encryption;
+}
+
 void main() {
   late List<String> requests; // "METHOD path"
   late ChatService service;
-  late ChamaClient client;
+  late _TestClient client;
+  late Future<void> keysAnswer; // when /keys/query answers
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     requests = [];
+    keysAnswer = Future.value();
     final server = MockClient((req) async {
       requests.add('${req.method} ${Uri.decodeComponent(req.url.path)}');
       if (req.url.path.endsWith('/keys/query')) {
+        await keysAnswer;
+        requests.add('keys answered');
         return http.Response(jsonEncode({'device_keys': <String, Object>{}}), 200);
       }
       if (req.url.path.endsWith('/members')) {
@@ -81,7 +132,7 @@ void main() {
       database: await databaseFactoryFfi.openDatabase(':memory:'),
       sqfliteFactory: databaseFactoryFfi,
     );
-    client = ChamaClient('encryption_guard_test', database: db, httpClient: server)
+    client = _TestClient('encryption_guard_test', database: db, httpClient: server)
       ..homeserver = Uri.parse('http://localhost:8080')
       ..accessToken = 'token'
       ..setUserId(me);
@@ -171,6 +222,74 @@ void main() {
     final typing = requests.indexWhere((r) => r.contains('/typing/'));
     expect(keys, isNonNegative);
     expect(typing, greaterThan(keys));
+  });
+
+  group('a send', () {
+    setUp(() {
+      client.fake = _FakeEncryption(requests);
+      // Bob's list as the sync loop leaves it while /keys/query is in flight.
+      client.userDeviceKeys[bob] = DeviceKeysList(bob, client);
+      ChatSession.deviceListTimeout = const Duration(milliseconds: 300);
+    });
+    tearDown(() => ChatSession.deviceListTimeout = const Duration(seconds: 5));
+
+    Iterable<String> sends() => requests.where((r) => r.contains('/send/${EventTypes.Encrypted}/'));
+
+    test('on a stalled key query shows and stores the message at once, and goes out after the timeout', () async {
+      keysAnswer = Completer<void>().future; // never answers
+      final r = room('!e2e:chama.test', membership: Membership.join, encrypted: true);
+      final sending = ChatSession(service, r).sendText('oi');
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(r.lastEvent?.body, 'oi');
+      expect(r.lastEvent?.status, EventStatus.sending);
+      // Stored: it survives the app being killed now.
+      expect((await client.database.getEventList(r)).map((e) => e.body), contains('oi'));
+      expect(requests, contains(endsWith('/keys/query')));
+      expect(requests, isNot(contains('encrypt')));
+      expect(sends(), isEmpty);
+
+      await sending;
+      expect(requests, contains('encrypt'));
+      expect(sends(), hasLength(1));
+    });
+
+    test('makes the room key only after device lists that answer in time', () async {
+      keysAnswer = Future<void>.delayed(const Duration(milliseconds: 100));
+      final r = room('!e2e:chama.test', membership: Membership.join, encrypted: true);
+      await ChatSession(service, r).sendText('oi');
+      expect(requests.indexOf('encrypt'), greaterThan(requests.indexOf('keys answered')));
+      expect(sends(), hasLength(1));
+    });
+
+    test('again (retry) waits for device lists too, and is refused in a chat without encryption', () async {
+      final r = _FixedRoom(id: '!e2e:chama.test', client: client);
+      client.rooms.add(r);
+      r.setState(state(r, EventTypes.RoomMember, {'membership': 'invite'}, stateKey: bob));
+      r.events = [
+        Event(
+          type: EventTypes.Message,
+          content: {'msgtype': MessageTypes.Text, 'body': 'oi'},
+          eventId: 'txn1',
+          senderId: me,
+          originServerTs: DateTime(2026),
+          status: EventStatus.error,
+          room: r,
+        ),
+      ];
+      final plain = ChatSession(service, r);
+      await plain.open();
+      await expectLater(plain.retry('txn1'), throwsStateError);
+      expect(requests, isNot(contains(endsWith('/keys/query'))));
+      plain.dispose();
+
+      r.setState(state(r, EventTypes.Encryption, {'algorithm': AlgorithmTypes.megolmV1AesSha2}));
+      final session = ChatSession(service, r);
+      await session.open();
+      await session.retry('txn1');
+      expect(requests.indexOf('encrypt'), greaterThan(requests.indexOf('keys answered')));
+      expect(sends(), hasLength(1));
+      session.dispose();
+    });
   });
 
   test('signing out drops the chat list and cached avatars', () async {
