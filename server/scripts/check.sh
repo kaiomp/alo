@@ -9,7 +9,8 @@ BASE=${BASE:-http://localhost:8080}
 PHONE=${PHONE:-119$(printf '%04d%04d' $((RANDOM % 10000)) $((RANDOM % 10000)))}
 MARK=check$RANDOM$RANDOM
 dc() { docker compose -f compose.yaml --env-file data/.env "$@"; }
-json() { node -pe "JSON.parse(require('fs').readFileSync(0, 'utf8')).$1"; }
+# Prints one top-level JSON field; exits 1 when it is missing or null.
+json() { node -e 'const v = JSON.parse(require("fs").readFileSync(0, "utf8"))[process.argv[1]]; if (v == null) process.exit(1); console.log(v)' "$1"; }
 fail() { echo "FAIL: $*" >&2; exit 1; }
 ok() { echo "ok: $*"; }
 # Lines a service logged for this run's marker.
@@ -18,6 +19,16 @@ served_by() { dc logs --no-log-prefix "$1" 2>/dev/null | grep -c "$2" || true; }
 out=$(curl -fs "$BASE/_matrix/client/versions") || fail "client/versions"
 grep -q '"versions"' <<<"$out" || fail "client/versions body: $out"
 ok "client/versions: ${out:0:80}"
+
+# Only caddy publishes a port, and only on localhost.
+pub=$(dc ps --format json | node -e '
+  const t = require("fs").readFileSync(0, "utf8").trim();
+  const rows = t.startsWith("[") ? JSON.parse(t) : t.split("\n").map((l) => JSON.parse(l));
+  const out = new Set();
+  for (const r of rows) for (const p of r.Publishers || []) if (p.PublishedPort) out.add(r.Service + " " + p.URL + ":" + p.PublishedPort);
+  console.log([...out].sort().join(", "));')
+[[ $pub == "caddy 127.0.0.1:8080" ]] || fail "published ports: '$pub', want 'caddy 127.0.0.1:8080'"
+ok "published ports: $pub"
 
 out=$(curl -fs "$BASE/id/v1/health") || fail "id health"
 [[ $out == '{"ok":true}' ]] || fail "id health body: $out"
@@ -50,9 +61,10 @@ user, pw = os.environ['MXUSER'], secrets.token_hex(16)
 mac = hmac.new(key, b'\0'.join([nonce.encode(), user.encode(), pw.encode(), b'notadmin']), hashlib.sha1).hexdigest()
 body = json.dumps({'nonce': nonce, 'username': user, 'password': pw, 'admin': False, 'mac': mac}).encode()
 req = urllib.request.Request(url, body, {'content-type': 'application/json'})
-print(json.load(urllib.request.urlopen(req))['access_token'])
+print(json.load(urllib.request.urlopen(req))['access_token'], pw)
 PY
 ) || fail "shared-secret registration"
+read -r ACCESS MXPASS <<<"$ACCESS"
 AUTH="Authorization: Bearer $ACCESS"
 
 want="@$MXUSER:chama.test"
@@ -76,14 +88,31 @@ sleep 1
 [[ $(served_by synapse "$MARK") -eq 0 ]] || fail "media reached the main process"
 ok "media round trip via media1: $MXC -> $out"
 
+flows=$(curl -fs "$BASE/_matrix/client/v3/login") || fail "login flows"
+[[ $flows != *m.login.password* ]] || fail "login flows offer password: $flows"
+ok "login flows: $flows"
+
+# The real password of a real user must still be refused.
 out=$(curl -s -w ' %{http_code}' -XPOST "$BASE/_matrix/client/v3/login" -H 'content-type: application/json' \
-  -d '{"type":"m.login.password","identifier":{"type":"m.id.user","user":"x"},"password":"y"}')
-code=${out##* }
-[[ $code -ge 400 && $out != *access_token* ]] || fail "password login not refused: $out"
-ok "password login refused: $out"
+  -d "{\"type\":\"m.login.password\",\"identifier\":{\"type\":\"m.id.user\",\"user\":\"$MXUSER\"},\"password\":\"$MXPASS\"}")
+[[ $out == *'Password login has been disabled'*' 400' ]] || fail "password login not disabled: $out"
+ok "password login refused for $MXUSER with its real password: $out"
+
+out=$(curl -s -w ' %{http_code}' -XPOST "$BASE/_matrix/client/v3/register" -H 'content-type: application/json' \
+  -d '{"username":"x","password":"y","auth":{"type":"m.login.dummy"}}')
+[[ $out == *M_FORBIDDEN*' 403' ]] || fail "registration not refused: $out"
+ok "registration refused: $out"
 
 code=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/_synapse/admin/v1/server_version")
 [[ $code == 403 ]] || fail "admin API at edge: $code"
 ok "admin API blocked at edge: $code"
+
+code=$(curl -s -o /dev/null -w '%{http_code}' -X OPTIONS "$BASE/_matrix/client/v3/sync")
+[[ $code == 204 ]] || fail "OPTIONS: $code"
+ok "OPTIONS preflight: $code"
+
+code=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/not-a-route")
+[[ $code == 404 ]] || fail "unknown path: $code"
+ok "unknown path: $code"
 
 echo "all checks passed"

@@ -1,53 +1,55 @@
 #!/usr/bin/env bash
-# Creates server/data: secrets in .env, rendered Synapse config, signing key.
-# Safe to re-run: does nothing once server/data/.env exists.
+# Prepares server/data. Runs on every `make up`:
+# - secrets in server/data/.env are generated once (missing ones are added),
+# - Synapse config is re-rendered from the templates every time,
+# - the signing key is generated once.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
 SYNAPSE_IMAGE=ghcr.io/element-hq/synapse:v1.163.2
 DATA=server/data
-
-if [[ -f $DATA/.env ]]; then
-  echo "$DATA/.env exists, nothing to do"
-  exit 0
-fi
+ENV=$DATA/.env
+SECRETS="POSTGRES_PASSWORD JWT_SECRET OTP_PEPPER REGISTRATION_SHARED_SECRET MACAROON_SECRET FORM_SECRET WORKER_REPLICATION_SECRET"
 
 mkdir -p "$DATA"/{synapse/workers,media,chama-id}
 # chama-id runs as user node; dev only.
 chmod 777 "$DATA/chama-id"
 
-export SERVER_NAME=chama.test
-export PUBLIC_BASEURL=http://localhost:8080
-for v in POSTGRES_PASSWORD JWT_SECRET OTP_PEPPER REGISTRATION_SHARED_SECRET MACAROON_SECRET FORM_SECRET; do
-  export "$v=$(openssl rand -hex 32)"
+umask 077
+touch "$ENV"
+chmod 600 "$ENV"
+has() { grep -q "^$1=" "$ENV"; }
+has SERVER_NAME || echo "SERVER_NAME=chama.test" >> "$ENV"
+has PUBLIC_BASEURL || echo "PUBLIC_BASEURL=http://localhost:8080" >> "$ENV"
+for v in $SECRETS; do
+  has "$v" || echo "$v=$(openssl rand -hex 32)" >> "$ENV"
 done
 
-# Render ${VAR} tokens from a fixed list. Fails on any unknown token.
+# Render ${VAR} tokens from .env. Fails on any unknown or empty token.
 node -e '
   const fs = require("fs");
-  const allowed = ["SERVER_NAME", "PUBLIC_BASEURL", "POSTGRES_PASSWORD", "JWT_SECRET",
-    "REGISTRATION_SHARED_SECRET", "MACAROON_SECRET", "FORM_SECRET"];
-  const out = fs.readFileSync(process.argv[1], "utf8").replace(/\$\{(\w+)\}/g, (_, k) => {
-    if (!allowed.includes(k) || !process.env[k]) throw new Error("unknown or empty variable " + k);
-    return process.env[k];
+  const [envFile, src, dst] = process.argv.slice(1);
+  const env = Object.fromEntries(fs.readFileSync(envFile, "utf8").split("\n")
+    .filter(Boolean).map((l) => [l.slice(0, l.indexOf("=")), l.slice(l.indexOf("=") + 1)]));
+  const out = fs.readFileSync(src, "utf8").replace(/\$\{(\w+)\}/g, (_, k) => {
+    if (!env[k]) throw new Error("unknown or empty variable " + k);
+    return env[k];
   });
-  fs.writeFileSync(process.argv[2], out, { mode: 0o600 });
-' server/synapse/homeserver.yaml.tmpl "$DATA/synapse/homeserver.yaml"
-
+  fs.writeFileSync(dst, out, { mode: 0o600 });
+' "$ENV" server/synapse/homeserver.yaml.tmpl "$DATA/synapse/homeserver.yaml"
 cp server/synapse/log.yaml "$DATA/synapse/"
 cp server/synapse/workers/*.yaml "$DATA/synapse/workers/"
 
-docker run --rm -v "$PWD/$DATA/synapse:/data" --entrypoint python "$SYNAPSE_IMAGE" \
-  -m synapse.app.homeserver --config-path /data/homeserver.yaml --generate-keys
+if [[ ! -f $DATA/synapse/signing.key ]]; then
+  docker run --rm -v "$PWD/$DATA/synapse:/data" --entrypoint python "$SYNAPSE_IMAGE" \
+    -m synapse.app.homeserver --config-path /data/homeserver.yaml --generate-keys
+fi
 
-# Written last, so a failed run is retried instead of skipped.
-umask 077
-{
-  echo "SERVER_NAME=$SERVER_NAME"
-  echo "PUBLIC_BASEURL=$PUBLIC_BASEURL"
-  for v in POSTGRES_PASSWORD JWT_SECRET OTP_PEPPER REGISTRATION_SHARED_SECRET MACAROON_SECRET FORM_SECRET; do
-    echo "$v=${!v}"
-  done
-} > "$DATA/.env"
-chmod 600 "$DATA/.env"
-echo "wrote $DATA/.env"
+# Containers read config at start. A new CONFIG_REV makes `docker compose up`
+# recreate them, so template edits reach the stack on the next `make up`.
+rev=$(cat "$DATA/synapse/homeserver.yaml" "$DATA/synapse/log.yaml" "$DATA"/synapse/workers/*.yaml \
+  server/caddy/Caddyfile | openssl sha256 | awk '{print $NF}')
+grep -v '^CONFIG_REV=' "$ENV" > "$ENV.tmp" || true
+echo "CONFIG_REV=$rev" >> "$ENV.tmp"
+mv "$ENV.tmp" "$ENV"
+echo "server/data ready (config rev ${rev:0:12})"

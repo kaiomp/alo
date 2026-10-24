@@ -1,7 +1,7 @@
 name: chama
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgres:17.11-alpine
     environment:
       POSTGRES_USER: synapse
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -11,12 +11,13 @@ services:
     healthcheck: { test: ["CMD-SHELL", "pg_isready -U synapse"], interval: 3s, retries: 20 }
 
   redis:
-    image: redis:7-alpine
+    image: redis:7.4.11-alpine
     healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 3s, retries: 20 }
 
   synapse:
     image: ghcr.io/element-hq/synapse:v1.163.2
     entrypoint: ["python", "-m", "synapse.app.homeserver", "--config-path", "/data/homeserver.yaml"]
+    environment: { CONFIG_REV: "${CONFIG_REV}" }   # set by init.sh; a new value recreates the container
     volumes: ["./data/synapse:/data", "./data/media:/media"]
     depends_on:
       postgres: { condition: service_healthy }
@@ -26,6 +27,7 @@ services:
   sync1:
     image: ghcr.io/element-hq/synapse:v1.163.2
     entrypoint: ["python", "-m", "synapse.app.generic_worker", "--config-path", "/data/homeserver.yaml", "--config-path", "/data/workers/sync1.yaml"]
+    environment: { CONFIG_REV: "${CONFIG_REV}" }
     volumes: ["./data/synapse:/data"]
     depends_on: { synapse: { condition: service_healthy } }
     healthcheck: { test: ["CMD", "curl", "-fs", "http://localhost:8083/health"], interval: 5s, retries: 30 }
@@ -33,6 +35,7 @@ services:
   media1:
     image: ghcr.io/element-hq/synapse:v1.163.2
     entrypoint: ["python", "-m", "synapse.app.generic_worker", "--config-path", "/data/homeserver.yaml", "--config-path", "/data/workers/media1.yaml"]
+    environment: { CONFIG_REV: "${CONFIG_REV}" }
     volumes: ["./data/synapse:/data", "./data/media:/media"]
     depends_on: { synapse: { condition: service_healthy } }
     healthcheck: { test: ["CMD", "curl", "-fs", "http://localhost:8085/health"], interval: 5s, retries: 30 }
@@ -53,8 +56,12 @@ services:
     depends_on: { synapse: { condition: service_healthy } }
 
   caddy:
-    image: caddy:2-alpine
-    ports: ["8080:8080"]
+    image: caddy:2.11.7-alpine
+    # Localhost only: dev mode accepts code 000000 for any phone. The Android
+    # emulator reaches this as 10.0.2.2:8080; a physical phone needs a different
+    # setup (for example adb reverse tcp:8080 tcp:8080).
+    ports: ["127.0.0.1:8080:8080"]
+    environment: { CONFIG_REV: "${CONFIG_REV}" }
     volumes: ["./caddy/Caddyfile:/etc/caddy/Caddyfile:ro"]
     depends_on:
       synapse: { condition: service_healthy }

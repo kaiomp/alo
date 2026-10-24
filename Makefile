@@ -2,10 +2,8 @@ COMPOSE = docker compose -f server/compose.yaml --env-file server/data/.env
 
 .PHONY: up down logs reset test smoke
 
-server/data/.env:
+up:
 	./server/scripts/init.sh
-
-up: server/data/.env
 	$(COMPOSE) up -d --build --wait
 
 down:
