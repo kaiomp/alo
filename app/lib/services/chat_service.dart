@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../auth/id_client.dart';
 import 'chama_client.dart';
+import 'chat_session.dart';
 import 'database.dart';
 import 'delivery.dart';
 import 'event_mapping.dart';
@@ -277,6 +278,8 @@ class ChatService {
 
   Future<String> createGroup(String name, List<String> userIds) =>
       client.createGroupChat(groupName: name, invite: userIds, enableEncryption: true);
+
+  ChatSession openChat(String roomId) => ChatSession(this, _room(roomId));
 
   // ---- media ----
 
