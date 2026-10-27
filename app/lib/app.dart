@@ -11,7 +11,10 @@ import 'services/chat_service.dart';
 
 /// The app. Expects a [Deps] above it (see `bootstrap` in main.dart).
 class ChamaApp extends StatelessWidget {
-  const ChamaApp({super.key});
+  const ChamaApp({super.key, this.locale});
+
+  /// Null follows the system; the demo pins Portuguese.
+  final Locale? locale;
 
   @override
   Widget build(BuildContext context) => MaterialApp(
@@ -19,6 +22,7 @@ class ChamaApp extends StatelessWidget {
     debugShowCheckedModeBanner: false,
     theme: chamaTheme(Brightness.light),
     darkTheme: chamaTheme(Brightness.dark),
+    locale: locale,
     localizationsDelegates: L10n.localizationsDelegates,
     supportedLocales: L10n.supportedLocales,
     // pt-BR first: any locale we do not have falls back to Portuguese.
