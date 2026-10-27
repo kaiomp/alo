@@ -6,7 +6,9 @@ import '../contacts/contacts_service.dart';
 import '../services/chat_service.dart';
 import '../services/models.dart';
 import '../services/push.dart';
+import '../services/civic_service.dart';
 import '../services/social_service.dart';
+import '../services/wellbeing_service.dart';
 import 'notifications.dart';
 
 /// Picks one file; [image] limits the picker to photos. Null when cancelled.
@@ -29,6 +31,8 @@ class Deps extends InheritedWidget {
     required this.pickFile,
     required this.shareText,
     this.social,
+    this.civic,
+    this.wellbeing,
     required super.child,
   });
 
@@ -43,6 +47,12 @@ class Deps extends InheritedWidget {
 
   /// Momentos, Praça and Perfil tabs; null keeps the chat-only home.
   final SocialService? social;
+
+  /// The Voz tab; null leaves it out.
+  final CivicService? civic;
+
+  /// Bem-estar: time, limits and calm options; null leaves them out.
+  final WellbeingService? wellbeing;
 
   static Deps of(BuildContext context) => context.getInheritedWidgetOfExactType<Deps>()!;
 

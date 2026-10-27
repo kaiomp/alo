@@ -460,8 +460,8 @@
       }
     }
   },
-  "feedUpToDate": "Você viu tudo de quem segue",
-  "feedUpToDateBody": "Sem sugestões, sem anúncios. Volte mais tarde.",
+  "feedUpToDate": "Você está em dia",
+  "feedUpToDateBody": "Você viu tudo que é novo. Que tal sair um pouco?",
   "timeNow": "agora",
   "timeMinutes": "{n} min",
   "@timeMinutes": {
@@ -556,5 +556,209 @@
       }
     }
   },
-  "moveChatsStay": "Suas conversas continuam criptografadas e com você."
+  "moveChatsStay": "Suas conversas continuam criptografadas e com você.",
+  "tabVoice": "Voz",
+  "sampleData": "Dados de exemplo",
+  "civicFollow": "Acompanhe",
+  "civicVote": "Vote",
+  "civicPropose": "Proponha",
+  "civicMobilize": "Mobilize",
+  "civicIntro": "Fatos com fonte, sem ranking e sem partido. Quem decide o que importa é você.",
+  "yourRepresentatives": "Seus representantes · {place}",
+  "@yourRepresentatives": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "attendance": "Presença nas votações",
+  "attendanceValue": "{present} de {total} sessões",
+  "@attendanceValue": {
+    "placeholders": {
+      "present": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "spending": "Gastos do mandato em {year}",
+  "@spending": {
+    "placeholders": {
+      "year": {
+        "type": "int"
+      }
+    }
+  },
+  "recentVotes": "Como votou",
+  "billsAuthored": "Projetos apresentados",
+  "source": "Fonte: dados abertos · {source}",
+  "@source": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
+  "choiceYes": "Sim",
+  "choiceNo": "Não",
+  "choiceAbstain": "Abstenção",
+  "howWouldYouVote": "Como você votaria?",
+  "verifyIdentity": "Verificar identidade com gov.br",
+  "verifying": "Verificando…",
+  "verifiedBadge": "Identidade verificada · seu voto é anônimo",
+  "oneVote": "Uma pessoa, um voto. Ninguém vê como você votou.",
+  "confirmVote": "Confirmar voto",
+  "youVoted": "Você votou: {choice}",
+  "@youVoted": {
+    "placeholders": {
+      "choice": {
+        "type": "String"
+      }
+    }
+  },
+  "thePeople": "O povo",
+  "theChamber": "A Câmara",
+  "yesShare": "{percent} sim",
+  "@yesShare": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "peopleGap": "{points} pontos de diferença entre o povo e quem o representa.",
+  "@peopleGap": {
+    "placeholders": {
+      "points": {
+        "type": "int"
+      }
+    }
+  },
+  "votesCount": "{count} votos",
+  "@votesCount": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "chamberVotes": "{yes} de {total} deputados",
+  "@chamberVotes": {
+    "placeholders": {
+      "yes": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "byState": "Por estado · % sim",
+  "openUntil": "Aberta até {date}",
+  "@openUntil": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "signatures": "{signed} de {goal} assinaturas",
+  "@signatures": {
+    "placeholders": {
+      "signed": {
+        "type": "String"
+      },
+      "goal": {
+        "type": "String"
+      }
+    }
+  },
+  "petitionRule": "Meta legal: 1% do eleitorado em pelo menos 5 estados",
+  "petitionStates": "{reached} de 5 estados com o mínimo",
+  "@petitionStates": {
+    "placeholders": {
+      "reached": {
+        "type": "int"
+      }
+    }
+  },
+  "sign": "Assinar",
+  "signedDone": "Assinado",
+  "signedSnack": "Assinatura registrada · identidade verificada",
+  "proposeIdea": "Propor uma ideia",
+  "join": "Entrar",
+  "joined": "Participando",
+  "mobilizeIntro": "Canais abertos de movimentos e causas, de todos os lados. Nenhum algoritmo escolhe quem aparece.",
+  "wellbeing": "Bem-estar",
+  "wellbeingToday": "Hoje: {minutes} min",
+  "@wellbeingToday": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "wellbeingIntro": "O Chama não ganha nada com o seu tempo. Use o quanto fizer bem.",
+  "last7Days": "Últimos 7 dias",
+  "dailyLimit": "Limite diário",
+  "minutesPerDay": "{minutes} min por dia",
+  "@minutesPerDay": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "noLimit": "Sem limite",
+  "lessTime": "Menos tempo",
+  "moreTime": "Mais tempo",
+  "restMode": "Modo descanso",
+  "restModeBody": "Das {from} às {to} as notificações esperam a manhã, menos as dos seus favoritos.",
+  "@restModeBody": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "digest": "Resumo",
+  "digestBody": "Notificações juntas, só às {times}.",
+  "@digestBody": {
+    "placeholders": {
+      "times": {
+        "type": "String"
+      }
+    }
+  },
+  "calmOptions": "Opções de calma",
+  "hideLikes": "Esconder número de curtidas",
+  "hideSeenBy": "Não mostrar \"visto por\" nos Momentos",
+  "greyMode": "Modo cinza",
+  "greyModeBody": "Tela em tons de cinza: o celular chama menos a atenção.",
+  "pauseTitle": "Hora de uma pausa",
+  "pauseBody": "Você chegou ao limite que escolheu para hoje: {minutes} min. Que tal dar uma volta?",
+  "@pauseBody": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "pauseMore": "Mais 5 minutos",
+  "pauseClose": "Fechar o Chama",
+  "goalReached": "Meta alcançada · o projeto vai para a Câmara",
+  "channelMembers": "{count} membros",
+  "@channelMembers": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  }
 }

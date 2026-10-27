@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../chat/chat_screen.dart';
+import '../civic/voz_view.dart';
 import '../common/avatar.dart';
 import '../common/brand.dart';
 import '../common/connection_banner.dart';
@@ -236,12 +237,15 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Conversas · Momentos · Praça · Perfil. Each tab keeps its scroll
   /// position while another one shows.
   Widget _socialPhone(BuildContext context, L10n l) {
+    final voz = _deps.civic != null;
     final tabs = [
       (Icons.chat_bubble_outline_rounded, l.tabChats),
       (Icons.motion_photos_on_outlined, l.tabMoments),
       (Icons.dynamic_feed_outlined, l.tabSquare),
+      if (voz) (Icons.campaign_outlined, l.tabVoice),
       (Icons.person_outline_rounded, l.tabProfile),
     ];
+    final profileTab = tabs.length - 1;
     void soon() => ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(l.comingSoon)));
@@ -277,7 +281,7 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: _tab == 0 ? const ChamaMark(size: 34, tile: true) : Text(tabs[_tab].$2),
         actions: [
-          if (_tab == 3)
+          if (_tab == profileTab)
             IconButton(
               key: const Key('settings'),
               tooltip: l.settings,
@@ -299,6 +303,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ChatListView(onOpen: (id) => _open(id, false), onNewChat: () => _newChat(false)),
                 const MomentsView(),
                 const FeedView(),
+                if (voz) const VozView(),
                 const MeView(),
               ],
             ),
