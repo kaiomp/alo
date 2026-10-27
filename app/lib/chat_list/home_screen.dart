@@ -7,6 +7,7 @@ import '../civic/voz_view.dart';
 import '../common/avatar.dart';
 import '../common/brand.dart';
 import '../common/connection_banner.dart';
+import '../common/simple_mode.dart';
 import '../common/deps.dart';
 import '../common/theme.dart';
 import '../common/widgets.dart';
@@ -33,6 +34,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _tab = 0;
+  String _socialTab = 'chats'; // social home: tabs come and go with Modo simples
   String? _selected; // wide layout only
   final _left = GlobalKey<NavigatorState>();
   int _profileVersion = 0; // reloads my avatar after settings
@@ -234,18 +236,25 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Conversas · Momentos · feed (tabFeed) · Voz · Perfil. Each tab keeps its scroll
+  /// Conversas · Momentos · feed (tabFeed) · Voz · Perfil; Modo simples
+  /// keeps only Conversas, the feed and Voz. Each tab keeps its scroll
   /// position while another one shows.
   Widget _socialPhone(BuildContext context, L10n l) {
-    final voz = _deps.civic != null;
-    final tabs = [
-      (Icons.chat_bubble_outline_rounded, l.tabChats),
-      (Icons.motion_photos_on_outlined, l.tabMoments),
-      (Icons.dynamic_feed_outlined, l.tabFeed),
-      if (voz) (Icons.campaign_outlined, l.tabVoice),
-      (Icons.person_outline_rounded, l.tabProfile),
+    final simple = SimpleMode.of(context);
+    final tabs = <(String, IconData, String, Widget)>[
+      (
+        'chats',
+        Icons.chat_bubble_outline_rounded,
+        l.tabChats,
+        ChatListView(onOpen: (id) => _open(id, false), onNewChat: () => _newChat(false)),
+      ),
+      if (!simple) ('moments', Icons.motion_photos_on_outlined, l.tabMoments, const MomentsView()),
+      ('feed', Icons.dynamic_feed_outlined, l.tabFeed, const FeedView()),
+      if (_deps.civic != null) ('voz', Icons.campaign_outlined, l.tabVoice, const VozView()),
+      if (!simple) ('profile', Icons.person_outline_rounded, l.tabProfile, const MeView()),
     ];
-    final profileTab = tabs.length - 1;
+    final index = tabs.indexWhere((t) => t.$1 == _socialTab).clamp(0, tabs.length - 1);
+    final current = tabs[index].$1;
     void soon() => ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(l.comingSoon)));
@@ -256,20 +265,20 @@ class _HomeScreenState extends State<HomeScreen> {
       if (posted == true) messenger.showSnackBar(SnackBar(content: Text(l.posted)));
     }
 
-    final fab = switch (_tab) {
-      0 => FloatingActionButton(
+    final fab = switch (current) {
+      'chats' => FloatingActionButton(
         key: const Key('new_chat'),
         tooltip: l.newChat,
         onPressed: () => _newChat(false),
         child: const Icon(Icons.add_comment),
       ),
-      1 => FloatingActionButton(
+      'moments' => FloatingActionButton(
         key: const Key('new_moment'),
         tooltip: l.myMoment,
         onPressed: soon,
         child: const Icon(Icons.photo_camera_outlined),
       ),
-      2 => FloatingActionButton(
+      'feed' => FloatingActionButton(
         key: const Key('compose'),
         tooltip: l.newPost,
         onPressed: compose,
@@ -279,9 +288,9 @@ class _HomeScreenState extends State<HomeScreen> {
     };
     return Scaffold(
       appBar: AppBar(
-        title: _tab == 0 ? const ChamaMark(size: 34, tile: true) : Text(tabs[_tab].$2),
+        title: index == 0 ? const ChamaMark(size: 34, tile: true) : Text(tabs[index].$3),
         actions: [
-          if (_tab == profileTab)
+          if (current == 'profile')
             IconButton(
               key: const Key('settings'),
               tooltip: l.settings,
@@ -298,14 +307,8 @@ class _HomeScreenState extends State<HomeScreen> {
           const ConnectionBanner(),
           Expanded(
             child: IndexedStack(
-              index: _tab,
-              children: [
-                ChatListView(onOpen: (id) => _open(id, false), onNewChat: () => _newChat(false)),
-                const MomentsView(),
-                const FeedView(),
-                if (voz) const VozView(),
-                const MeView(),
-              ],
+              index: index,
+              children: [for (final t in tabs) KeyedSubtree(key: ValueKey(t.$1), child: t.$4)],
             ),
           ),
         ],
@@ -315,7 +318,11 @@ class _HomeScreenState extends State<HomeScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           const Divider(height: 0.5),
-          HomeNavBar(tabs: tabs, selected: _tab, onSelected: (i) => setState(() => _tab = i)),
+          HomeNavBar(
+            tabs: [for (final t in tabs) (t.$2, t.$3)],
+            selected: index,
+            onSelected: (i) => setState(() => _socialTab = tabs[i].$1),
+          ),
         ],
       ),
     );

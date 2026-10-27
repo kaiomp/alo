@@ -190,6 +190,9 @@ abstract interface class SocialService {
   void moreLike(String postId);
   void lessLike(String postId);
 
+  /// Takes back [lessLike] ("Desfazer").
+  void undoLess(String postId);
+
   /// Bio and counts for anyone's profile page.
   SocialProfile profileOf(Person person);
 

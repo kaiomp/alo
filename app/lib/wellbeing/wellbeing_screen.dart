@@ -85,77 +85,81 @@ class _Week extends StatelessWidget {
         final limit = service.dailyLimit.value;
         final top = math.max(days.fold(1, math.max), limit ?? 0) * 1.15;
         const height = 120.0;
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16),
-          padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: scheme.outlineVariant),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                l.last7Days,
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: ChatColors.of(context).accent),
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                height: height + 34,
-                child: Stack(
-                  children: [
-                    if (limit != null)
-                      AnimatedPositioned(
-                        duration: const Duration(milliseconds: 300),
-                        left: 0,
-                        right: 0,
-                        top: 16 + height * (1 - limit / top),
-                        child: Container(height: 1.5, color: scheme.onSurfaceVariant.withValues(alpha: 0.5)),
-                      ),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        for (final (i, m) in days.indexed)
-                          Expanded(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                Text(
-                                  '$m',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: scheme.onSurfaceVariant,
-                                    fontFeatures: tabularFigures,
-                                  ),
-                                ),
-                                const SizedBox(height: 3),
-                                AnimatedContainer(
-                                  duration: const Duration(milliseconds: 400),
-                                  height: height * m / top,
-                                  margin: const EdgeInsets.symmetric(horizontal: 7),
-                                  decoration: BoxDecoration(
-                                    color: i == days.length - 1
-                                        ? scheme.primary
-                                        : scheme.primary.withValues(alpha: 0.3),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  DateFormat.E(l.localeName)
-                                      .format(today.subtract(Duration(days: days.length - 1 - i)))
-                                      .substring(0, 3),
-                                  style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant),
-                                ),
-                              ],
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
+        return Semantics(
+          label: l.weekSummary(days.join(', ')),
+          excludeSemantics: true,
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: scheme.outlineVariant),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l.last7Days,
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: ChatColors.of(context).accent),
                 ),
-              ),
-            ],
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: height + 34,
+                  child: Stack(
+                    children: [
+                      if (limit != null)
+                        AnimatedPositioned(
+                          duration: const Duration(milliseconds: 300),
+                          left: 0,
+                          right: 0,
+                          top: 16 + height * (1 - limit / top),
+                          child: Container(height: 1.5, color: scheme.onSurfaceVariant.withValues(alpha: 0.5)),
+                        ),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          for (final (i, m) in days.indexed)
+                            Expanded(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    '$m',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: scheme.onSurfaceVariant,
+                                      fontFeatures: tabularFigures,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  AnimatedContainer(
+                                    duration: const Duration(milliseconds: 400),
+                                    height: height * m / top,
+                                    margin: const EdgeInsets.symmetric(horizontal: 7),
+                                    decoration: BoxDecoration(
+                                      color: i == days.length - 1
+                                          ? scheme.primary
+                                          : scheme.primary.withValues(alpha: 0.3),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    DateFormat.E(l.localeName)
+                                        .format(today.subtract(Duration(days: days.length - 1 - i)))
+                                        .substring(0, 3),
+                                    style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },

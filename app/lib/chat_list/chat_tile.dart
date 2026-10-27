@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../chat/tick_icon.dart';
 import '../common/actions.dart';
 import '../common/avatar.dart';
+import '../common/simple_mode.dart';
 import '../common/theme.dart';
 import '../common/time_format.dart';
 import '../l10n/app_localizations.dart';
@@ -45,6 +46,7 @@ class ChatTile extends StatelessWidget {
     };
     final muted = scheme.onSurfaceVariant;
     final faint = muted.withValues(alpha: 0.7);
+    final simple = SimpleMode.of(context);
     return Material(
       color: selected ? scheme.surfaceContainerHigh : Colors.transparent,
       child: Builder(
@@ -53,13 +55,20 @@ class ChatTile extends StatelessWidget {
           onTap: onTap,
           onLongPress: () => onActions(rectOf(context), false),
           onSecondaryTapDown: (d) => onActions(d.globalPosition & Size.zero, true),
-          child: SizedBox(
-            height: 72,
+          // At least 72 px; taller when the text is large, never clipped.
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: simple ? 88 : 72),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: simple ? 10 : 6),
               child: Row(
                 children: [
-                  Avatar(name: chat.name, seed: chat.id, mxc: chat.avatar, group: chat.isGroup),
+                  Avatar(
+                    name: chat.name,
+                    seed: chat.id,
+                    mxc: chat.avatar,
+                    group: chat.isGroup,
+                    radius: simple ? 30 : 24,
+                  ),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(

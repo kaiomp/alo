@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 
 import '../common/avatar.dart';
 import '../common/deps.dart';
+import '../common/motion.dart';
+import '../common/simple_mode.dart';
 import '../common/net_image.dart';
 import '../common/theme.dart';
 import '../common/time_format.dart';
@@ -59,7 +61,7 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
 
   void _doubleTap() {
     HapticFeedback.lightImpact();
-    _burst.forward(from: 0);
+    if (!reduceMotion(context)) _burst.forward(from: 0);
     if (!widget.post.liked) widget.onLike();
   }
 
@@ -125,8 +127,8 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                           child: Text(
                             post.text,
                             style: TextStyle(
-                              fontSize: widget.large ? 17 : 15.5,
-                              height: widget.large ? 24 / 17 : 22 / 15.5,
+                              fontSize: widget.large ? 18 : 16,
+                              height: widget.large ? 25 / 18 : 23 / 16,
                               color: scheme.onSurface,
                             ),
                           ),
@@ -154,7 +156,12 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                                         border: Border.all(color: scheme.onSurface.withValues(alpha: 0.06)),
                                         borderRadius: BorderRadius.circular(16),
                                       ),
-                                      child: NetImage(image, key: Key('post_image_${post.id}')),
+                                      // Alt text: the post's own words.
+                                      child: Semantics(
+                                        label: l.photoOf(post.text),
+                                        image: true,
+                                        child: NetImage(image, key: Key('post_image_${post.id}')),
+                                      ),
                                     ),
                                     _HeartBurst(animation: _burst),
                                   ],
@@ -221,8 +228,8 @@ class _Byline extends StatelessWidget {
       children: [
         Expanded(child: line),
         SizedBox(
-          width: 32,
-          height: 24,
+          width: 48,
+          height: 40,
           child: IconButton(
             key: Key('why_${post.id}'),
             tooltip: l.whyThis,
@@ -279,9 +286,9 @@ class _ReasonLine extends StatelessWidget {
   Widget build(BuildContext context) {
     final muted = Theme.of(context).colorScheme.onSurfaceVariant;
     final r = post.reason!;
-    return InkWell(
+    // Plain text: the "⋯" button next to the name opens the reasons.
+    return KeyedSubtree(
       key: Key('reason_${post.id}'),
-      onTap: () => showWhySheet(context, post),
       child: Padding(
         padding: const EdgeInsets.only(left: 30, bottom: 6),
         child: Row(
@@ -293,7 +300,7 @@ class _ReasonLine extends StatelessWidget {
                 reasonText(r, L10n.of(context)),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: muted),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: muted),
               ),
             ),
           ],
@@ -316,8 +323,9 @@ class _SponsoredLine extends StatelessWidget {
     return InkWell(
       key: Key('why_ad_${post.id}'),
       onTap: () => showAdSheet(context, post),
-      child: Padding(
-        padding: const EdgeInsets.only(left: 30, bottom: 6),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 48),
+        padding: const EdgeInsets.only(left: 30),
         child: Row(
           children: [
             Container(
@@ -360,10 +368,12 @@ class _Actions extends StatelessWidget {
     final colors = ChatColors.of(context);
     // Calm option: the heart stays, the number goes.
     final hide = Deps.of(context).wellbeing?.hideLikes;
-    Widget row(bool hideLikes) => Row(
+    final simple = SimpleMode.of(context);
+    Widget row(bool hideLikes) => Wrap(
       children: [
         _ActionButton(
           key: Key('like_${post.id}'),
+          showLabel: simple,
           tooltip: l.like,
           count: hideLikes ? null : post.likes,
           active: post.liked,
@@ -375,6 +385,7 @@ class _Actions extends StatelessWidget {
         ),
         _ActionButton(
           key: Key('reply_${post.id}'),
+          showLabel: simple,
           tooltip: l.reply,
           count: post.replies,
           icon: Icons.chat_bubble_outline_rounded,
@@ -382,6 +393,7 @@ class _Actions extends StatelessWidget {
         ),
         _ActionButton(
           key: Key('repost_${post.id}'),
+          showLabel: simple,
           tooltip: l.repost,
           count: post.reposts,
           active: post.reposted,
@@ -391,6 +403,7 @@ class _Actions extends StatelessWidget {
         ),
         _ActionButton(
           key: Key('share_${post.id}'),
+          showLabel: simple,
           tooltip: l.share,
           icon: Icons.ios_share_rounded,
           onTap: widget.onShare,
@@ -413,8 +426,12 @@ class _ActionButton extends StatefulWidget {
     this.active = false,
     this.activeColor,
     this.pop = false,
+    this.showLabel = false,
   });
   final String tooltip;
+
+  /// Modo simples: the word next to the icon.
+  final bool showLabel;
   final IconData icon;
   final IconData? activeIcon;
   final int? count;
@@ -439,7 +456,10 @@ class _ActionButtonState extends State<_ActionButton> with SingleTickerProviderS
   @override
   void didUpdateWidget(_ActionButton old) {
     super.didUpdateWidget(old);
-    if (widget.pop && widget.active && !old.active) _scale.forward(from: 0);
+    if (widget.pop && widget.active && !old.active && !reduceMotion(context)) {
+      HapticFeedback.selectionClick();
+      _scale.forward(from: 0);
+    }
   }
 
   @override
@@ -455,38 +475,51 @@ class _ActionButtonState extends State<_ActionButton> with SingleTickerProviderS
     final color = widget.active ? widget.activeColor ?? muted : muted;
     final n = widget.count;
     return Padding(
-      padding: const EdgeInsets.only(right: 10),
+      padding: const EdgeInsets.only(right: 4),
       child: Semantics(
         button: true,
         selected: widget.active,
-        label: widget.tooltip,
+        label: n == null || n == 0 ? widget.tooltip : '${widget.tooltip}, ${count(n, l)}',
+        excludeSemantics: true,
         child: InkWell(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(24),
           onTap: widget.onTap,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(6, 8, 8, 8),
-            child: Row(
-              children: [
-                ScaleTransition(
-                  scale: _scale.drive(_pop),
-                  child: Icon(widget.active ? widget.activeIcon ?? widget.icon : widget.icon, size: 21, color: color),
-                ),
-                if (n != null && n > 0) ...[
-                  const SizedBox(width: 5),
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 220),
-                    transitionBuilder: (child, a) => SlideTransition(
-                      position: Tween(begin: const Offset(0, 0.5), end: Offset.zero).animate(a),
-                      child: FadeTransition(opacity: a, child: child),
-                    ),
-                    child: Text(
-                      count(n, l),
-                      key: ValueKey(n),
-                      style: TextStyle(fontSize: 13.5, color: color, fontFeatures: tabularFigures),
-                    ),
+          // 48 px tall at least: easy to hit.
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(8, 4, 10, 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ScaleTransition(
+                    scale: _scale.drive(_pop),
+                    child: Icon(widget.active ? widget.activeIcon ?? widget.icon : widget.icon, size: 22, color: color),
                   ),
+                  if (widget.showLabel) ...[
+                    const SizedBox(width: 5),
+                    Text(
+                      widget.tooltip,
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: color),
+                    ),
+                  ],
+                  if (n != null && n > 0) ...[
+                    const SizedBox(width: 5),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 220),
+                      transitionBuilder: (child, a) => SlideTransition(
+                        position: Tween(begin: const Offset(0, 0.5), end: Offset.zero).animate(a),
+                        child: FadeTransition(opacity: a, child: child),
+                      ),
+                      child: Text(
+                        count(n, l),
+                        key: ValueKey(n),
+                        style: TextStyle(fontSize: 14.5, color: color, fontFeatures: tabularFigures),
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),

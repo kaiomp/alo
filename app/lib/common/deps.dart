@@ -10,6 +10,7 @@ import '../services/civic_service.dart';
 import '../services/social_service.dart';
 import '../services/wellbeing_service.dart';
 import 'notifications.dart';
+import 'simple_mode.dart';
 
 /// Picks one file; [image] limits the picker to photos. Null when cancelled.
 typedef PickFile = Future<PickedFile?> Function({required bool image});
@@ -33,6 +34,7 @@ class Deps extends InheritedWidget {
     this.social,
     this.civic,
     this.wellbeing,
+    this.simpleMode,
     required super.child,
   });
 
@@ -53,6 +55,9 @@ class Deps extends InheritedWidget {
 
   /// Bem-estar: time, limits and calm options; null leaves them out.
   final WellbeingService? wellbeing;
+
+  /// Modo simples; null leaves it out (no switch, no first-launch question).
+  final SimpleMode? simpleMode;
 
   static Deps of(BuildContext context) => context.getInheritedWidgetOfExactType<Deps>()!;
 

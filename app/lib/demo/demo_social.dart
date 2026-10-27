@@ -72,6 +72,13 @@ class DemoSocialService implements SocialService {
   }
 
   @override
+  void undoLess(String postId) {
+    _weigh(postId, 1);
+    _hiddenPosts.remove(postId);
+    _recompute();
+  }
+
+  @override
   void lessLike(String postId) {
     _weigh(postId, -1);
     _hiddenPosts.add(postId);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../common/deps.dart';
+import '../common/motion.dart';
 import '../common/theme.dart';
 import '../l10n/app_localizations.dart';
 import '../services/social_service.dart';
@@ -176,13 +177,18 @@ class _FollowingState extends State<_Following> {
   }
 }
 
+/// Reposts (or takes it back), with "Desfazer" instead of a question.
 void repost(BuildContext context, SocialService social, Post post) {
+  final l = L10n.of(context);
   social.toggleRepost(post.id);
-  if (!post.reposted) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(L10n.of(context).reposted)));
-  }
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(
+      SnackBar(
+        content: Text(post.reposted ? l.repostUndone : l.reposted),
+        action: SnackBarAction(label: l.undo, onPressed: () => social.toggleRepost(post.id)),
+      ),
+    );
 }
 
 Future<void> sharePost(BuildContext context, Post post) async {
@@ -274,7 +280,8 @@ class _SlideIn extends StatefulWidget {
 }
 
 class _SlideInState extends State<_SlideIn> with SingleTickerProviderStateMixin {
-  late final _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 2400))..forward();
+  late final _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 2400))
+    ..forward(from: reduceMotion(context) ? 1 : 0);
 
   /// Opens in the first half second; the highlight fades after that.
   late final _in = CurvedAnimation(

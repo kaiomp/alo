@@ -7,6 +7,7 @@ import 'package:video_player/video_player.dart';
 
 import '../common/avatar.dart';
 import '../common/deps.dart';
+import '../common/motion.dart';
 import '../common/net_image.dart';
 import '../common/theme.dart';
 import '../common/time_format.dart';
@@ -138,7 +139,10 @@ class _ReelInlineState extends State<ReelInline> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              _Cover(key: Key('reel_${widget.post.id}'), post: widget.post, controller: _c),
+              Semantics(
+                label: l.videoOf(widget.post.text),
+                child: _Cover(key: Key('reel_${widget.post.id}'), post: widget.post, controller: _c),
+              ),
               Positioned(
                 top: 10,
                 right: 10,
@@ -215,6 +219,12 @@ class _ReelViewerState extends State<ReelViewer> {
     super.dispose();
   }
 
+  void _go(int by) => _pages.animateToPage(
+    _page + by,
+    duration: motion(context, const Duration(milliseconds: 320)) + const Duration(milliseconds: 1),
+    curve: Curves.easeOutCubic,
+  );
+
   @override
   Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
     value: SystemUiOverlayStyle.light,
@@ -230,6 +240,32 @@ class _ReelViewerState extends State<ReelViewer> {
             onPageChanged: (i) => setState(() => _page = i),
             itemBuilder: (context, i) =>
                 _ReelPage(key: ValueKey(widget.reels[i].id), post: widget.reels[i], active: i == _page),
+          ),
+          // Arrows as well as swipes: nobody has to know the gesture.
+          Positioned(
+            right: 8,
+            top: 0,
+            bottom: 240,
+            child: SafeArea(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _Arrow(
+                    key: const Key('reel_prev'),
+                    icon: Icons.keyboard_arrow_up_rounded,
+                    tooltip: L10n.of(context).storyPrevious,
+                    onTap: _page == 0 ? null : () => _go(-1),
+                  ),
+                  const SizedBox(height: 8),
+                  _Arrow(
+                    key: const Key('reel_next'),
+                    icon: Icons.keyboard_arrow_down_rounded,
+                    tooltip: L10n.of(context).storyNext,
+                    onTap: _page == widget.reels.length - 1 ? null : () => _go(1),
+                  ),
+                ],
+              ),
+            ),
           ),
           SafeArea(
             child: Padding(
@@ -438,5 +474,26 @@ class _Side extends StatelessWidget {
         ),
       ],
     ),
+  );
+}
+
+class _Arrow extends StatelessWidget {
+  const _Arrow({super.key, required this.icon, required this.tooltip, required this.onTap});
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    tooltip: tooltip,
+    onPressed: onTap,
+    style: IconButton.styleFrom(
+      backgroundColor: Tokens.shade,
+      foregroundColor: Colors.white,
+      disabledBackgroundColor: Tokens.shadeLight,
+      disabledForegroundColor: Tokens.onPhotoTrack,
+      fixedSize: const Size.square(48),
+    ),
+    icon: Icon(icon, size: 30),
   );
 }

@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../common/actions.dart';
 import '../common/deps.dart';
+import '../common/simple_mode.dart';
 import '../common/theme.dart';
 import '../l10n/app_localizations.dart';
 import '../services/chat_session.dart';
@@ -194,7 +195,6 @@ class ComposerState extends State<Composer> {
     final hasText = _text.text.trim().isNotEmpty;
     final since = _recordingSince;
     final iconColor = scheme.onSurfaceVariant;
-    final screenReader = MediaQuery.accessibleNavigationOf(context);
 
     final Widget field;
     if (since != null) {
@@ -376,11 +376,14 @@ class ComposerState extends State<Composer> {
                       // touch screens: keep it to mouse hover.
                       child: TooltipTheme(
                         data: TooltipTheme.of(context).copyWith(triggerMode: TooltipTriggerMode.manual),
+                        // A tap records as well, with Send and Cancel on screen:
+                        // holding is a shortcut, never the only way.
                         child: _RoundButton(
                           buttonKey: const Key('mic'),
                           icon: Icons.mic,
-                          tooltip: screenReader ? l.recordVoice : l.voiceMessage,
-                          onPressed: screenReader ? () => _startRecording(locked: true) : () => _snack(l.holdToRecord),
+                          tooltip: l.recordVoice,
+                          size: SimpleMode.of(context) ? 60 : 48,
+                          onPressed: () => _startRecording(locked: true),
                         ),
                       ),
                     ),
@@ -400,11 +403,13 @@ class _RoundButton extends StatefulWidget {
     required this.icon,
     required this.tooltip,
     required this.onPressed,
+    this.size = 48,
   });
   final Key buttonKey;
   final IconData icon;
   final String tooltip;
   final VoidCallback? onPressed;
+  final double size;
 
   @override
   State<_RoundButton> createState() => _RoundButtonState();
@@ -432,10 +437,10 @@ class _RoundButtonState extends State<_RoundButton> {
             foregroundColor: scheme.onPrimary,
             disabledBackgroundColor: scheme.primary,
             disabledForegroundColor: scheme.onPrimary,
-            fixedSize: const Size.square(48),
+            fixedSize: Size.square(widget.size),
             shape: const CircleBorder(),
           ),
-          icon: Icon(widget.icon, size: 22),
+          icon: Icon(widget.icon, size: widget.size * 0.46),
         ),
       ),
     );

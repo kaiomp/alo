@@ -118,12 +118,27 @@ class _Header extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(child: _Outlined(label: l.editProfile)),
-              const SizedBox(width: 8),
-              Expanded(child: _Outlined(label: l.shareProfile)),
-            ],
+          // Side by side while they fit, one above the other with large text.
+          LayoutBuilder(
+            builder: (context, c) {
+              final fits = MediaQuery.textScalerOf(context).scale(15) <= 18;
+              return fits
+                  ? Row(
+                      children: [
+                        Expanded(child: _Outlined(label: l.editProfile)),
+                        const SizedBox(width: 8),
+                        Expanded(child: _Outlined(label: l.shareProfile)),
+                      ],
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _Outlined(label: l.editProfile),
+                        const SizedBox(height: 8),
+                        _Outlined(label: l.shareProfile),
+                      ],
+                    );
+            },
           ),
         ],
       ),

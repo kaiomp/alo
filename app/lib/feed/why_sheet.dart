@@ -42,7 +42,12 @@ class _WhySheet extends StatelessWidget {
     Navigator.pop(context);
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(more ? l.moreLikeThisDone : l.lessLikeThisDone)));
+      ..showSnackBar(
+        SnackBar(
+          content: Text(more ? l.moreLikeThisDone : l.lessLikeThisDone),
+          action: more ? null : SnackBarAction(label: l.undo, onPressed: () => social.undoLess(post.id)),
+        ),
+      );
   }
 
   @override

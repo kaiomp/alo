@@ -115,7 +115,8 @@ class _RingTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       onTap: onTap,
       child: SizedBox(
-        width: 80,
+        // Wider with large text, so first names are never cut.
+        width: MediaQuery.textScalerOf(context).scale(80).clamp(80, 150),
         child: Column(
           children: [
             MomentRing(person: person, seen: seen, badge: badge),

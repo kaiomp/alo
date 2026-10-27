@@ -55,7 +55,18 @@ class YourDataCard extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             l.yourDataBody,
-            style: const TextStyle(color: Tokens.onPhotoSoft, fontSize: 14, height: 20 / 14),
+            style: const TextStyle(color: Tokens.onPhotoSoft, fontSize: 16, height: 22 / 16),
+          ),
+          TextButton(
+            key: const Key('your_data_more'),
+            style: TextButton.styleFrom(
+              foregroundColor: Tokens.ipe,
+              padding: EdgeInsets.zero,
+              minimumSize: const Size(48, 44),
+              alignment: Alignment.centerLeft,
+            ),
+            onPressed: () => showLearnMore(context, l.yourDataTitle, l.yourDataMore),
+            child: Text(l.learnMore),
           ),
           const SizedBox(height: 16),
           Row(
@@ -173,7 +184,7 @@ class _ExportSheetState extends State<_ExportSheet> {
                           children: [
                             Text(done.fileName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                             Text(
-                              '${fileSizeGb(done.bytes, l)} · JSON + ActivityPub',
+                              '${fileSizeGb(done.bytes, l)} · ${l.exportFormat}',
                               style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
                             ),
                           ],
@@ -366,3 +377,27 @@ class _MoveFollowersScreenState extends State<MoveFollowersScreen> {
     );
   }
 }
+
+/// "Saiba mais": the longer explanation, out of the way until asked for.
+Future<void> showLearnMore(BuildContext context, String title, String body) => showModalBottomSheet<void>(
+  context: context,
+  builder: (context) => SafeArea(
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 10),
+          Text(body, style: const TextStyle(fontSize: 16, height: 23 / 16)),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(onPressed: () => Navigator.pop(context), child: Text(L10n.of(context).gotIt)),
+          ),
+        ],
+      ),
+    ),
+  ),
+);

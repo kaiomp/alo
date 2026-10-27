@@ -193,8 +193,31 @@ class ChatColors extends ThemeExtension<ChatColors> {
     return brightness == Brightness.dark ? Color.lerp(c, const Color(0xFF000000), 0.2)! : c;
   }
 
+  /// Only the background changes today (Modo simples: a plain one).
   @override
-  ChatColors copyWith() => this;
+  ChatColors copyWith({Color? background}) => ChatColors(
+    background: background ?? this.background,
+    mine: mine,
+    other: other,
+    bubbleText: bubbleText,
+    meta: meta,
+    readTick: readTick,
+    bubbleShadow: bubbleShadow,
+    banner: banner,
+    onBanner: onBanner,
+    accent: accent,
+    tint: tint,
+    onTint: onTint,
+    systemChip: systemChip,
+    notice: notice,
+    onNotice: onNotice,
+    raised: raised,
+    cardTint: cardTint,
+    quoteName: quoteName,
+    photoShade: photoShade,
+    onPhoto: onPhoto,
+    onPhotoRead: onPhotoRead,
+  );
 
   @override
   ChatColors lerp(ChatColors? other, double t) => t < 0.5 || other == null ? this : other;

@@ -4,6 +4,7 @@ import 'auth/encryption_screen.dart';
 import 'auth/sign_in_screen.dart';
 import 'chat_list/home_screen.dart';
 import 'common/deps.dart';
+import 'common/simple_mode.dart';
 import 'common/theme.dart';
 import 'l10n/app_localizations.dart';
 import 'profile/profile_screen.dart';
@@ -30,8 +31,13 @@ class ChamaApp extends StatelessWidget {
     localeResolutionCallback: (locale, supported) =>
         supported.firstWhere((s) => s.languageCode == locale?.languageCode, orElse: () => const Locale('pt')),
     builder: (context, child) {
-      final wellbeing = Deps.of(context).wellbeing;
-      return wellbeing == null ? child! : WellbeingLayer(service: wellbeing, child: child!);
+      final deps = Deps.of(context);
+      final wellbeing = deps.wellbeing;
+      final simple = deps.simpleMode;
+      var app = child!;
+      if (wellbeing != null) app = WellbeingLayer(service: wellbeing, child: app);
+      if (simple != null) app = SimpleLayer(mode: simple, child: app);
+      return app;
     },
     home: const _AuthGate(),
   );

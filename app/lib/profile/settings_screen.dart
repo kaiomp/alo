@@ -130,6 +130,18 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
             ),
           ),
           const Divider(),
+          if (Deps.of(context).simpleMode case final simple?)
+            ListenableBuilder(
+              listenable: simple,
+              builder: (context, _) => SwitchListTile(
+                key: const Key('simple_switch'),
+                secondary: const Icon(Icons.text_increase_rounded),
+                title: Text(l.simpleMode),
+                subtitle: Text(l.simpleModeBody),
+                value: simple.on,
+                onChanged: (v) => simple.on = v,
+              ),
+            ),
           SectionHeader(l.sectionAccount),
           ListTile(
             leading: const Icon(Icons.person_outline),

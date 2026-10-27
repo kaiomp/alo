@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../common/avatar.dart';
 import '../common/deps.dart';
+import '../common/motion.dart';
 import '../common/net_image.dart';
 import '../common/theme.dart';
 import '../common/time_format.dart';
@@ -37,12 +38,18 @@ class _MomentViewerState extends State<MomentViewer> {
 
   void _next() {
     if (_page + 1 >= widget.groups.length) return Navigator.of(context).pop();
-    _pages.nextPage(duration: const Duration(milliseconds: 420), curve: Curves.easeInOutCubic);
+    _pages.nextPage(
+      duration: motion(context, const Duration(milliseconds: 420)) + const Duration(milliseconds: 1),
+      curve: Curves.easeInOutCubic,
+    );
   }
 
   void _previous() {
     if (_page == 0) return;
-    _pages.previousPage(duration: const Duration(milliseconds: 420), curve: Curves.easeInOutCubic);
+    _pages.previousPage(
+      duration: motion(context, const Duration(milliseconds: 420)) + const Duration(milliseconds: 1),
+      curve: Curves.easeInOutCubic,
+    );
   }
 
   @override
@@ -59,6 +66,7 @@ class _MomentViewerState extends State<MomentViewer> {
         itemBuilder: (context, i) => AnimatedBuilder(
           animation: _pages,
           builder: (context, child) {
+            if (reduceMotion(context)) return child!;
             // Cube: each page turns around its edge shared with the next.
             final pos = _pages.hasClients && _pages.position.haveDimensions ? _pages.page! - i : (_page - i).toDouble();
             final angle = (-pos * math.pi / 2).clamp(-math.pi / 2, math.pi / 2);
@@ -207,9 +215,41 @@ class _GroupPageState extends State<_GroupPage> with SingleTickerProviderStateMi
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 220),
                   layoutBuilder: (current, previous) => Stack(fit: StackFit.expand, children: [...previous, ?current]),
-                  child: NetImage(moment.image, key: ValueKey(moment.id)),
+                  child: Semantics(
+                    key: ValueKey(moment.id),
+                    label: L10n.of(context).photoOf(moment.caption),
+                    image: true,
+                    child: NetImage(moment.image),
+                  ),
                 ),
                 const _Shade(),
+                // Buttons as well as taps: nobody has to know the gesture.
+                Positioned(
+                  left: 4,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                    child: _SideButton(
+                      key: const Key('moment_prev'),
+                      icon: Icons.chevron_left_rounded,
+                      tooltip: L10n.of(context).storyPrevious,
+                      onTap: _back,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 4,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                    child: _SideButton(
+                      key: const Key('moment_next'),
+                      icon: Icons.chevron_right_rounded,
+                      tooltip: L10n.of(context).storyNext,
+                      onTap: _forward,
+                    ),
+                  ),
+                ),
                 SafeArea(
                   child: Column(
                     children: [
@@ -418,4 +458,24 @@ class _ReplyBox extends StatelessWidget {
       ],
     );
   }
+}
+
+/// A round, see-through button over the photo (next / previous).
+class _SideButton extends StatelessWidget {
+  const _SideButton({super.key, required this.icon, required this.tooltip, required this.onTap});
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    tooltip: tooltip,
+    onPressed: onTap,
+    style: IconButton.styleFrom(
+      backgroundColor: Tokens.shade,
+      foregroundColor: Colors.white,
+      fixedSize: const Size.square(48),
+    ),
+    icon: Icon(icon, size: 30),
+  );
 }

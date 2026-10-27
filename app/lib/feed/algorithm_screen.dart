@@ -5,6 +5,7 @@ import '../common/theme.dart';
 import '../common/time_format.dart';
 import '../common/widgets.dart';
 import '../l10n/app_localizations.dart';
+import '../profile/your_data.dart';
 import '../services/social_service.dart';
 
 /// "Escolha seu algoritmo": Chama's own feeds, feeds made by the community,
@@ -38,9 +39,24 @@ class AlgorithmScreen extends StatelessWidget {
                   Icon(Icons.code_rounded, color: colors.onTint),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(
-                      l.algorithmOpen,
-                      style: TextStyle(fontSize: 14.5, height: 20 / 14.5, color: colors.onTint),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l.algorithmOpen,
+                          style: TextStyle(fontSize: 16, height: 22 / 16, color: colors.onTint),
+                        ),
+                        TextButton(
+                          style: TextButton.styleFrom(
+                            foregroundColor: colors.onTint,
+                            padding: EdgeInsets.zero,
+                            minimumSize: const Size(48, 44),
+                            alignment: Alignment.centerLeft,
+                          ),
+                          onPressed: () => showLearnMore(context, l.chooseAlgorithm, l.algorithmMore),
+                          child: Text(l.learnMore, style: const TextStyle(decoration: TextDecoration.underline)),
+                        ),
+                      ],
                     ),
                   ),
                 ],
