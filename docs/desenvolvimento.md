@@ -326,12 +326,12 @@ WhatsApp Web:
 
 Uma versão do app com dados fictícios, para apresentações e para gravar os vídeos do
 projeto. Não precisa de servidor, já abre conectada como "Bia Santana" e mostra as cinco
-abas que o Chama terá: **Conversas**, **Momentos**, **Praça**, **Voz** e **Perfil**, além
+abas que o Chama terá: **Conversas**, **Momentos**, **Rede**, **Voz** e **Perfil**, além
 da tela **Bem-estar**. Roda só na web (as fotos ficam em `app/web/demo/`, com os créditos
 em `app/web/demo/CREDITS.md`).
 
 <p align="center">
-  <img src="imagens/demo-abas-claro.webp" alt="Modo demonstração: abas Conversas, Momentos, Praça, Voz e Perfil" width="760">
+  <img src="imagens/demo-abas-claro.webp" alt="Modo demonstração: abas Conversas, Momentos, Rede, Voz e Perfil" width="760">
 </p>
 
 ```sh
@@ -362,13 +362,29 @@ flowchart LR
   falsas de `ChatService`, `ChatSession` e companhia (`implements`), com pessoas, conversas,
   posts e momentos inventados.
 - As telas novas falam com três interfaces em `lib/services/`: `SocialService` (Momentos,
-  Praça, Perfil), `CivicService` (Voz) e `WellbeingService` (Bem-estar). Hoje só a
+  Rede, Perfil), `CivicService` (Voz) e `WellbeingService` (Bem-estar). Hoje só a
   demonstração implementa essas interfaces. No app de produção, `Deps.social`,
   `Deps.civic` e `Deps.wellbeing` ficam vazios e a tela inicial continua com as abas atuais.
 - **Voz** é apartidária: fatos com fonte ("Fonte: dados abertos"), nada ordenado por
   relevância, nenhuma cor de partido. Na demonstração, todos os políticos, projetos e
   números são inventados e as telas mostram "Dados de exemplo".
-- **Bem-estar**: a Praça tem fim ("Você está em dia"), há limite diário com um cartão de
+- **Rede** tem duas abas. **Para você** recomenda, mas nunca em segredo: cada item diz por
+  que está ali ("Porque você segue @ju.ferreira", "Perto de você · Boa Vista", "Tema:
+  comida"), e "Por que estou vendo isto?" tem "Mostrar mais/menos disso" e liga ou desliga o
+  tema. Em **Escolha seu algoritmo** a pessoa troca o algoritmo (Padrão Chama, Perto de você,
+  Só quem eu sigo ou feeds feitos pela comunidade) e os temas. **Seguindo** mostra só quem
+  você segue, do mais novo ao mais antigo, e termina em "Você está em dia".
+- A Rede mistura posts de texto, de foto e **vídeos curtos verticais (reels)**, que tocam
+  sem som enquanto estão na tela (pacote `video_player`) e abrem em tela cheia. Negócios
+  locais têm perfil comercial; há post em parceria (dois autores), selo "Parceria paga com
+  @marca" e anúncio marcado "Patrocinado", no máximo 1 a cada 10 itens
+  (`app/lib/feed/ads.dart`, com teste), escolhido só pelo tema, nunca pelas conversas.
+  Nunca há anúncio nas conversas nem nos Momentos. Marcas e criadores da demonstração são
+  inventados. Os vídeos vêm do Pixabay e do Pexels (créditos em `app/web/demo/CREDITS.md`).
+- O nome da aba Rede ainda não está decidido. Ele vem de uma chave só, `tabFeed`, em
+  `app/lib/l10n/app_pt.arb` (e `app_en.arb`): mude ali e a barra de baixo, o título e o
+  registro das cenas acompanham.
+- **Bem-estar**: a Rede tem fim ("Você está em dia", em Seguindo), há limite diário com um cartão de
   pausa, Modo descanso, Resumo de notificações, esconder curtidas e modo cinza. Sem
   sequências, medalhas ou culpa.
 - `lib/main.dart` nunca importa `lib/demo/`.
@@ -383,10 +399,11 @@ começo da pausa final de 2 s.
 |---|---|---|---|
 | `conversa` | `/?cena=conversa` | ~29 s | conversa privada, aviso de criptografia, foto, áudio, tiques azuis, reação |
 | `momentos` | `/?cena=momentos` | ~24 s | anéis, momento aberto, troca de pessoa, resposta |
-| `praca` | `/?cena=praca` | ~29 s | "sem algoritmo", curtir, responder, repostar, publicar com foto, "Você está em dia" |
+| `praca` | `/?cena=praca` | ~29 s | Rede · Para você: reel tocando, "Parceria paga", "Patrocinado" e "Por que este anúncio?", "Por que estou vendo isto?", reel em tela cheia, Seguindo até "Você está em dia" |
+| `algoritmo` | `/?cena=algoritmo` | ~19 s | "Escolha seu algoritmo": troca para um feed da comunidade, desliga um tema, o feed muda |
 | `voz` | `/?cena=voz` | ~27 s | ficha de um representante, consulta com identidade verificada, o povo x a Câmara, abaixo-assinado chegando à meta |
 | `dados` | `/?cena=dados` | ~24 s | exportar tudo e levar os seguidores para outro servidor |
-| `calma` | `/?cena=calma` | ~22 s | fim da Praça, limite diário, Modo descanso, curtidas escondidas, modo cinza, "Hora de uma pausa" |
+| `calma` | `/?cena=calma` | ~22 s | fim da Rede (Seguindo), limite diário, vídeos sem reprodução automática, Modo descanso, curtidas escondidas, modo cinza, "Hora de uma pausa" |
 | `tour` | `/?cena=tour` | ~85 s | as cinco abas e o Bem-estar em sequência |
 
 Os horários das mensagens seguem o relógio do computador. Para gravar sempre com horários

@@ -8,7 +8,8 @@ O Chama é um mensageiro livre e de código aberto para o Brasil, com as funçõ
 do WhatsApp: um só app para Android, iOS, desktop e web (no estilo do WhatsApp Web), feito
 a partir de um único código. O Android sai primeiro. O Chama foi pensado para ser operado
 por uma organização pública e sem fins lucrativos (possivelmente um órgão público) sem que
-esse operador consiga ler mensagens, ranquear conteúdo ou censurar usuários em silêncio.
+esse operador consiga ler mensagens, ranquear conteúdo em segredo ou censurar usuários em
+silêncio.
 
 Este documento descreve como o sistema é montado e por quê. A visão de segurança em
 linguagem simples, para parceiros e instituições, está em
@@ -56,8 +57,12 @@ entrada estão em [API do chama-id](../chama-id-api.md).
 - Cadastro com número de celular e código por SMS, como no WhatsApp.
 - Um único app multiplataforma (Android primeiro; web, iOS e desktop do mesmo código), para
   que quem contribui trabalhe em uma só base de código.
-- Sem ranqueamento, sem algoritmo de feed, sem anúncios. As conversas aparecem só em ordem
-  de tempo.
+- Nada ranqueado em segredo (decisão de 2026-10-27). As conversas aparecem só em ordem de
+  tempo. O conteúdo recomendado (planejado, hoje só no modo demonstração) diz por que
+  aparece, usa um algoritmo de código aberto que a pessoa escolhe e controla, e a aba
+  Seguindo continua em ordem de chegada. Anúncios, quando houver, são marcados como
+  "Patrocinado", escolhidos só por tema, no máximo 1 a cada 10 itens, e nunca aparecem nas
+  conversas nem nos Momentos.
 - Todo o ambiente de desenvolvimento sobe na máquina local com um comando.
 - Protocolo aberto, para que outros operadores (universidades, estados, ONGs) possam rodar
   servidores compatíveis depois (federação, seção 13).
