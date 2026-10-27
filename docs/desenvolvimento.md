@@ -325,20 +325,26 @@ WhatsApp Web:
 ### Modo demonstração (sem servidor)
 
 Uma versão do app com dados fictícios, para apresentações e para gravar os vídeos do
-projeto. Não precisa de servidor, já abre conectada como "Bia Santana" e mostra as quatro
-abas que o Chama terá: **Conversas**, **Momentos**, **Praça** e **Perfil**. Roda só na web
-(as fotos ficam em `app/web/demo/`, com os créditos em `app/web/demo/CREDITS.md`).
+projeto. Não precisa de servidor, já abre conectada como "Bia Santana" e mostra as cinco
+abas que o Chama terá: **Conversas**, **Momentos**, **Praça**, **Voz** e **Perfil**, além
+da tela **Bem-estar**. Roda só na web (as fotos ficam em `app/web/demo/`, com os créditos
+em `app/web/demo/CREDITS.md`).
 
 <p align="center">
-  <img src="imagens/demo-quatro-abas-claro.webp" alt="Modo demonstração: abas Conversas, Momentos, Praça e Perfil" width="760">
+  <img src="imagens/demo-abas-claro.webp" alt="Modo demonstração: abas Conversas, Momentos, Praça, Voz e Perfil" width="760">
 </p>
 
 ```sh
-cd app
-flutter build web -t lib/main_demo.dart
-python3 -m http.server 8765 --directory build/web
-# abra http://localhost:8765 (de preferência numa janela de 412x915)
+app/scripts/build-demo-web.sh          # flutter build web -t lib/main_demo.dart --no-web-resources-cdn
+python3 app/scripts/serve-demo-web.py  # serve app/build/web em http://127.0.0.1:8765
+# abra http://127.0.0.1:8765 (de preferência numa janela de 412x915)
 ```
+
+O build funciona sem internet: o CanvasKit vem do próprio build (`--no-web-resources-cdn`)
+e a fonte de emoji (Noto Color Emoji, licença OFL, em `app/web/demo/fonts/`) também; o
+script só aponta o carregador do Flutter para essa pasta. O `serve-demo-web.py` existe
+porque o `python3 -m http.server` aceita só 5 conexões na fila e derruba as outras quando
+a demonstração carrega dezenas de fotos de uma vez.
 
 Como funciona:
 
@@ -346,7 +352,7 @@ Como funciona:
 flowchart LR
   MD["lib/main_demo.dart"] --> D["Deps<br/>(os mesmos da produção)"]
   D --> T["Telas reais<br/>conversas, grupos, perfil"]
-  D --> N["Telas novas<br/>feed/, stories/, profile/"]
+  D --> N["Telas novas<br/>feed/, stories/, civic/,<br/>wellbeing/, profile/"]
   F["lib/demo/<br/>serviços falsos + dados"] --> D
   C["?cena=…<br/>lib/demo/scenes.dart"] --> F
   M["lib/main.dart<br/>(produção)"] -.->|nunca importa| F
@@ -355,23 +361,33 @@ flowchart LR
 - As telas são as mesmas do app de verdade. Só os serviços mudam: `lib/demo/` tem versões
   falsas de `ChatService`, `ChatSession` e companhia (`implements`), com pessoas, conversas,
   posts e momentos inventados.
-- As abas novas falam com a interface `SocialService` (`lib/services/social_service.dart`).
-  Hoje só a demonstração implementa essa interface. No app de produção, `Deps.social` fica
-  vazio e a tela inicial continua com as abas atuais.
+- As telas novas falam com três interfaces em `lib/services/`: `SocialService` (Momentos,
+  Praça, Perfil), `CivicService` (Voz) e `WellbeingService` (Bem-estar). Hoje só a
+  demonstração implementa essas interfaces. No app de produção, `Deps.social`,
+  `Deps.civic` e `Deps.wellbeing` ficam vazios e a tela inicial continua com as abas atuais.
+- **Voz** é apartidária: fatos com fonte ("Fonte: dados abertos"), nada ordenado por
+  relevância, nenhuma cor de partido. Na demonstração, todos os políticos, projetos e
+  números são inventados e as telas mostram "Dados de exemplo".
+- **Bem-estar**: a Praça tem fim ("Você está em dia"), há limite diário com um cartão de
+  pausa, Modo descanso, Resumo de notificações, esconder curtidas e modo cinza. Sem
+  sequências, medalhas ou culpa.
 - `lib/main.dart` nunca importa `lib/demo/`.
 
 **Cenas que se apresentam sozinhas.** Com `?cena=<nome>` na URL a demonstração faz tudo
 sozinha: toca, digita, rola e mostra um círculo onde "toca". O título da página muda para
-`Chama · cena <nome> · inicio` no instante zero e para `… · fim` no final, e o console
-mostra cada passo com o tempo (`CENA conversa 7.00 s: chega mensagem`).
+`Chama · cena <nome> · inicio` no instante zero e para `… · fim` no final. O console mostra
+cada passo com o tempo (`CENA conversa 7.00 s: chega mensagem`) e, no fim, a linha
+`cena:fim`.
 
 | Cena | URL | Duração | O que mostra |
 |---|---|---|---|
 | `conversa` | `/?cena=conversa` | ~29 s | conversa privada, aviso de criptografia, foto, áudio, tiques azuis, reação |
 | `momentos` | `/?cena=momentos` | ~24 s | anéis, momento aberto, troca de pessoa, resposta |
-| `praca` | `/?cena=praca` | ~26 s | "sem algoritmo", curtir, responder, repostar, publicar com foto |
+| `praca` | `/?cena=praca` | ~29 s | "sem algoritmo", curtir, responder, repostar, publicar com foto, "Você está em dia" |
+| `voz` | `/?cena=voz` | ~27 s | ficha de um representante, consulta com identidade verificada, o povo x a Câmara, abaixo-assinado chegando à meta |
 | `dados` | `/?cena=dados` | ~24 s | exportar tudo e levar os seguidores para outro servidor |
-| `tour` | `/?cena=tour` | ~70 s | as quatro abas em sequência |
+| `calma` | `/?cena=calma` | ~22 s | fim da Praça, limite diário, Modo descanso, curtidas escondidas, modo cinza, "Hora de uma pausa" |
+| `tour` | `/?cena=tour` | ~85 s | as cinco abas e o Bem-estar em sequência |
 
 Os horários das mensagens seguem o relógio do computador. Para gravar sempre com horários
 de fim de tarde, fixe o relógio do navegador (no Playwright:
@@ -702,7 +718,7 @@ armeabi-v7a 1, arm64-v8a 2, x86_64 4. Exemplo: o código 2 vira 2002 no APK arm6
 | **Textos da interface em pt-BR, no ARB** | nenhum texto fixo em widget. Adicione a chave em `app/lib/l10n/app_pt.arb` (o modelo) e a tradução em `app_en.arb`. O `test/l10n_test.dart` falha se as chaves não baterem. As classes geradas (`app_localizations*.dart`) ficam fora do git |
 | **Cores só como tokens** | cores ficam em `app/lib/common/theme.dart` (classe `Tokens` e a extensão `ChatColors`). Widgets leem as cores do tema em vez de escrever cores com `Color(0x…)`. Açaí `#4A1D6E` (principal) e ipê `#F5B700` (destaque), neutros quentes, sem cores da bandeira ou de partidos |
 | **Só `lib/services/` importa o SDK Matrix** | `package:matrix` aparece apenas em `app/lib/services/`. Widgets recebem modelos simples (`lib/services/models.dart`), o que deixa as telas fáceis de testar |
-| **Uma pasta por funcionalidade** | `auth`, `chat_list`, `chat`, `group`, `contacts`, `profile`, `feed`, `stories`, `common` (e `demo`, só para o modo demonstração) |
+| **Uma pasta por funcionalidade** | `auth`, `chat_list`, `chat`, `group`, `contacts`, `profile`, `feed`, `stories`, `civic`, `wellbeing`, `common` (e `demo`, só para o modo demonstração) |
 | **Comentários `// Limit:`** | um limite deliberado de escala ou simplicidade leva um comentário `// Limit:` dizendo o teto e o caminho para subir. Exemplo: `// Limit: SQLite + in-process rate limits, single replica only; move to PostgreSQL + Redis (spec §12) in M7.` |
 | **Nenhum segredo no repositório** | segredos do servidor ficam em `server/data/.env` (gerado, fora do git); chaves de assinatura vêm de variáveis de ambiente; `.jks`, `.p12` e `.pem` estão no `app/android/.gitignore` |
 | **Teste para toda mudança de lógica** | cada mudança de comportamento vem com teste. Código sensível (OTP, JWT, limites de tentativa, cotas diárias) precisa de um teste para cada limite |

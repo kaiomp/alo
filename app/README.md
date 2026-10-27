@@ -52,6 +52,8 @@ flowchart TD
         profile["profile<br/>perfil, configurações, Seus dados são seus"]
         feed["feed<br/>Praça: publicações em ordem de chegada"]
         stories["stories<br/>Momentos e o visualizador"]
+        civic["civic<br/>Voz: representantes, consultas, abaixo-assinados"]
+        wellbeing["wellbeing<br/>Bem-estar: tempo, limite, pausa, modo cinza"]
     end
     demo["demo<br/>serviços falsos e cenas (só main_demo.dart)"]
     common["common<br/>tema, tokens de cor, widgets, notificações"]
@@ -65,8 +67,9 @@ flowchart TD
 
 - `lib/services/`: o único código que fala com o SDK Matrix. Os widgets recebem modelos simples.
 - `lib/auth`, `lib/chat_list`, `lib/chat`, `lib/group`, `lib/contacts`, `lib/profile`,
-  `lib/feed`, `lib/stories`, `lib/common`: uma pasta por funcionalidade. As abas Momentos,
-  Praça e Perfil só aparecem quando há um `SocialService` (hoje, só no modo demonstração).
+  `lib/feed`, `lib/stories`, `lib/civic`, `lib/wellbeing`, `lib/common`: uma pasta por
+  funcionalidade. As abas Momentos, Praça, Voz e Perfil e a tela Bem-estar só aparecem
+  quando há os serviços delas em `Deps` (hoje, só no modo demonstração).
 - `lib/demo/` e `lib/main_demo.dart`: o modo demonstração, sem servidor (veja
   [Modo demonstração](../docs/desenvolvimento.md#modo-demonstração-sem-servidor)).
 - Textos: `lib/l10n/app_pt.arb` (português, o modelo) e `app_en.arb`.
