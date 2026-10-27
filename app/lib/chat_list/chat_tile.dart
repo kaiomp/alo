@@ -133,8 +133,8 @@ class ChatTile extends StatelessWidget {
                               // Muted: grey, and a dot (the server counts nothing that does not notify).
                               _Badge(
                                 count: chat.unread,
-                                color: chat.isMuted ? muted : Tokens.flameText,
-                                onColor: chat.isMuted ? scheme.surface : Colors.white,
+                                color: chat.isMuted ? muted : Tokens.ipe,
+                                onColor: chat.isMuted ? scheme.surface : Tokens.acaiInk,
                               ),
                             ],
                           ],

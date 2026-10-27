@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-  <!-- Chama mark. 24-unit grid: body circle r7 at (12,15), tip at y=1.8 leaning right.
-       Two shapes: the flame and its counter (a speech bubble with a lower-left tail). -->
-  <path fill="#E8590C" fill-rule="evenodd" d="M14.6 1.8C10.6 4.8 5 9.4 5 15A7 7 0 0 0 19 15C19 11.4 17.3 9.4 16.3 7.6C15.4 6 14.9 4.2 14.6 1.8Z M12.9 10.4C14.6 12 16 13.5 16 15.5C16 17.5 14.4 19.1 12.4 19.1C11.7 19.1 11.1 18.9 10.6 18.6L8.5 19.4L9.1 17.3C8.9 16.8 8.8 16.2 8.8 15.6C8.8 13.6 11.1 12 12.9 10.4Z"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="10 10 80 80">
+  <!-- Chama mark: one line draws the arches of the Pampulha church and closes into a speech bubble.
+       100-unit grid cropped to 10..90, stroke 6, round ends. Açaí on light surfaces. -->
+  <path d="M22 86L30 68C14 56 13 38 24 29Q37 13 50 28Q63 13 76 29C87 38 86 57 72 66Q52 77 30 68" fill="none" stroke="#4A1D6E" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

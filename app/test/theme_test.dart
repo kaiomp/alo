@@ -49,13 +49,23 @@ void main() {
     });
   }
 
-  test('white on orange fills: AA for text, 3:1 for icons', () {
-    expect(contrast(Colors.white, Tokens.flameDeep), greaterThanOrEqualTo(4.5));
-    expect(contrast(Colors.white, Tokens.flameText), greaterThanOrEqualTo(4.5)); // unread badge
-    expect(contrast(Colors.white, Tokens.flame), greaterThanOrEqualTo(3));
+  for (final brightness in Brightness.values) {
+    test('text and icons on brand fills meet WCAG AA in $brightness mode', () {
+      final theme = chamaTheme(brightness);
+      final scheme = theme.colorScheme;
+      expect(contrast(scheme.onPrimary, scheme.primary), greaterThanOrEqualTo(4.5)); // buttons, send
+      final fab = theme.floatingActionButtonTheme;
+      expect(contrast(fab.foregroundColor!, fab.backgroundColor!), greaterThanOrEqualTo(4.5));
+    });
+  }
+
+  test('unread badge and the mark on its tile meet WCAG AA', () {
+    expect(contrast(Tokens.acaiInk, Tokens.ipe), greaterThanOrEqualTo(4.5)); // badge count
+    expect(contrast(Tokens.ipe, Tokens.acai), greaterThanOrEqualTo(3)); // mark on the tile
+    expect(contrast(Tokens.like, Colors.white), greaterThanOrEqualTo(3)); // liked heart
   });
 
-  test('light mode keeps the brand orange as primary', () {
-    expect(chamaTheme(Brightness.light).colorScheme.primary, Tokens.flame);
+  test('light mode keeps açaí as primary', () {
+    expect(chamaTheme(Brightness.light).colorScheme.primary, Tokens.acai);
   });
 }

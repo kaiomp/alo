@@ -18,14 +18,14 @@ flowchart LR
   M7 -.-> F["Depois:<br/>federação por DDD,<br/>modo sem internet,<br/>iPhone e computador"]
 
   classDef pronto fill:#2f9e44,stroke:#2b8a3e,color:#ffffff
-  classDef proxima fill:#E8590C,stroke:#d9480f,color:#ffffff
+  classDef proxima fill:#4A1D6E,stroke:#34124F,color:#ffffff
   classDef planejada fill:#f1f3f5,stroke:#868e96,color:#212529
   class M1,M2,M3 pronto
   class M4 proxima
   class M5,M6,M7,F planejada
 ```
 
-Legenda: verde = concluída, laranja = próxima, cinza = planejada.
+Legenda: verde = concluída, roxo = próxima, cinza = planejada.
 
 ## Resumo
 

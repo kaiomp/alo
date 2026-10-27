@@ -262,7 +262,7 @@ class Notifications {
           importance: Importance.high,
           priority: Priority.high,
           category: AndroidNotificationCategory.message,
-          color: Tokens.flame,
+          color: Tokens.acai,
           silent: dropAfter != null,
           timeoutAfter: dropAfter?.inMilliseconds,
           when: message.timestamp.millisecondsSinceEpoch,

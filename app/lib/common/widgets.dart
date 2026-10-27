@@ -149,7 +149,7 @@ class EmptyState extends StatelessWidget {
               Container(
                 width: 120,
                 height: 120,
-                decoration: BoxDecoration(color: Tokens.flame.withValues(alpha: 0.10), shape: BoxShape.circle),
+                decoration: BoxDecoration(color: colors.tint, shape: BoxShape.circle),
                 alignment: Alignment.center,
                 child: icon == null ? const ChamaMark(size: 56) : Icon(icon, size: 56, color: colors.accent),
               ),

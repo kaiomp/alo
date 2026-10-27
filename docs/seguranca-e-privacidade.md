@@ -1,6 +1,6 @@
 # Segurança e privacidade no Chama
 
-<p align="center"><img src="imagens/logo.svg" width="96" alt="Ícone do Chama: uma chama laranja com um balão de conversa"></p>
+<p align="center"><img src="imagens/logo.svg" width="96" alt="Ícone do Chama: uma linha amarela que desenha os arcos da Pampulha e fecha num balão de conversa, sobre fundo roxo"></p>
 
 Este documento explica, em linguagem simples, **o que o Chama protege, de quem, e onde estão
 os limites**. Foi escrito para quem vai operar, financiar ou apoiar o Chama (instituições,

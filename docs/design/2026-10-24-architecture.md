@@ -1,6 +1,6 @@
 # Chama — Arquitetura
 
-<p align="center"><img src="../imagens/logo.svg" width="96" alt="Ícone do Chama: uma chama laranja com um balão de conversa"></p>
+<p align="center"><img src="../imagens/logo.svg" width="96" alt="Ícone do Chama: uma linha amarela que desenha os arcos da Pampulha e fecha num balão de conversa, sobre fundo roxo"></p>
 
 Situação: aceita · 2026-10-24 · revisada depois da etapa M3 (contatos, push e builds Android)
 
@@ -630,7 +630,7 @@ cadastros (seção 12).
 
 - Nome, ícone e paleta próprios. Copiamos padrões de interação, não os elementos visuais,
   o logo ou as cores exatas do WhatsApp.
-- Cor principal: laranja-chama `#E8590C`, com neutros quentes. As cores são *design tokens*
+- Cor principal: açaí `#4A1D6E`, com o amarelo-ipê `#F5B700` de destaque e neutros quentes. As cores são *design tokens*
   (definidas só em `app/lib/common/theme.dart`), então mudam em um lugar só. As cores da
   bandeira e de partidos são evitadas, para manter a neutralidade.
 

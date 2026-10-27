@@ -174,7 +174,7 @@ class MessageBubble extends StatelessWidget {
     );
 
     return Container(
-      color: highlighted ? Tokens.flame.withValues(alpha: 0.12) : null,
+      color: highlighted ? theme.colorScheme.primary.withValues(alpha: 0.12) : null,
       padding: EdgeInsets.fromLTRB(mine ? 48 : inset, tail ? 8 : 2, mine ? inset : 48, 0),
       child: Align(
         alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
@@ -475,7 +475,7 @@ class _ReplyBox extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(width: 4, color: Tokens.flame),
+            Container(width: 4, color: colors.accent),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(8, 5, 8, 6),

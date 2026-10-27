@@ -1,4 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-  <!-- Small sizes (favicon): same flame, wider counter without the tail. -->
-  <path fill="#E8590C" fill-rule="evenodd" d="M14.6 1.8C10.6 4.8 5 9.4 5 15A7 7 0 0 0 19 15C19 11.4 17.3 9.4 16.3 7.6C15.4 6 14.9 4.2 14.6 1.8Z M12.8 9.4C14.9 11.3 16.5 13.1 16.5 15.4C16.5 17.6 14.7 19.4 12.4 19.4C10.2 19.4 8.4 17.6 8.4 15.4C8.4 13.1 10.7 11.3 12.8 9.4Z"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 100 100">
+  <!-- Small sizes (favicon): the app tile with a heavier line. -->
+  <rect width="100" height="100" rx="23" fill="#4A1D6E"/>
+  <path d="M22 86L30 68C14 56 13 38 24 29Q37 13 50 28Q63 13 76 29C87 38 86 57 72 66Q52 77 30 68" fill="none" stroke="#F5B700" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

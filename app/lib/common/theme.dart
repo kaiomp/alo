@@ -1,19 +1,46 @@
 import 'package:flutter/material.dart';
 
 /// Brand tokens (spec section 8, "Brand"). Change colours here only.
+/// Açaí purple is the primary, ipê yellow the accent; surfaces stay warm
+/// neutrals (a faint açaí cast in dark mode).
 abstract final class Tokens {
-  /// Brand orange. Fills that carry only an icon (FAB, send, launcher tile):
-  /// white on it is 3.6:1, enough for non-text (WCAG 1.4.11).
-  static const flame = Color(0xFFE8590C);
+  /// Açaí, the brand primary. Fills that carry text or icons in light mode:
+  /// white on it is 12:1, ipê on it 6.9:1.
+  static const acai = Color(0xFF4A1D6E);
 
-  /// Orange fills that carry text (buttons): white on it is 4.9:1 (AA).
-  static const flameDeep = Color(0xFFC8450B);
+  /// Açaí for text and marks on dark surfaces (9:1 on the dark background),
+  /// and dark-mode fills with [acaiInk] on them.
+  static const acaiLight = Color(0xFFC9A7F5);
 
-  /// Small orange text and icons on light surfaces (5.0:1 on white).
-  static const flameText = Color(0xFFC2410C);
+  /// Deepest açaí: text on ipê (9:1) and on [acaiLight] (8:1).
+  static const acaiInk = Color(0xFF2B1240);
 
-  /// Orange text and marks on dark surfaces (8:1 on the dark background).
-  static const flameLight = Color(0xFFFF8A4C);
+  /// Ipê yellow: unread badges, story rings, the mark on an açaí tile and
+  /// small accents in dark mode (10:1 on the dark background).
+  static const ipe = Color(0xFFF5B700);
+
+  /// A liked heart: 4.5:1 on white, 7:1 ([likeLight]) on the dark background.
+  static const like = Color(0xFFD63384);
+  static const likeLight = Color(0xFFFF6B9E);
+
+  /// The two other stops of the ipê ring around new moments.
+  static const ipeLight = Color(0xFFFFD34D);
+  static const ipeDeep = Color(0xFFE9A000);
+
+  /// The dark end of the açaí gradient ("Seus dados são seus").
+  static const acaiDeep = Color(0xFF34124F);
+
+  /// Over photos and the açaí card, in both modes: white text at three
+  /// levels, the empty progress track, and the shades that keep it readable.
+  static const onPhotoSoft = Color(0xE6FFFFFF);
+  static const onPhotoMuted = Color(0xCCFFFFFF);
+  static const onPhotoFaint = Color(0x99FFFFFF);
+  static const onPhotoTrack = Color(0x59FFFFFF);
+  static const shadeClear = Color(0x00000000);
+  static const shadeLight = Color(0x26000000);
+  static const shade = Color(0x80000000);
+  static const shadeDeep = Color(0x99000000);
+  static const shadeDeeper = Color(0xB3000000);
 
   static const cream = Color(0xFFFFFBF8);
   static const ink = Color(0xFF1C1714);
@@ -78,11 +105,11 @@ class ChatColors extends ThemeExtension<ChatColors> {
   /// "Conectando…" text on [banner].
   final Color onBanner;
 
-  /// Orange for small text and icons ("primary deep"): unread times, section
-  /// headers, admin labels, "digitando…".
+  /// Brand colour for small text and icons: unread times, section headers,
+  /// admin labels, "digitando…". Açaí in light mode, ipê in dark.
   final Color accent;
 
-  /// Orange at 14% on the surface: selected chip, own reaction, icon circles.
+  /// Light açaí on the surface: selected chip, own reaction, icon circles.
   final Color tint;
   final Color onTint;
   final Color systemChip;
@@ -106,48 +133,48 @@ class ChatColors extends ThemeExtension<ChatColors> {
   final Color onPhotoRead;
 
   static const light = ChatColors(
-    background: Color(0xFFF4EDE6),
-    mine: Color(0xFFFFE9DC),
+    background: Color(0xFFF3EEEA),
+    mine: Color(0xFFECE1F5),
     other: Color(0xFFFFFFFF),
     bubbleText: Tokens.ink,
-    meta: Color(0xFF675A52),
+    meta: Color(0xFF5F5466),
     readTick: Color(0xFF1E6FD9),
     bubbleShadow: Color(0x14000000),
     banner: Tokens.warning,
     onBanner: Tokens.ink,
-    accent: Tokens.flameText,
-    tint: Color(0xFFFCE3D6),
-    onTint: Color(0xFF9A3412),
+    accent: Tokens.acai,
+    tint: Color(0xFFEFE6F7),
+    onTint: Tokens.acai,
     systemChip: Color(0xEBFFFFFF),
-    notice: Color(0xFFFFF1E3),
-    onNotice: Color(0xFF6B4A33),
+    notice: Color(0xFFFFF4CC),
+    onNotice: Color(0xFF5C4300),
     raised: Color(0xFFFFFFFF),
     cardTint: Color(0x0D000000),
-    quoteName: Color(0xFF9A3412),
+    quoteName: Tokens.acai,
     photoShade: Color(0x61000000),
     onPhoto: Color(0xFFFFFFFF),
     onPhotoRead: Color(0xFF53BDEB),
   );
 
   static const dark = ChatColors(
-    background: Color(0xFF0F0C0A),
-    mine: Color(0xFF4A2510),
-    other: Color(0xFF26211E),
-    bubbleText: Color(0xFFF5EDE8),
-    meta: Color(0xFFC9B8AD),
+    background: Color(0xFF0F0C11),
+    mine: Color(0xFF3A2152),
+    other: Color(0xFF26222A),
+    bubbleText: Color(0xFFF3ECF7),
+    meta: Color(0xFFC9B8CF),
     readTick: Color(0xFF53BDEB),
     bubbleShadow: null,
     banner: Color(0xFF8A6D1A),
     onBanner: Color(0xFFFFFFFF),
-    accent: Tokens.flameLight,
-    tint: Color(0xFF4A2510),
-    onTint: Color(0xFFFFB38A),
-    systemChip: Color(0xFF1C1917),
-    notice: Color(0xFF2A211B),
-    onNotice: Color(0xFFE3C9B4),
-    raised: Color(0xFF26211E),
+    accent: Tokens.ipe,
+    tint: Color(0xFF3A2152),
+    onTint: Color(0xFFE9D9FA),
+    systemChip: Color(0xFF1D1A20),
+    notice: Color(0xFF2A2418),
+    onNotice: Color(0xFFEBD9A6),
+    raised: Color(0xFF27232A),
     cardTint: Color(0x0FFFFFFF),
-    quoteName: Tokens.flameLight,
+    quoteName: Tokens.ipe,
     photoShade: Color(0x61000000),
     onPhoto: Color(0xFFFFFFFF),
     onPhotoRead: Color(0xFF53BDEB),
@@ -175,16 +202,18 @@ class ChatColors extends ThemeExtension<ChatColors> {
 
 const _light = ColorScheme(
   brightness: Brightness.light,
-  primary: Tokens.flame,
+  primary: Tokens.acai,
   onPrimary: Colors.white,
-  primaryContainer: Color(0xFFFCE3D6),
-  onPrimaryContainer: Color(0xFF9A3412),
+  primaryContainer: Color(0xFFEFE6F7),
+  onPrimaryContainer: Tokens.acai,
   secondary: Color(0xFF6F625A),
   onSecondary: Colors.white,
   secondaryContainer: Color(0xFFF3EEEA),
   onSecondaryContainer: Color(0xFF3B302A),
-  tertiary: Color(0xFF6B4A33),
+  tertiary: Color(0xFF5C4300),
   onTertiary: Colors.white,
+  tertiaryContainer: Color(0xFFFFF4CC),
+  onTertiaryContainer: Color(0xFF5C4300),
   error: Color(0xFFB3261E),
   onError: Colors.white,
   surface: Color(0xFFFFFFFF),
@@ -199,9 +228,9 @@ const _light = ColorScheme(
   surfaceContainerHighest: Color(0xFFE6DFD9),
   outline: Color(0xFF9C8F86),
   outlineVariant: Color(0xFFE6DED8),
-  inverseSurface: Color(0xFF2F2926),
-  onInverseSurface: Color(0xFFF2EBE6),
-  inversePrimary: Tokens.flameLight,
+  inverseSurface: Color(0xFF2B2530),
+  onInverseSurface: Color(0xFFF2EDF3),
+  inversePrimary: Tokens.acaiLight,
   shadow: Colors.black,
   scrim: Colors.black,
   surfaceTint: Colors.transparent,
@@ -209,34 +238,36 @@ const _light = ColorScheme(
 
 const _dark = ColorScheme(
   brightness: Brightness.dark,
-  // Text and accents only; orange fills use Tokens.flame / flameDeep.
-  primary: Tokens.flameLight,
-  onPrimary: Tokens.ink,
-  primaryContainer: Color(0xFF4A2510),
-  onPrimaryContainer: Color(0xFFFFB38A),
-  secondary: Color(0xFFB3A59C),
+  // Light açaí for text, accents and fills (with açaí ink on them).
+  primary: Tokens.acaiLight,
+  onPrimary: Tokens.acaiInk,
+  primaryContainer: Color(0xFF3A2152),
+  onPrimaryContainer: Color(0xFFE9D9FA),
+  secondary: Color(0xFFB5A9B9),
   onSecondary: Tokens.ink,
-  secondaryContainer: Color(0xFF2F2926),
-  onSecondaryContainer: Color(0xFFE6DED8),
-  tertiary: Color(0xFFE3C9B4),
-  onTertiary: Tokens.ink,
+  secondaryContainer: Color(0xFF312C35),
+  onSecondaryContainer: Color(0xFFE6DEE8),
+  tertiary: Tokens.ipe,
+  onTertiary: Tokens.acaiInk,
+  tertiaryContainer: Color(0xFF2A2418),
+  onTertiaryContainer: Color(0xFFEBD9A6),
   error: Color(0xFFF2B8B5),
   onError: Color(0xFF601410),
-  surface: Color(0xFF121010),
-  onSurface: Color(0xFFF2EBE6),
-  onSurfaceVariant: Color(0xFFB3A59C),
-  surfaceDim: Color(0xFF121010),
-  surfaceBright: Color(0xFF2F2926),
-  surfaceContainerLowest: Color(0xFF0D0B0A),
-  surfaceContainerLow: Color(0xFF171413),
-  surfaceContainer: Color(0xFF1C1917),
-  surfaceContainerHigh: Color(0xFF26211E),
-  surfaceContainerHighest: Color(0xFF2F2926),
-  outline: Color(0xFF85766D),
-  outlineVariant: Color(0xFF3A322D),
-  inverseSurface: Color(0xFFF2EBE6),
+  surface: Color(0xFF121014),
+  onSurface: Color(0xFFF2EDF3),
+  onSurfaceVariant: Color(0xFFB5A9B9),
+  surfaceDim: Color(0xFF121014),
+  surfaceBright: Color(0xFF312C35),
+  surfaceContainerLowest: Color(0xFF0D0B0E),
+  surfaceContainerLow: Color(0xFF17141A),
+  surfaceContainer: Color(0xFF1D1A20),
+  surfaceContainerHigh: Color(0xFF27232A),
+  surfaceContainerHighest: Color(0xFF312C35),
+  outline: Color(0xFF877C8C),
+  outlineVariant: Color(0xFF3A343E),
+  inverseSurface: Color(0xFFF2EDF3),
   onInverseSurface: Tokens.ink,
-  inversePrimary: Tokens.flame,
+  inversePrimary: Tokens.acai,
   shadow: Colors.black,
   scrim: Colors.black,
   surfaceTint: Colors.transparent,
@@ -300,12 +331,12 @@ ThemeData chamaTheme(Brightness brightness) {
     filledButtonTheme: FilledButtonThemeData(
       style: ButtonStyle(
         backgroundColor: WidgetStateProperty.resolveWith(
-          (s) => s.contains(WidgetState.disabled) ? overlay.withValues(alpha: 0.12) : Tokens.flameDeep,
+          (s) => s.contains(WidgetState.disabled) ? overlay.withValues(alpha: 0.12) : scheme.primary,
         ),
         foregroundColor: WidgetStateProperty.resolveWith(
-          (s) => s.contains(WidgetState.disabled) ? overlay.withValues(alpha: 0.38) : Colors.white,
+          (s) => s.contains(WidgetState.disabled) ? overlay.withValues(alpha: 0.38) : scheme.onPrimary,
         ),
-        overlayColor: WidgetStatePropertyAll(Colors.white.withValues(alpha: 0.12)),
+        overlayColor: WidgetStatePropertyAll(scheme.onPrimary.withValues(alpha: 0.12)),
         minimumSize: const WidgetStatePropertyAll(Size(64, 52)),
         padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 24)),
         shape: const WidgetStatePropertyAll(StadiumBorder()),
@@ -322,10 +353,11 @@ ThemeData chamaTheme(Brightness brightness) {
         minimumSize: const Size(48, 44),
       ),
     ),
-    floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      backgroundColor: Tokens.flame,
-      foregroundColor: Colors.white,
-      shape: CircleBorder(),
+    // Açaí with an ipê icon (the app icon's colours); light açaí in dark mode.
+    floatingActionButtonTheme: FloatingActionButtonThemeData(
+      backgroundColor: scheme.primary,
+      foregroundColor: dark ? Tokens.acaiInk : Tokens.ipe,
+      shape: const CircleBorder(),
       elevation: 2,
       focusElevation: 2,
       hoverElevation: 3,
@@ -333,18 +365,18 @@ ThemeData chamaTheme(Brightness brightness) {
     ),
     switchTheme: SwitchThemeData(
       thumbColor: WidgetStateProperty.resolveWith(
-        (s) => s.contains(WidgetState.selected) ? Colors.white : scheme.outline,
+        (s) => s.contains(WidgetState.selected) ? scheme.onPrimary : scheme.outline,
       ),
       trackColor: WidgetStateProperty.resolveWith(
-        (s) => s.contains(WidgetState.selected) ? Tokens.flame : scheme.surfaceContainerHighest,
+        (s) => s.contains(WidgetState.selected) ? scheme.primary : scheme.surfaceContainerHighest,
       ),
       trackOutlineColor: WidgetStateProperty.resolveWith(
         (s) => s.contains(WidgetState.selected) ? Colors.transparent : scheme.outline,
       ),
     ),
     checkboxTheme: CheckboxThemeData(
-      fillColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? Tokens.flameDeep : null),
-      checkColor: const WidgetStatePropertyAll(Colors.white),
+      fillColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? scheme.primary : null),
+      checkColor: WidgetStatePropertyAll(scheme.onPrimary),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
@@ -363,14 +395,14 @@ ThemeData chamaTheme(Brightness brightness) {
       suffixIconColor: scheme.onSurfaceVariant,
     ),
     textSelectionTheme: TextSelectionThemeData(
-      cursorColor: Tokens.flame,
-      selectionColor: Tokens.flame.withValues(alpha: 0.3),
-      selectionHandleColor: Tokens.flame,
+      cursorColor: scheme.primary,
+      selectionColor: scheme.primary.withValues(alpha: 0.3),
+      selectionHandleColor: scheme.primary,
     ),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: scheme.surface,
       surfaceTintColor: Colors.transparent,
-      indicatorColor: Tokens.flame.withValues(alpha: 0.14),
+      indicatorColor: scheme.primary.withValues(alpha: dark ? 0.18 : 0.12),
       elevation: 0,
       height: 72,
       labelTextStyle: WidgetStateProperty.resolveWith(
@@ -422,6 +454,6 @@ ThemeData chamaTheme(Brightness brightness) {
       contentTextStyle: text.bodyMedium?.copyWith(color: scheme.onInverseSurface),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
     ),
-    progressIndicatorTheme: const ProgressIndicatorThemeData(color: Tokens.flame),
+    progressIndicatorTheme: ProgressIndicatorThemeData(color: scheme.primary),
   );
 }

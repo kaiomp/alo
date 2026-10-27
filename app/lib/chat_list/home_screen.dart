@@ -197,17 +197,7 @@ class _HomeScreenState extends State<HomeScreen> {
     ][_tab];
     return Scaffold(
       appBar: AppBar(
-        title: _tab == 0
-            ? Text(
-                l.wordmark,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.5,
-                  color: Tokens.flame,
-                ),
-              )
-            : Text(tabs[_tab].$2),
+        title: _tab == 0 ? const ChamaMark(size: 34, tile: true) : Text(tabs[_tab].$2),
         actions: [_menu(false), const SizedBox(width: 4)],
       ),
       body: Column(

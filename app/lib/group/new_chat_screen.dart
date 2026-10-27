@@ -240,8 +240,8 @@ class CircleIconRow extends StatelessWidget {
     minTileHeight: 64,
     leading: CircleAvatar(
       radius: 20,
-      backgroundColor: Tokens.flame,
-      child: Icon(icon, size: 22, color: Colors.white),
+      backgroundColor: Theme.of(context).colorScheme.primary,
+      child: Icon(icon, size: 22, color: Theme.of(context).colorScheme.onPrimary),
     ),
     title: Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
     onTap: onTap,

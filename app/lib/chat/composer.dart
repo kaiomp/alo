@@ -414,29 +414,32 @@ class _RoundButtonState extends State<_RoundButton> {
   bool _down = false;
 
   @override
-  Widget build(BuildContext context) => Listener(
-    onPointerDown: (_) => setState(() => _down = true),
-    onPointerUp: (_) => setState(() => _down = false),
-    onPointerCancel: (_) => setState(() => _down = false),
-    child: AnimatedScale(
-      scale: _down ? 0.97 : 1,
-      duration: const Duration(milliseconds: 100),
-      child: IconButton(
-        key: widget.buttonKey,
-        tooltip: widget.tooltip,
-        onPressed: widget.onPressed,
-        style: IconButton.styleFrom(
-          backgroundColor: Tokens.flame,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: Tokens.flame,
-          disabledForegroundColor: Colors.white,
-          fixedSize: const Size.square(48),
-          shape: const CircleBorder(),
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Listener(
+      onPointerDown: (_) => setState(() => _down = true),
+      onPointerUp: (_) => setState(() => _down = false),
+      onPointerCancel: (_) => setState(() => _down = false),
+      child: AnimatedScale(
+        scale: _down ? 0.97 : 1,
+        duration: const Duration(milliseconds: 100),
+        child: IconButton(
+          key: widget.buttonKey,
+          tooltip: widget.tooltip,
+          onPressed: widget.onPressed,
+          style: IconButton.styleFrom(
+            backgroundColor: scheme.primary,
+            foregroundColor: scheme.onPrimary,
+            disabledBackgroundColor: scheme.primary,
+            disabledForegroundColor: scheme.onPrimary,
+            fixedSize: const Size.square(48),
+            shape: const CircleBorder(),
+          ),
+          icon: Icon(widget.icon, size: 22),
         ),
-        icon: Icon(widget.icon, size: 22),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _ContextBanner extends StatelessWidget {
@@ -457,7 +460,7 @@ class _ContextBanner extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(width: 4, color: Tokens.flame),
+            Container(width: 4, color: colors.accent),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(10, 6, 0, 6),

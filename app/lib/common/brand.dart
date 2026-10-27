@@ -3,61 +3,75 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import 'theme.dart';
 
-/// The Chama mark: a flame whose counter is a speech bubble. Same geometry as
-/// assets/brand/chama-mark.svg (24-unit grid).
+/// The Chama mark: one continuous line that draws the arches of the Pampulha
+/// church and closes into a speech bubble. Same geometry as
+/// assets/brand/chama-mark.svg (100-unit grid, stroke 6, round ends).
 class ChamaMark extends StatelessWidget {
-  const ChamaMark({super.key, this.size = 56, this.color});
+  const ChamaMark({super.key, this.size = 56, this.color, this.tile = false});
   final double size;
 
-  /// Defaults to flame orange on light surfaces and the light orange on dark.
+  /// The line colour. Defaults to açaí on light surfaces and ipê on dark;
+  /// on a [tile] it is always ipê.
   final Color? color;
 
+  /// The app icon: the line in ipê on a rounded açaí square.
+  final bool tile;
+
   static Path path() => Path()
-    ..fillType = PathFillType.evenOdd
-    // Flame.
-    ..moveTo(14.6, 1.8)
-    ..cubicTo(10.6, 4.8, 5, 9.4, 5, 15)
-    ..arcToPoint(const Offset(19, 15), radius: const Radius.circular(7), clockwise: false)
-    ..cubicTo(19, 11.4, 17.3, 9.4, 16.3, 7.6)
-    ..cubicTo(15.4, 6, 14.9, 4.2, 14.6, 1.8)
-    ..close()
-    // Counter: a speech bubble with its tail at the lower left.
-    ..moveTo(12.9, 10.4)
-    ..cubicTo(14.6, 12, 16, 13.5, 16, 15.5)
-    ..cubicTo(16, 17.5, 14.4, 19.1, 12.4, 19.1)
-    ..cubicTo(11.7, 19.1, 11.1, 18.9, 10.6, 18.6)
-    ..lineTo(8.5, 19.4)
-    ..lineTo(9.1, 17.3)
-    ..cubicTo(8.9, 16.8, 8.8, 16.2, 8.8, 15.6)
-    ..cubicTo(8.8, 13.6, 11.1, 12, 12.9, 10.4)
-    ..close();
+    ..moveTo(22, 86)
+    ..lineTo(30, 68)
+    ..cubicTo(14, 56, 13, 38, 24, 29)
+    ..quadraticBezierTo(37, 13, 50, 28)
+    ..quadraticBezierTo(63, 13, 76, 29)
+    ..cubicTo(87, 38, 86, 57, 72, 66)
+    ..quadraticBezierTo(52, 77, 30, 68);
 
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
+    final line = tile ? Tokens.ipe : color ?? (dark ? Tokens.ipe : Tokens.acai);
     return Semantics(
       label: L10n.of(context).appName,
       image: true,
       child: CustomPaint(
         size: Size.square(size),
-        painter: _MarkPainter(color ?? (dark ? Tokens.flameLight : Tokens.flame)),
+        painter: _MarkPainter(line, tile: tile),
       ),
     );
   }
 }
 
 class _MarkPainter extends CustomPainter {
-  _MarkPainter(this.color);
+  _MarkPainter(this.color, {required this.tile});
   final Color color;
+  final bool tile;
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.scale(size.width / 24);
-    canvas.drawPath(ChamaMark.path(), Paint()..color = color);
+    final stroke = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    if (tile) {
+      // chama-icon.svg: the whole 100 grid, corners 23.
+      canvas.scale(size.width / 100);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(const Rect.fromLTWH(0, 0, 100, 100), const Radius.circular(23)),
+        Paint()..color = Tokens.acai,
+      );
+      canvas.drawPath(ChamaMark.path(), stroke);
+      return;
+    }
+    // chama-mark.svg crops the grid to 10..90.
+    canvas.scale(size.width / 80);
+    canvas.translate(-10, -10);
+    canvas.drawPath(ChamaMark.path(), stroke);
   }
 
   @override
-  bool shouldRepaint(_MarkPainter old) => old.color != color;
+  bool shouldRepaint(_MarkPainter old) => old.color != color || old.tile != tile;
 }
 
 /// Mark + "chama" wordmark (onboarding).
@@ -68,14 +82,14 @@ class BrandLockup extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
-      const ChamaMark(size: 56),
-      const SizedBox(width: 12),
+      const ChamaMark(size: 56, tile: true),
+      const SizedBox(width: 14),
       Text(
         L10n.of(context).wordmark,
         style: TextStyle(
-          fontSize: 28,
+          fontSize: 30,
           fontWeight: FontWeight.w700,
-          letterSpacing: -0.5,
+          letterSpacing: -0.8,
           color: Theme.of(context).colorScheme.onSurface,
         ),
       ),

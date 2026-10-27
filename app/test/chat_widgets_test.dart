@@ -200,7 +200,7 @@ void main() {
       _app(
         Column(
           children: [
-            VoicePlayer(message: voice, load: () async => Uint8List(0), color: Tokens.flame),
+            VoicePlayer(message: voice, load: () async => Uint8List(0), color: Tokens.acai),
             MessageBubble(message: file, session: session, onActions: (_, _) {}, maxWidth: 400),
           ],
         ),
