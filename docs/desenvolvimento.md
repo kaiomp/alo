@@ -365,6 +365,11 @@ flowchart LR
   Rede, Perfil), `CivicService` (Voz) e `WellbeingService` (Bem-estar). Hoje só a
   demonstração implementa essas interfaces. No app de produção, `Deps.social`,
   `Deps.civic` e `Deps.wellbeing` ficam vazios e a tela inicial continua com as abas atuais.
+- **Voz** vai do país ao bairro: a barra de lugares mostra **Brasil · Pernambuco · Recife ·
+  Casa Amarela**, e cada nível tem os seus representantes, consultas, abaixo-assinados e
+  canais. A cidade tem orçamento participativo e a pauta da Câmara Municipal; o bairro tem
+  problemas relatados com foto e apoio dos vizinhos, audiência pública e a sua própria
+  consulta. Abaixo do nível nacional, só vota quem é "morador verificado".
 - **Voz** é apartidária: fatos com fonte ("Fonte: dados abertos"), nada ordenado por
   relevância, nenhuma cor de partido. Na demonstração, todos os políticos, projetos e
   números são inventados e as telas mostram "Dados de exemplo".
@@ -384,6 +389,15 @@ flowchart LR
 - O nome da aba Rede ainda não está decidido. Ele vem de uma chave só, `tabFeed`, em
   `app/lib/l10n/app_pt.arb` (e `app_en.arb`): mude ali e a barra de baixo, o título e o
   registro das cenas acompanham.
+- **Modo simples** (em Configurações, e oferecido na primeira vez: "Prefere letras maiores
+  e menos botões?"): letras 25% maiores, só três abas (Conversas, Rede, Voz), fotos maiores
+  na lista, botão de áudio maior, fundo de conversa liso e sem animações decorativas.
+- **Feito para todas as idades**: alvos de toque de pelo menos 48 px, texto principal de 16
+  px ou mais, telas testadas com fonte em 200%, legenda nos ícones de ação no Modo simples,
+  botões visíveis para o que antes era só gesto (Momentos: anterior/próximo; vídeos:
+  setas; áudio: um toque grava, com Enviar e Cancelar na tela), "Desfazer" em vez de
+  perguntas, textos curtos com "Saiba mais" para o resto, descrição das fotos e dos vídeos
+  para leitores de tela, e "reduzir movimento" do sistema respeitado.
 - **Bem-estar**: a Rede tem fim ("Você está em dia", em Seguindo), há limite diário com um cartão de
   pausa, Modo descanso, Resumo de notificações, esconder curtidas e modo cinza. Sem
   sequências, medalhas ou culpa.
@@ -399,12 +413,13 @@ começo da pausa final de 2 s.
 |---|---|---|---|
 | `conversa` | `/?cena=conversa` | ~29 s | conversa privada, aviso de criptografia, foto, áudio, tiques azuis, reação |
 | `momentos` | `/?cena=momentos` | ~24 s | anéis, momento aberto, troca de pessoa, resposta |
-| `praca` | `/?cena=praca` | ~29 s | Rede · Para você: reel tocando, "Parceria paga", "Patrocinado" e "Por que este anúncio?", "Por que estou vendo isto?", reel em tela cheia, Seguindo até "Você está em dia" |
+| `rede` (antes `praca`, que ainda funciona) | `/?cena=rede` | ~29 s | Rede · Para você: reel tocando, "Parceria paga", "Patrocinado" e "Por que este anúncio?", "Por que estou vendo isto?", reel em tela cheia, Seguindo até "Você está em dia" |
 | `algoritmo` | `/?cena=algoritmo` | ~19 s | "Escolha seu algoritmo": troca para um feed da comunidade, desliga um tema, o feed muda |
-| `voz` | `/?cena=voz` | ~27 s | ficha de um representante, consulta com identidade verificada, o povo x a Câmara, abaixo-assinado chegando à meta |
+| `voz` | `/?cena=voz` | ~27 s | do Brasil ao bairro (Casa Amarela), apoio a um problema, consulta do bairro com morador verificado, o povo x a Câmara, abaixo-assinado chegando à meta |
 | `dados` | `/?cena=dados` | ~24 s | exportar tudo e levar os seguidores para outro servidor |
 | `calma` | `/?cena=calma` | ~22 s | fim da Rede (Seguindo), limite diário, vídeos sem reprodução automática, Modo descanso, curtidas escondidas, modo cinza, "Hora de uma pausa" |
-| `tour` | `/?cena=tour` | ~85 s | as cinco abas e o Bem-estar em sequência |
+| `simples` | `/?cena=simples` | ~14 s | a pergunta da primeira vez, "Sim, quero", o app fica maior e mais simples, um áudio para a Mãe |
+| `tour` | `/?cena=tour` | ~88 s | as cinco abas, o Bem-estar e o Modo simples em sequência |
 
 Os horários das mensagens seguem o relógio do computador. Para gravar sempre com horários
 de fim de tarde, fixe o relógio do navegador (no Playwright:
