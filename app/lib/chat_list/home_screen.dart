@@ -10,9 +10,13 @@ import '../common/deps.dart';
 import '../common/theme.dart';
 import '../common/widgets.dart';
 import '../config.dart';
+import '../feed/compose_screen.dart';
+import '../feed/feed_view.dart';
 import '../group/new_chat_screen.dart';
 import '../l10n/app_localizations.dart';
+import '../profile/me_view.dart';
 import '../profile/settings_screen.dart';
+import '../stories/moments_view.dart';
 import 'chat_list_view.dart';
 
 /// Phone: WhatsApp Android (app bar, 4 tabs, FAB). Wide: WhatsApp Web
@@ -183,6 +187,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _phone(BuildContext context, L10n l) {
+    if (_deps.social != null) return _socialPhone(context, l);
     final tabs = [
       (Icons.chat_outlined, l.tabChats),
       (Icons.update, l.tabUpdates),
@@ -218,6 +223,89 @@ class _HomeScreenState extends State<HomeScreen> {
               child: const Icon(Icons.add_comment),
             )
           : null,
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Divider(height: 0.5),
+          HomeNavBar(tabs: tabs, selected: _tab, onSelected: (i) => setState(() => _tab = i)),
+        ],
+      ),
+    );
+  }
+
+  /// Conversas · Momentos · Praça · Perfil. Each tab keeps its scroll
+  /// position while another one shows.
+  Widget _socialPhone(BuildContext context, L10n l) {
+    final tabs = [
+      (Icons.chat_bubble_outline_rounded, l.tabChats),
+      (Icons.motion_photos_on_outlined, l.tabMoments),
+      (Icons.dynamic_feed_outlined, l.tabSquare),
+      (Icons.person_outline_rounded, l.tabProfile),
+    ];
+    void soon() => ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(l.comingSoon)));
+    Future<void> compose() async {
+      final messenger = ScaffoldMessenger.of(context);
+      final posted = await Navigator.of(context)
+          .push<bool>(MaterialPageRoute(fullscreenDialog: true, builder: (_) => const ComposeScreen()));
+      if (posted == true) messenger.showSnackBar(SnackBar(content: Text(l.posted)));
+    }
+
+    final fab = switch (_tab) {
+      0 => FloatingActionButton(
+        key: const Key('new_chat'),
+        tooltip: l.newChat,
+        onPressed: () => _newChat(false),
+        child: const Icon(Icons.add_comment),
+      ),
+      1 => FloatingActionButton(
+        key: const Key('new_moment'),
+        tooltip: l.myMoment,
+        onPressed: soon,
+        child: const Icon(Icons.photo_camera_outlined),
+      ),
+      2 => FloatingActionButton(
+        key: const Key('compose'),
+        tooltip: l.newPost,
+        onPressed: compose,
+        child: const Icon(Icons.edit_outlined),
+      ),
+      _ => null,
+    };
+    return Scaffold(
+      appBar: AppBar(
+        title: _tab == 0 ? const ChamaMark(size: 34, tile: true) : Text(tabs[_tab].$2),
+        actions: [
+          if (_tab == 3)
+            IconButton(
+              key: const Key('settings'),
+              tooltip: l.settings,
+              onPressed: () => _settings(false),
+              icon: const Icon(Icons.settings_outlined),
+            )
+          else
+            _menu(false),
+          const SizedBox(width: 4),
+        ],
+      ),
+      body: Column(
+        children: [
+          const ConnectionBanner(),
+          Expanded(
+            child: IndexedStack(
+              index: _tab,
+              children: [
+                ChatListView(onOpen: (id) => _open(id, false), onNewChat: () => _newChat(false)),
+                const MomentsView(),
+                const FeedView(),
+                const MeView(),
+              ],
+            ),
+          ),
+        ],
+      ),
+      floatingActionButton: fab,
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

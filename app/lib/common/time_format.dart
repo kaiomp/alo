@@ -30,3 +30,15 @@ String clock(DateTime t, L10n l) => DateFormat.Hm(l.localeName).format(t.toLocal
 
 /// Chat list time: the clock for today, else like [dayLabel].
 String listTime(DateTime t, DateTime now, L10n l) => sameDay(t, now) ? clock(t, l) : dayLabel(t, now, l);
+
+/// Feed and moments time: "agora", "5 min", "3 h", "2 d".
+String ago(DateTime t, DateTime now, L10n l) {
+  final d = now.difference(t);
+  if (d.inMinutes < 1) return l.timeNow;
+  if (d.inHours < 1) return l.timeMinutes(d.inMinutes);
+  if (d.inDays < 1) return l.timeHours(d.inHours);
+  return l.timeDays(d.inDays);
+}
+
+/// "1.204" in Portuguese, "1,204" in English.
+String count(int n, L10n l) => NumberFormat.decimalPattern(l.localeName).format(n);

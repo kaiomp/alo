@@ -427,5 +427,134 @@
   "notificationsBlocked": "Desativadas: o Android está bloqueando as notificações do Chama. Toque para ativar.",
   "newMessage": "Nova mensagem",
   "channelMessages": "Mensagens",
-  "channelGroups": "Grupos"
+  "channelGroups": "Grupos",
+  "tabMoments": "Momentos",
+  "tabSquare": "Praça",
+  "tabProfile": "Perfil",
+  "chronological": "Em ordem de chegada · sem algoritmo",
+  "chronologicalExplain": "Você vê tudo de quem segue, na ordem em que foi publicado. Ninguém escolhe, esconde ou impulsiona nada por você.",
+  "newPost": "Nova publicação",
+  "postHint": "Conte algo para quem te segue",
+  "publish": "Publicar",
+  "postReach": "Seus seguidores veem aqui e em qualquer app do padrão aberto (ActivityPub).",
+  "posted": "Publicado",
+  "like": "Curtir",
+  "repost": "Repostar",
+  "reposted": "Repostado para seus seguidores",
+  "repostedBy": "{name} repostou",
+  "@repostedBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "share": "Compartilhar",
+  "linkCopied": "Link copiado",
+  "replies": "Respostas",
+  "replyTo": "Responder a {name}",
+  "@replyTo": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "feedUpToDate": "Você viu tudo de quem segue",
+  "feedUpToDateBody": "Sem sugestões, sem anúncios. Volte mais tarde.",
+  "timeNow": "agora",
+  "timeMinutes": "{n} min",
+  "@timeMinutes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "timeHours": "{n} h",
+  "@timeHours": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "timeDays": "{n} d",
+  "@timeDays": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "myMoment": "Seu momento",
+  "addMoment": "Adicionar",
+  "momentsPrivate": "Só seus contatos veem. Criptografia de ponta a ponta.",
+  "recentMoments": "Recentes",
+  "seenMoments": "Já vistos",
+  "momentReplyHint": "Responder a {name}…",
+  "@momentReplyHint": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "momentReplySent": "Resposta enviada",
+  "comingSoon": "Em breve",
+  "followers": "seguidores",
+  "following": "seguindo",
+  "postsCount": "publicações",
+  "editProfile": "Editar perfil",
+  "shareProfile": "Compartilhar perfil",
+  "yourDataTitle": "Seus dados são seus",
+  "yourDataBody": "Baixe tudo o que é seu ou leve seus seguidores para qualquer servidor do padrão aberto. Sem pedir licença.",
+  "exportAll": "Exportar tudo",
+  "moveFollowers": "Levar seguidores",
+  "exportTitle": "Exportar seus dados",
+  "exportChats": "Conversas",
+  "exportChatsNote": "Saem criptografadas: só você abre",
+  "exportMedia": "Fotos, vídeos e áudios",
+  "exportPosts": "Publicações e momentos",
+  "exportNetwork": "Seguidores e quem você segue",
+  "exportFormat": "Formato aberto (JSON e ActivityPub). Abre em qualquer app compatível.",
+  "exportStart": "Exportar",
+  "exportWorking": "Preparando seu arquivo…",
+  "exportDone": "Pronto. Seu arquivo é seu.",
+  "save": "Salvar",
+  "moveTitle": "Levar seus seguidores",
+  "moveBody": "Seus {count} seguidores vão junto, sem precisar seguir você de novo. Funciona com qualquer servidor do padrão aberto ActivityPub, como o Mastodon.",
+  "@moveBody": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "moveAddress": "Seu novo endereço",
+  "moveHint": "voce@servidor",
+  "moveStart": "Mudar de servidor",
+  "moveWorking": "Avisando seus seguidores… {done} de {total}",
+  "@moveWorking": {
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "moveDone": "Pronto! Seus {count} seguidores agora seguem {address}.",
+  "@moveDone": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      },
+      "address": {
+        "type": "String"
+      }
+    }
+  },
+  "moveChatsStay": "Suas conversas continuam criptografadas e com você."
 }
