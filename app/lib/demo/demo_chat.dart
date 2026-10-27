@@ -20,8 +20,15 @@ Future<Uint8List> demoBytes(Uri path) {
   final done = _loaded['$path'];
   if (done != null) return SynchronousFuture(done);
   return _loading.putIfAbsent('$path', () async {
-    final bytes = (await http.get(Uri.base.resolveUri(path))).bodyBytes;
-    return _loaded['$path'] = bytes;
+    try {
+      final res = await http.get(Uri.base.resolveUri(path));
+      if (res.statusCode != 200) throw StateError('$path: HTTP ${res.statusCode}');
+      return _loaded['$path'] = res.bodyBytes;
+    } catch (_) {
+      // Not kept: the next call tries again.
+      _loading.remove('$path');
+      rethrow;
+    }
   });
 }
 

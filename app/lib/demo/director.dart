@@ -170,7 +170,11 @@ class Director {
   }
 
   /// Scrolls the scrollable under the widget keyed [k] to [offset].
-  Future<void> scrollTo(String k, double offset, {Duration duration = const Duration(milliseconds: 1600)}) async {
+  Future<void> scrollTo(String k, double offset, {Duration duration = const Duration(milliseconds: 1600)}) =>
+      _scrollable(k).position.animateTo(offset, duration: duration, curve: Curves.easeInOutCubic);
+
+  /// The first scrollable at or under the widget keyed [k].
+  ScrollableState _scrollable(String k) {
     final e = _one(k, (w) => w.key == Key(k));
     ScrollableState? state;
     void find(Element x) {
@@ -183,7 +187,21 @@ class Director {
     }
 
     find(e);
-    await state!.position.animateTo(offset, duration: duration, curve: Curves.easeInOutCubic);
+    return state!;
+  }
+
+  /// Scrolls the scrollable under [k] to its end. The end of a lazy list is
+  /// an estimate until it is built, so a short second pass lands on it.
+  Future<void> scrollToEnd(String k, {Duration duration = const Duration(milliseconds: 2400)}) async {
+    final position = _scrollable(k).position;
+    await position.animateTo(position.maxScrollExtent, duration: duration, curve: Curves.easeInOutCubic);
+    if (position.pixels < position.maxScrollExtent) {
+      await position.animateTo(
+        position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   /// Scrolls the widget keyed [k] into view, [alignment] down the viewport.
