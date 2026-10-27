@@ -1,0 +1,11 @@
+{
+  "name": "alo-site",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "scripts": {
+    "test": "node --test test/",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  }
+}

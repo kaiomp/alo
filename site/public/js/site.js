@@ -1,0 +1,172 @@
+// Video, community link and the two forms. No tracking, no cookies.
+
+const TURNSTILE_SITEKEY = '0x4AAAAAAFoUAdybZ0uiYS-g';
+// Cloudflare's public test key, always passes; used on localhost only.
+const TURNSTILE_TESTE = '1x00000000000000000000AA';
+const LOCAL = ['localhost', '127.0.0.1'].includes(location.hostname);
+
+const MENSAGENS = {
+  nome: 'Escreva seu nome.',
+  contato: 'Deixe um e-mail ou um WhatsApp para a gente falar com você.',
+  email: 'Confira o e-mail.',
+  whatsapp: 'Confira o número do WhatsApp, com DDD.',
+  consentimento: 'Marque a caixa de concordância para enviar.',
+  robo: 'Só um instante: estamos confirmando que você não é um robô. Tente de novo em alguns segundos.',
+  verificacao: 'Não conseguimos confirmar que você não é um robô. Tente de novo.',
+  muitas_tentativas: 'Muitos envios seguidos. Espere um minuto e tente de novo.',
+  rede: 'Sem conexão com o servidor. Confira a internet e tente de novo.',
+  padrao: 'Algo deu errado do nosso lado. Tente de novo em instantes.',
+};
+
+/* Video: plays muted when it scrolls into view; sound on request. */
+const filme = document.getElementById('filme');
+if (filme) {
+  const som = document.getElementById('som');
+  const rotulo = som.querySelector('span');
+  const atualizar = () => {
+    som.setAttribute('aria-pressed', String(!filme.muted));
+    rotulo.textContent = filme.muted ? 'Ouvir com som' : 'Tirar o som';
+  };
+  const comSom = () => {
+    filme.muted = false;
+    filme.currentTime = 0;
+    filme.play().catch(() => {});
+  };
+  som.addEventListener('click', () => (filme.muted ? comSom() : (filme.muted = true)));
+  filme.addEventListener('volumechange', atualizar);
+  document.querySelectorAll('[data-ver-video]').forEach((a) => a.addEventListener('click', comSom));
+
+  const calmo = matchMedia('(prefers-reduced-motion: reduce)').matches || navigator.connection?.saveData;
+  if (!calmo && 'IntersectionObserver' in window) {
+    let tocou = false;
+    new IntersectionObserver(([e]) => {
+      if (e.isIntersecting && !tocou) {
+        tocou = true;
+        filme.play().catch(() => {});
+      } else if (!e.isIntersecting) filme.pause();
+    }, { threshold: 0.6 }).observe(filme);
+  }
+}
+
+/* Community link from config.js; without it the "em breve" text stays. */
+const comunidade = window.ALO_CONFIG?.comunidade;
+if (comunidade?.startsWith('https://')) {
+  document.querySelectorAll('[data-comunidade]').forEach((el) => {
+    const a = document.createElement('a');
+    a.className = 'botao botao--ipe';
+    a.href = comunidade;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.textContent = 'Entrar na comunidade no WhatsApp';
+    el.replaceChildren(a);
+  });
+}
+
+/* Forms. Turnstile (the anti-robot check) loads only when a form comes near. */
+const formularios = [...document.querySelectorAll('form[data-rota]')];
+let turnstilePedido = false;
+
+function carregarTurnstile() {
+  if (turnstilePedido) return;
+  turnstilePedido = true;
+  window.aloTurnstile = () => {
+    for (const form of formularios) {
+      const caixa = form.querySelector('[data-turnstile]');
+      form.dataset.widget = window.turnstile.render(caixa, {
+        sitekey: LOCAL ? TURNSTILE_TESTE : TURNSTILE_SITEKEY,
+        language: 'pt-br',
+        theme: 'light',
+        appearance: 'interaction-only',
+        size: form.clientWidth < 300 ? 'compact' : 'flexible',
+      });
+    }
+  };
+  const s = document.createElement('script');
+  s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=aloTurnstile';
+  s.async = true;
+  document.head.append(s);
+}
+
+function conferir(form) {
+  const c = form.elements;
+  if (c.nome && c.nome.value.trim().length < 2) return 'nome';
+  if (c.email) {
+    if (!c.email.value.trim() && !c.whatsapp.value.trim()) return 'contato';
+    if (!c.email.checkValidity()) return 'email';
+    const digitos = c.whatsapp.value.replace(/\D/g, '').length;
+    if (c.whatsapp.value.trim() && (digitos < 10 || digitos > 15)) return 'whatsapp';
+  }
+  if (c.contato && c.contato.value.trim().length < 5) return 'contato';
+  if (c.consentimento && !c.consentimento.checked) return 'consentimento';
+  return null;
+}
+
+function dados(form) {
+  const d = {};
+  for (const [k, v] of new FormData(form)) {
+    if (k === 'ajuda') (d.ajuda ??= []).push(v);
+    else if (k === 'cf-turnstile-response') d.token = v;
+    else if (k !== 'consentimento') d[k] = v;
+  }
+  if (form.elements.consentimento) d.consentimento = form.elements.consentimento.checked;
+  return d;
+}
+
+function mostrar(form, codigo) {
+  const campo = form.elements[codigo] ?? (codigo === 'contato' ? form.elements.email : null);
+  const el = campo instanceof HTMLElement ? campo : null;
+  form.querySelector('[data-alerta]').textContent = el?.dataset.erro || MENSAGENS[codigo] || MENSAGENS.padrao;
+  if (el) {
+    el.setAttribute('aria-invalid', 'true');
+    el.focus();
+  }
+}
+
+for (const form of formularios) {
+  const botao = form.querySelector('[type=submit]');
+  form.addEventListener('focusin', carregarTurnstile, { once: true });
+  if ('IntersectionObserver' in window) {
+    const olho = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) {
+        carregarTurnstile();
+        olho.disconnect();
+      }
+    }, { rootMargin: '600px' });
+    olho.observe(form);
+  } else carregarTurnstile();
+
+  form.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    form.querySelector('[data-alerta]').textContent = '';
+    form.querySelectorAll('[aria-invalid]').forEach((c) => c.removeAttribute('aria-invalid'));
+
+    const erro = conferir(form);
+    if (erro) return mostrar(form, erro);
+    const d = dados(form);
+    if (!d.token) return mostrar(form, 'robo');
+
+    botao.disabled = true;
+    try {
+      const res = await fetch(form.dataset.rota, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(d),
+      });
+      if (res.ok) {
+        const ok = form.parentElement.querySelector('[data-sucesso]');
+        form.hidden = true;
+        ok.hidden = false;
+        ok.focus();
+        return;
+      }
+      const r = await res.json().catch(() => ({}));
+      mostrar(form, r.erro === 'campo' ? r.campo : r.erro);
+    } catch {
+      mostrar(form, 'rede');
+    } finally {
+      botao.disabled = false;
+      // Each token works once; get a fresh one for the next try.
+      if (form.dataset.widget) window.turnstile?.reset(form.dataset.widget);
+    }
+  });
+}

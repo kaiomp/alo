@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacidade · Alô</title>
+<meta name="description" content="O que o formulário do Alô guarda, para quê, e como pedir para ver, corrigir ou apagar seus dados.">
+<meta name="theme-color" content="#4A1D6E">
+<link rel="canonical" href="https://usealo.app/privacidade">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/inter-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/css/site.css">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:url" content="https://usealo.app/privacidade">
+<meta property="og:title" content="Privacidade · Alô">
+<meta property="og:description" content="O que o formulário do Alô guarda, para quê, e como pedir para ver, corrigir ou apagar seus dados.">
+<meta property="og:image" content="https://usealo.app/img/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<script src="/config.js" defer></script>
+<script src="/js/site.js" defer></script>
+</head>
+<body>
+<a class="pular" href="#conteudo">Pular para o conteúdo</a>
+<header class="topo-faixa">
+  <div class="topo caixa">
+    <a class="logo" href="/" aria-label="Alô, página inicial">
+      <svg class="marca" viewBox="10 10 80 80" aria-hidden="true"><path pathLength="1" d="M22 86L30 68C14 56 13 38 24 29Q37 13 50 28Q63 13 76 29C87 38 86 57 72 66Q52 77 30 68"/></svg>
+      <span>Alô</span>
+    </a>
+    <nav aria-label="Principal">
+      <a class="so-largo" href="/como-funciona">Como funciona</a>
+      <a class="so-largo" href="/#onde-estamos">Onde estamos</a>
+      <a class="botao botao--pequeno" href="/#ajudar">Quero ajudar</a>
+    </nav>
+  </div>
+</header>
+
+<main id="conteudo">
+<section class="hero" aria-labelledby="titulo-pagina">
+  <div class="pagina-topo caixa">
+    <p class="sobretitulo">Privacidade</p>
+    <h1 id="titulo-pagina">Seus dados,<br>em poucas linhas.</h1>
+    <p class="lead">O que o formulário guarda, para quê, e como pedir para ver, corrigir ou apagar.</p>
+  </div>
+</section>
+
+<section class="secao secao--sem-topo">
+  <div class="caixa texto">
+    <h2>O que guardamos</h2>
+    <p>Quando você manda o formulário “Quero ajudar”, guardamos:</p>
+    <ul>
+      <li>seu nome;</li>
+      <li>seu e-mail, seu WhatsApp, ou os dois;</li>
+      <li>as áreas em que você quer ajudar;</li>
+      <li>cidade e estado, se você informar;</li>
+      <li>a sua mensagem, se você escrever;</li>
+      <li>a data do envio e a versão desta página que você aceitou.</li>
+    </ul>
+
+    <h2>O que não guardamos</h2>
+    <p>Não gravamos o seu endereço IP nem dados do seu navegador. O site não usa cookies de rastreamento, não tem ferramentas de análise de audiência e não tem anúncios.</p>
+
+    <h2>Para quê</h2>
+    <p>Só para falar com você sobre o projeto Alô: chamar para conversar, contar novidades da construção e convidar para testes. Não vendemos nem passamos seus dados para ninguém fazer propaganda.</p>
+    <p>A base legal é o seu consentimento (Lei Geral de Proteção de Dados, art. 7º, inciso I), que você dá ao marcar a caixa do formulário. Você pode retirar o consentimento quando quiser.</p>
+
+    <h2>Onde ficam</h2>
+    <p>Num banco de dados da Cloudflare, a empresa que hospeda este site. Os servidores podem ficar fora do Brasil. Para proteger o formulário contra robôs, usamos o Turnstile, da mesma empresa, que confere sinais técnicos do navegador na hora do envio. O seu endereço IP é usado só por alguns instantes, em forma de resumo, para limitar envios repetidos, e não é gravado por nós. Mais detalhes na <a href="https://www.cloudflare.com/pt-br/privacypolicy/" rel="noopener">política de privacidade da Cloudflare</a>.</p>
+
+    <h2>Por quanto tempo</h2>
+    <p>Até você pedir para apagar, ou até o fim do projeto. Quando a organização sem fins lucrativos que vai cuidar do Alô for criada, ela passa a responder por estes dados, com as mesmas regras, e avisamos você.</p>
+
+    <h2>Seus direitos</h2>
+    <p>Você pode pedir para ver, corrigir ou apagar os seus dados a qualquer momento. Use o formulário abaixo com o mesmo e-mail ou WhatsApp que você informou. Respondemos por esse contato em até 15 dias.</p>
+  </div>
+
+  <div class="caixa texto">
+    <div class="cartao" id="pedido">
+      <form id="form-pedido" data-rota="/api/pedido" novalidate>
+        <div class="campo">
+          <label for="contato">O e-mail ou WhatsApp que você usou</label>
+          <input id="contato" name="contato" autocomplete="email" required minlength="5" maxlength="200" data-erro="Escreva o e-mail ou o WhatsApp que você usou no formulário.">
+        </div>
+        <div class="campo">
+          <label for="pedido-mensagem">O que você quer? <span class="dica">(opcional; em branco, apagamos tudo)</span></label>
+          <textarea id="pedido-mensagem" name="mensagem" rows="3" maxlength="500"></textarea>
+        </div>
+        <div class="turnstile" data-turnstile></div>
+        <p class="alerta" role="alert" data-alerta></p>
+        <button class="botao" type="submit">Enviar pedido</button>
+        <noscript><p class="alerta">Para enviar, ative o JavaScript do navegador.</p></noscript>
+      </form>
+      <div class="sucesso" data-sucesso hidden tabindex="-1">
+        <h3>Pedido recebido.</h3>
+        <p>Respondemos pelo contato que você informou em até 15 dias.</p>
+      </div>
+    </div>
+    <p class="dica">Atualizada em 27 de outubro de 2026.</p>
+  </div>
+</section>
+</main>
+
+<footer class="rodape">
+  <div class="rodape__grade caixa">
+    <div>
+      <a class="logo" href="/" aria-label="Alô, página inicial"><svg class="marca" viewBox="10 10 80 80" aria-hidden="true"><path d="M22 86L30 68C14 56 13 38 24 29Q37 13 50 28Q63 13 76 29C87 38 86 57 72 66Q52 77 30 68"/></svg><span>Alô</span></a>
+      <p>Um projeto sem fins lucrativos e de código aberto (AGPL-3.0). Feito no Brasil, para o Brasil.</p>
+    </div>
+    <nav aria-label="Rodapé">
+      <a href="/como-funciona">Como funciona</a>
+      <a href="/#onde-estamos">Onde estamos</a>
+      <a href="/#ajudar">Quero ajudar</a>
+      <a href="/privacidade">Privacidade</a>
+    </nav>
+  </div>
+  <div class="caixa"><small>As telas desta página são do app de verdade, com pessoas e dados de exemplo.</small></div>
+</footer>
+</body>
+</html>

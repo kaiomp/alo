@@ -1,0 +1,29 @@
+{
+  "name": "alo-site",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-06-01",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    // The Worker runs first so it can redirect www, serve /api/* and add security headers.
+    "run_worker_first": true,
+    "html_handling": "drop-trailing-slash",
+    "not_found_handling": "404-page"
+  },
+  "routes": [
+    { "pattern": "usealo.app", "custom_domain": true },
+    { "pattern": "www.usealo.app", "custom_domain": true }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "alo-inscricoes",
+      "database_id": "f769f18b-ced8-44ed-9ea5-1194cd0d0777",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // Per IP (hashed, never stored): 5 form posts per minute.
+  "ratelimits": [
+    { "name": "LIMITE", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } }
+  ]
+}
