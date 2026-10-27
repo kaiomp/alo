@@ -96,7 +96,7 @@ if (comunidade?.startsWith('https://')) {
     a.href = comunidade;
     a.target = '_blank';
     a.rel = 'noopener';
-    a.textContent = 'Entrar na comunidade no WhatsApp';
+    a.textContent = 'Entrar no grupo do WhatsApp';
     el.replaceChildren(a);
   });
 }

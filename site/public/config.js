@@ -2,5 +2,5 @@
 window.ALO_CONFIG = {
   // Invite link of the WhatsApp community, e.g. 'https://chat.whatsapp.com/...'.
   // Empty: the page shows "Comunidade no WhatsApp: em breve".
-  comunidade: '',
+  comunidade: 'https://chat.whatsapp.com/EMUg1nMSe831BFTzUqfiYY',
 };

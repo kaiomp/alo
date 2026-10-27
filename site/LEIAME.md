@@ -80,8 +80,8 @@ ffmpeg -i NOVO-VIDEO.mp4 -vf scale=720:1280 -c:v libx264 -preset slow -crf 26 \
 cd site && wrangler deploy
 ```
 
-Antes do `wrangler deploy`, aumente o número em `visao-geral.mp4?v=2` no `public/index.html`
-(por exemplo, `?v=3`), para que quem já visitou o site receba o vídeo novo na hora. Mantenha o
+Antes do `wrangler deploy`, aumente o número em `visao-geral.mp4?v=3` no `public/index.html`
+(por exemplo, `?v=4`), para que quem já visitou o site receba o vídeo novo na hora. Mantenha o
 arquivo abaixo de 10 MB (o atual, com narração e música, tem 6,2 MB).
 
 ## Vídeos curtos dos cartões
