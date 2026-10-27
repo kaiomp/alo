@@ -5,7 +5,7 @@ set -e
 cd "$(dirname "$0")/.."
 CHROME="${CHROME:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"
 TMP="$(mktemp -d)"
-for pagina in ${PAGINAS:-inicio como-funciona privacidade ajudar}; do
+for pagina in ${PAGINAS:-inicio como-funciona privacidade participe}; do
   for formato in largo quadrado; do
     if [ "$formato" = largo ]; then tam=1200,630; sufixo=""; else tam=600,600; sufixo="-quadrado"; fi
     "$CHROME" --headless=new --disable-gpu --hide-scrollbars --allow-file-access-from-files \

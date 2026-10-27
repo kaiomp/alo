@@ -147,9 +147,9 @@ export default {
       return Response.redirect(url.toString(), 301);
     }
 
-    // Short aliases for the sign-up form link.
-    if (url.pathname === '/quero-ajudar' || url.pathname === '/form') {
-      url.pathname = '/ajudar';
+    // Short aliases for the sign-up form page.
+    if (['/ajudar', '/vem', '/time', '/quero-ajudar', '/form'].includes(url.pathname)) {
+      url.pathname = '/participe';
       return Response.redirect(url.toString(), 301);
     }
 

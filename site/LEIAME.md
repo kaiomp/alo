@@ -2,7 +2,8 @@
 
 O site público do Alô: uma página principal, **Como funciona** e **Privacidade**, mais o
 formulário **Quero ajudar**, que também tem página própria para compartilhar:
-`https://usealo.app/ajudar` (os endereços `/quero-ajudar` e `/form` levam para ela). Tudo roda num único *Worker* da Cloudflare (um pequeno programa
+`https://usealo.app/participe` (os endereços `/ajudar`, `/vem`, `/time`, `/quero-ajudar` e
+`/form` levam para ela). Tudo roda num único *Worker* da Cloudflare (um pequeno programa
 que roda na rede da Cloudflare), que entrega os arquivos estáticos e recebe os formulários.
 
 ```mermaid
