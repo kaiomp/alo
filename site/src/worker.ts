@@ -1,4 +1,6 @@
 // usealo.app: static pages from ./public, the two form endpoints and personal invite links.
+import { EmailMessage } from 'cloudflare:email';
+import { avisoInscricao, avisoPedido, DESTINO, mime, REMETENTE } from './aviso.ts';
 import { nomeConvite, textosConvite } from './convite.ts';
 import { imagemConvite } from './imagem.ts';
 import { comIntervalo } from './intervalo.ts';
@@ -11,6 +13,7 @@ type Env = {
   };
   LIMITE: { limit(o: { key: string }): Promise<{ success: boolean }> };
   TURNSTILE_SECRET?: string;
+  EMAIL?: { send(m: EmailMessage): Promise<void> };
 };
 
 type Ctx = { waitUntil(p: Promise<unknown>): void };
@@ -64,7 +67,18 @@ async function humano(token: unknown, ip: string, env: Env): Promise<boolean> {
   return dados.success === true;
 }
 
-async function formulario(req: Request, env: Env, rota: string): Promise<Response> {
+// Fire-and-forget: a mail problem must never fail the sign-up. Logs carry no personal data.
+function avisar(env: Env, ctx: Ctx, aviso: { assunto: string; texto: string; responderPara: string | null }) {
+  if (!env.EMAIL) return;
+  const raw = mime({ ...aviso, data: new Date(), id: crypto.randomUUID() });
+  ctx.waitUntil(
+    env.EMAIL.send(new EmailMessage(REMETENTE, DESTINO, raw)).catch((e: unknown) =>
+      console.error('aviso por e-mail falhou:', e instanceof Error ? e.message.slice(0, 200) : 'erro'),
+    ),
+  );
+}
+
+async function formulario(req: Request, env: Env, ctx: Ctx, rota: string): Promise<Response> {
   if (req.method !== 'POST') return json({ erro: 'metodo' }, 405);
 
   // The IP is only used, hashed, as the rate-limit key; it is never stored.
@@ -94,9 +108,11 @@ async function formulario(req: Request, env: Env, rota: string): Promise<Respons
       )
         .bind(i.nome, i.email, i.whatsapp, JSON.stringify(i.ajuda), i.cidade, i.mensagem, i.politica)
         .run();
+      avisar(env, ctx, avisoInscricao(i, new Date()));
     } else {
       const p = validarPedido(dados);
       await env.DB.prepare('INSERT INTO pedidos (contato, mensagem) VALUES (?, ?)').bind(p.contato, p.mensagem).run();
+      avisar(env, ctx, avisoPedido(p, new Date()));
     }
   } catch (e) {
     if (e instanceof ErroValidacao) return json({ erro: 'campo', campo: e.message }, 422);
@@ -128,7 +144,7 @@ function paginaConvite(url: URL, res: Response): Response {
 
 async function responder(req: Request, env: Env, ctx: Ctx, url: URL): Promise<Response> {
   const p = url.pathname;
-  if (p === '/api/inscricao' || p === '/api/pedido') return formulario(req, env, p);
+  if (p === '/api/inscricao' || p === '/api/pedido') return formulario(req, env, ctx, p);
   if (p === '/og/convite.png' || p === '/og/convite-quadrado.png') return imagemConvite(url, ctx);
   const res = await env.ASSETS.fetch(req);
   if (p === '/convite') return paginaConvite(url, res);

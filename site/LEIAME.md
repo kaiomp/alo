@@ -129,6 +129,19 @@ wrangler d1 execute alo-inscricoes --remote --json \
 Para uma planilha, troque por `--command "SELECT ..."` e salve a saída: `... --json > inscricoes.json`.
 Esse arquivo tem dados pessoais: não envie para o Git nem deixe em pastas compartilhadas.
 
+## Aviso por e-mail
+
+Cada inscrição nova e cada pedido de privacidade geram um e-mail curto para **hi@kaio.mp**, de
+`inscricoes@usealo.app` (assuntos "Nova inscrição no Alô: <nome>" e "Pedido de privacidade").
+Responder ao e-mail de uma inscrição responde direto para o e-mail que a pessoa deixou.
+
+- Usa o Email Routing da Cloudflare (gratuito), ligado no domínio `usealo.app`, e o
+  `send_email` do Worker, que só pode mandar para o endereço em `wrangler.jsonc`.
+- O envio acontece depois de gravar no banco e nunca derruba a inscrição: se falhar, a
+  inscrição continua salva e o erro aparece em `wrangler tail` (sem dados pessoais).
+- Para mudar o destino: troque `destination_address` em `wrangler.jsonc` e `DESTINO` em
+  `src/aviso.ts`; o endereço novo precisa estar verificado no Email Routing da Cloudflare.
+
 ## Pedidos de privacidade (ver, corrigir, apagar)
 
 O formulário da página **Privacidade** grava na tabela `pedidos`. Mensagem vazia quer dizer

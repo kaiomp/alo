@@ -24,6 +24,8 @@
       "migrations_dir": "migrations"
     }
   ],
+  // New sign-ups and privacy requests are mailed to the owner; only this address is allowed.
+  "send_email": [{ "name": "EMAIL", "destination_address": "hi@kaio.mp" }],
   // Per IP (hashed, never stored): 5 form posts per minute.
   "ratelimits": [
     { "name": "LIMITE", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } }
