@@ -143,11 +143,10 @@ class _StageState extends State<_Stage> {
         await scene.$2(d, widget.kit);
       } catch (e) {
         d.beat('falhou: $e');
+        // ignore: avoid_print
+        print('cena:fim'); // so the capture script never waits forever
       }
       d.end();
-      // The capture script stops on this line.
-      // ignore: avoid_print
-      print('cena:fim');
     });
   }
 

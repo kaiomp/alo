@@ -376,8 +376,8 @@ flowchart LR
 **Cenas que se apresentam sozinhas.** Com `?cena=<nome>` na URL a demonstração faz tudo
 sozinha: toca, digita, rola e mostra um círculo onde "toca". O título da página muda para
 `Chama · cena <nome> · inicio` no instante zero e para `… · fim` no final. O console mostra
-cada passo com o tempo (`CENA conversa 7.00 s: chega mensagem`) e, no fim, a linha
-`cena:fim`.
+cada passo com o tempo (`CENA conversa 7.00 s: chega mensagem`) e a linha `cena:fim` no
+começo da pausa final de 2 s.
 
 | Cena | URL | Duração | O que mostra |
 |---|---|---|---|

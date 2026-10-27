@@ -50,6 +50,16 @@ class Director {
     if (what != null) beat(what);
   }
 
+  /// The end hold: from [end] - 2 s the screen stays still until [end].
+  /// `cena:fim` goes to the console as the hold starts; the capture script
+  /// stops on it.
+  Future<void> hold(double end) async {
+    await at(end - 2, 'pausa final');
+    // ignore: avoid_print
+    print('cena:fim');
+    await at(end);
+  }
+
   // ---- finding things on screen ----
 
   /// Elements matching [test] whose render box is hit at its centre, i.e.

@@ -82,7 +82,7 @@ Future<void> _conversa(Director d, DemoKit kit) async {
   chat.setTyping(id, rafael, false);
   chat.receive(id, chat.world.text(rafael, 'Vai ser massa demais 🌊', DateTime.now()));
   d.unfocus();
-  await d.at(28.6);
+  await d.hold(28.6);
 }
 
 Future<void> _story(Director d, double at, {required bool reply}) async {
@@ -106,7 +106,7 @@ Future<void> _momentosScene(Director d, DemoKit kit) async {
   await d.tap(const Rect.fromLTWH(_width * 0.7, 300, _width * 0.25, 300));
   await d.at(20.5, 'desliza para baixo e fecha');
   await d.drag(const Offset(_width / 2, 380), const Offset(0, 320), duration: const Duration(milliseconds: 420));
-  await d.at(23.5);
+  await d.hold(23.5);
 }
 
 Future<void> _praca(Director d, DemoKit kit) async {
@@ -146,7 +146,7 @@ Future<void> _praca(Director d, DemoKit kit) async {
   await d.tap(d.key('publish'));
   await d.at(25, 'rola até o fim: "Você está em dia"');
   await d.scrollToEnd('feed', duration: const Duration(milliseconds: 2400));
-  await d.at(29.4);
+  await d.hold(29.4);
 }
 
 Future<void> _dados(Director d, DemoKit kit) async {
@@ -160,14 +160,14 @@ Future<void> _dados(Director d, DemoKit kit) async {
   await d.tap(d.key('move_followers'));
   await d.at(10.2, 'digita o novo endereço');
   await d.tap(d.key('move_address'));
-  await d.typeText('bia@mastodon.social', perChar: const Duration(milliseconds: 60));
+  await d.typeText('bia@praca.exemplo.social', perChar: const Duration(milliseconds: 60));
   await d.at(12.5, 'muda de servidor');
   await d.tap(d.key('move_start'));
   await d.at(19.5, 'conclui');
   await d.tap(d.text(_l.done));
   await d.at(20.6, 'rola as publicações');
   await d.scrollTo('profile', 320, duration: const Duration(milliseconds: 1400));
-  await d.at(24);
+  await d.hold(24);
 }
 
 Future<void> _voz(Director d, DemoKit kit) async {
@@ -189,7 +189,7 @@ Future<void> _voz(Director d, DemoKit kit) async {
   await d.tap(d.key('voz_section_3'));
   await d.at(23.6, 'entra num canal');
   await d.tap(d.key('join_passe'));
-  await d.at(26.6);
+  await d.hold(26.6);
 }
 
 /// Vote → open the consultation, verify, vote yes, see people vs Chamber.
@@ -232,7 +232,7 @@ Future<void> _calma(Director d, DemoKit kit) async {
   await d.tap(d.key('grey_mode'));
   await d.at(17, 'chega ao limite: "Hora de uma pausa"');
   kit.wellbeing.elapse(1);
-  await d.at(21.5);
+  await d.hold(21.5);
 }
 
 /// Opens Bem-estar from Perfil and brings the limit from 45 to 25 min.
@@ -309,7 +309,7 @@ Future<void> _tour(Director d, DemoKit kit) async {
   await d.tap(d.key('move_followers'));
   await d.at(66);
   await d.tap(d.key('move_address'));
-  await d.typeText('bia@mastodon.social', perChar: const Duration(milliseconds: 55));
+  await d.typeText('bia@praca.exemplo.social', perChar: const Duration(milliseconds: 55));
   await d.at(67.6, 'muda de servidor');
   await d.tap(d.key('move_start'));
   await d.at(73.2, 'conclui');
@@ -324,5 +324,5 @@ Future<void> _tour(Director d, DemoKit kit) async {
   await d.tap(d.type<BackButton>());
   await d.at(82.5, 'volta para Conversas');
   await d.tap(d.tab(0));
-  await d.at(84.5);
+  await d.hold(84.5);
 }
