@@ -84,6 +84,38 @@ Antes do `wrangler deploy`, aumente o número em `visao-geral.mp4?v=2` no `publi
 (por exemplo, `?v=3`), para que quem já visitou o site receba o vídeo novo na hora. Mantenha o
 arquivo abaixo de 10 MB (o atual, com narração e música, tem 6,2 MB).
 
+## Vídeos curtos dos cartões
+
+Cada parte (na página inicial e em **Como funciona**) mostra um vídeo curto, sem som, em
+loop, recortado só na tela do celular: `public/video/partes/<nome>.webm` (AV1, menor),
+`<nome>.mp4` (H.264, para quem não tem AV1) e `<nome>.webp` (capa).
+
+Como os vídeos se comportam:
+
+- começam sozinhos, sem som, quando aparecem na tela, e pausam quando saem, como num feed;
+- no máximo 2 cartões tocam ao mesmo tempo (os mais visíveis);
+- só baixam quando tocam pela primeira vez (`preload="none"`);
+- com **movimento reduzido** ligado no aparelho ou com **economia de dados**, nada começa
+  sozinho: fica a capa, e o vídeo de 90 segundos mantém o botão de tocar.
+
+Para gerar de novo a partir de `pitch/out/` (exemplo: Conversas, de 7,5 s a 15,5 s):
+
+```sh
+cd site/public/video/partes
+V="crop=568:1304:256:496,setsar=1"   # a área da tela do celular nos vídeos 1080x1920
+ffmpeg -ss 7.5 -to 15.5 -i ../../../../pitch/out/conversa.mp4 -an -vf "$V" -c:v libx264 -preset slow \
+  -crf 27 -maxrate 1100k -bufsize 2200k -pix_fmt yuv420p -movflags +faststart conversas.mp4 -y
+ffmpeg -ss 7.5 -to 15.5 -i ../../../../pitch/out/conversa.mp4 -an -vf "$V" -c:v libsvtav1 -preset 5 \
+  -crf 40 -pix_fmt yuv420p conversas.webm -y
+ffmpeg -ss 7.5 -i ../../../../pitch/out/conversa.mp4 -vf "$V" -frames:v 1 conversas.png -y \
+  && cwebp -q 75 conversas.png -o conversas.webp && rm conversas.png
+```
+
+Trechos usados: conversas 7,5–15,5 s (`conversa.mp4`), momentos 4,5–13,5 s, rede 3,5–11,5 s,
+voz 9–16 s, bem-estar 10,5–17,5 s (`calma.mp4`), simples 3–8 s, algoritmo 6–12 s (em Como
+funciona, na Rede). Escolha trechos em que o celular está parado no lugar de sempre, sem zoom.
+Cada arquivo deve ficar abaixo de 1,5 MB.
+
 ## Ler as inscrições
 
 ```sh

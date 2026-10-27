@@ -94,7 +94,7 @@
       <p class="lead">Tudo o que aparece no vídeo é o app de verdade, com pessoas e dados de exemplo.</p>
     </div>
     <div class="video__quadro">
-      <video id="filme" controls playsinline muted preload="none" poster="/video/poster.webp" width="720" height="1280" aria-label="Vídeo de 90 segundos mostrando o Alô">
+      <video id="filme" controls playsinline muted preload="metadata" poster="/video/poster.webp" width="720" height="1280" aria-label="Vídeo de 90 segundos mostrando o Alô">
         <source src="/video/visao-geral.mp4?v=2" type="video/mp4">
       </video>
       <button class="botao botao--claro video__som" type="button" id="som" aria-pressed="false">
@@ -117,7 +117,7 @@
         <h3>Conversas</h3>
         <p>Mensagens, fotos, áudios e grupos. Com criptografia de ponta a ponta: só quem está na conversa lê.</p>
       </div>
-      <div class="parte__tela"><figure class="fone"><img src="/img/conversas.webp" width="412" height="915" loading="lazy" alt="Lista de conversas: Família Santana, Mãe, Pelada de quinta e outras, com contadores de mensagens novas."></figure></div>
+      <div class="parte__tela"><figure class="fone"><video class="clipe" data-clipe muted playsinline loop preload="none" width="568" height="1304" poster="/video/partes/conversas.webp" aria-label="Vídeo curto: conversa com Rafael, protegida com criptografia, com uma foto de praia chegando."><source src="/video/partes/conversas.webm" type='video/webm; codecs="av01.0.08M.08"'><source src="/video/partes/conversas.mp4" type="video/mp4"></video></figure></div>
     </li>
     <li class="parte">
       <div class="parte__texto">
@@ -125,7 +125,7 @@
         <h3>Momentos</h3>
         <p>Fotos e vídeos do seu dia, que somem em 24 horas. Só os seus contatos veem.</p>
       </div>
-      <div class="parte__tela"><figure class="fone"><img src="/img/momentos.webp" width="564" height="1320" loading="lazy" alt="Momento de Juliana: duas tigelas de açaí com frutas, com a legenda “Açaí de respeito em Belém”."></figure></div>
+      <div class="parte__tela"><figure class="fone"><video class="clipe" data-clipe muted playsinline loop preload="none" width="568" height="1304" poster="/video/partes/momentos.webp" aria-label="Vídeo curto: momentos de Juliana e Rafael, com açaí, água de coco e uma dançarina de frevo."><source src="/video/partes/momentos.webm" type='video/webm; codecs="av01.0.08M.08"'><source src="/video/partes/momentos.mp4" type="video/mp4"></video></figure></div>
     </li>
     <li class="parte">
       <div class="parte__texto">
@@ -133,7 +133,7 @@
         <h3>Rede</h3>
         <p>Fotos, textos e vídeos curtos. Você escolhe o algoritmo, ou desliga. Anúncio tem etiqueta e nunca entra nas suas conversas.</p>
       </div>
-      <div class="parte__tela"><figure class="fone"><img src="/img/rede.webp" width="412" height="915" loading="lazy" alt="Feed da Rede. Acima de cada post, o motivo de ele aparecer, como “Porque você segue @ju.ferreira”."></figure></div>
+      <div class="parte__tela"><figure class="fone"><video class="clipe" data-clipe muted playsinline loop preload="none" width="568" height="1304" poster="/video/partes/rede.webp" aria-label="Vídeo curto: o feed da Rede rolando, cada post com o motivo de aparecer e um patrocinado com etiqueta."><source src="/video/partes/rede.webm" type='video/webm; codecs="av01.0.08M.08"'><source src="/video/partes/rede.mp4" type="video/mp4"></video></figure></div>
     </li>
     <li class="parte">
       <div class="parte__texto">
@@ -141,7 +141,7 @@
         <h3>Voz</h3>
         <p>Do bairro ao país: acompanhe quem te representa com dados abertos, vote em projetos com voto anônimo e apoie abaixo-assinados. Sem partido.</p>
       </div>
-      <div class="parte__tela"><figure class="fone"><img src="/img/voz.webp" width="412" height="915" loading="lazy" alt="Tela Voz: presença nas votações e gastos do mandato de uma deputada e de um senador, com a fonte em dados abertos."></figure></div>
+      <div class="parte__tela"><figure class="fone"><video class="clipe" data-clipe muted playsinline loop preload="none" width="568" height="1304" poster="/video/partes/voz.webp" aria-label="Vídeo curto: problemas do bairro com apoio dos vizinhos e uma consulta com voto anônimo."><source src="/video/partes/voz.webm" type='video/webm; codecs="av01.0.08M.08"'><source src="/video/partes/voz.mp4" type="video/mp4"></video></figure></div>
     </li>
     <li class="parte">
       <div class="parte__texto">
@@ -149,7 +149,7 @@
         <h3>Bem-estar</h3>
         <p>O feed de quem você segue tem fim. Limite diário e modo descanso. O Alô não mede sucesso pelo seu tempo de tela.</p>
       </div>
-      <div class="parte__tela"><figure class="fone"><img src="/img/bem-estar.webp" width="412" height="915" loading="lazy" alt="Tela Bem-estar: 24 minutos hoje, gráfico dos últimos 7 dias, limite diário de 45 minutos e modo descanso."></figure></div>
+      <div class="parte__tela"><figure class="fone"><video class="clipe" data-clipe muted playsinline loop preload="none" width="568" height="1304" poster="/video/partes/bem-estar.webp" aria-label="Vídeo curto: tela Bem-estar com o tempo de uso e o limite diário sendo ajustado."><source src="/video/partes/bem-estar.webm" type='video/webm; codecs="av01.0.08M.08"'><source src="/video/partes/bem-estar.mp4" type="video/mp4"></video></figure></div>
     </li>
     <li class="parte">
       <div class="parte__texto">
@@ -157,7 +157,7 @@
         <h3>Modo simples</h3>
         <p>Letra maior, menos botões e voz em primeiro lugar. Para a vó, para o neto e para todo mundo no meio.</p>
       </div>
-      <div class="parte__tela"><figure class="fone"><img src="/img/simples.webp" width="412" height="915" loading="lazy" alt="Modo simples: lista de conversas com letras maiores e só três abas, Conversas, Rede e Voz."></figure></div>
+      <div class="parte__tela"><figure class="fone"><video class="clipe" data-clipe muted playsinline loop preload="none" width="568" height="1304" poster="/video/partes/simples.webp" aria-label="Vídeo curto: o app pergunta se a pessoa prefere letras maiores e mostra a lista de conversas no Modo simples."><source src="/video/partes/simples.webm" type='video/webm; codecs="av01.0.08M.08"'><source src="/video/partes/simples.mp4" type="video/mp4"></video></figure></div>
     </li>
   </ul>
   <p class="deslize" aria-hidden="true">Deslize para ver as seis →</p>

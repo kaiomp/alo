@@ -18,7 +18,13 @@ const MENSAGENS = {
   padrao: 'Algo deu errado do nosso lado. Tente de novo em instantes.',
 };
 
-/* Video: plays muted when it scrolls into view; sound on request. */
+/* Videos start muted while on screen and pause when they leave, like a feed.
+   With reduced motion or Data Saver nothing starts by itself: the poster stays,
+   and the overview keeps its play button. */
+const CALMO = matchMedia('(prefers-reduced-motion: reduce)').matches || navigator.connection?.saveData === true;
+const OLHO = 'IntersectionObserver' in window;
+const MAX_CLIPES = 2;
+
 const filme = document.getElementById('filme');
 if (filme) {
   const som = document.getElementById('som');
@@ -36,16 +42,49 @@ if (filme) {
   filme.addEventListener('volumechange', atualizar);
   document.querySelectorAll('[data-ver-video]').forEach((a) => a.addEventListener('click', comSom));
 
-  const calmo = matchMedia('(prefers-reduced-motion: reduce)').matches || navigator.connection?.saveData;
-  if (!calmo && 'IntersectionObserver' in window) {
-    let tocou = false;
+  // A pause the viewer made sticks; a pause made by scrolling away does not.
+  let pausouSozinho = false;
+  let pausaNossa = false;
+  filme.addEventListener('pause', () => {
+    if (!pausaNossa && !filme.ended) pausouSozinho = true;
+    pausaNossa = false;
+  });
+  filme.addEventListener('play', () => (pausouSozinho = false));
+
+  if (!CALMO && OLHO) {
     new IntersectionObserver(([e]) => {
-      if (e.isIntersecting && !tocou) {
-        tocou = true;
-        filme.play().catch(() => {});
-      } else if (!e.isIntersecting) filme.pause();
-    }, { threshold: 0.6 }).observe(filme);
+      if (e.intersectionRatio >= 0.6) {
+        if (filme.paused && !filme.ended && !pausouSozinho) filme.play().catch(() => {});
+      } else if (!filme.paused) {
+        pausaNossa = true;
+        filme.pause();
+      }
+    }, { threshold: [0, 0.6] }).observe(filme);
   }
+}
+
+/* Short silent loops in the part cards. preload="none" keeps them unloaded until they first
+   play; at most MAX_CLIPES play at once, the most visible ones. */
+const clipes = [...document.querySelectorAll('video[data-clipe]')];
+if (clipes.length && !CALMO && OLHO) {
+  const vistos = new Map();
+  const escolher = () => {
+    const tocar = [...vistos]
+      .filter(([, r]) => r >= 0.5)
+      .sort((x, y) => y[1] - x[1])
+      .slice(0, MAX_CLIPES)
+      .map(([v]) => v);
+    for (const v of clipes) {
+      if (tocar.includes(v)) {
+        if (v.paused) v.play().catch(() => {});
+      } else if (!v.paused) v.pause();
+    }
+  };
+  const olho = new IntersectionObserver((es) => {
+    for (const e of es) vistos.set(e.target, e.intersectionRatio);
+    escolher();
+  }, { threshold: [0, 0.25, 0.5, 0.75, 1] });
+  clipes.forEach((v) => olho.observe(v));
 }
 
 /* Community link from config.js; without it the "em breve" text stays. */
