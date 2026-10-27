@@ -49,19 +49,26 @@ flowchart TD
         chat["chat<br/>conversa, composer, voz"]
         group["group<br/>nova conversa, novo grupo, dados do grupo"]
         contacts["contacts<br/>agenda e sincronização"]
-        profile["profile<br/>perfil e configurações"]
+        profile["profile<br/>perfil, configurações, Seus dados são seus"]
+        feed["feed<br/>Praça: publicações em ordem de chegada"]
+        stories["stories<br/>Momentos e o visualizador"]
     end
+    demo["demo<br/>serviços falsos e cenas (só main_demo.dart)"]
     common["common<br/>tema, tokens de cor, widgets, notificações"]
     services["services<br/>única camada que fala com o SDK Matrix"]
     sdk["SDK matrix + vodozemac"]
     telas --> common
     telas -- "modelos simples" --> services
     services --> sdk
+    demo -. "implements" .-> services
 ```
 
 - `lib/services/`: o único código que fala com o SDK Matrix. Os widgets recebem modelos simples.
 - `lib/auth`, `lib/chat_list`, `lib/chat`, `lib/group`, `lib/contacts`, `lib/profile`,
-  `lib/common`: uma pasta por funcionalidade.
+  `lib/feed`, `lib/stories`, `lib/common`: uma pasta por funcionalidade. As abas Momentos,
+  Praça e Perfil só aparecem quando há um `SocialService` (hoje, só no modo demonstração).
+- `lib/demo/` e `lib/main_demo.dart`: o modo demonstração, sem servidor (veja
+  [Modo demonstração](../docs/desenvolvimento.md#modo-demonstração-sem-servidor)).
 - Textos: `lib/l10n/app_pt.arb` (português, o modelo) e `app_en.arb`.
 - Cores: só em `lib/common/theme.dart`.
 
