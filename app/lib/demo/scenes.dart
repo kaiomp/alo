@@ -21,7 +21,13 @@ class DemoKit {
 }
 
 /// Bottom bar order in the demo.
-const _moments = 1, _square = 2, _voice = 3, _profile = 4;
+const _moments = 1, _feed = 2, _voice = 3, _profile = 4;
+
+/// The feed tab's name (one l10n key, `tabFeed`), for the beat log.
+final _feedName = _l.tabFeed;
+
+/// A tap on the dimmed area above a bottom sheet closes it.
+const _aboveSheet = Rect.fromLTWH(180, 110, 50, 20);
 
 /// Steps before t = 0, under the cover (for example: open the right tab).
 typedef SetUp = Future<void> Function(Director d);
@@ -32,10 +38,11 @@ const _width = 412.0;
 final scenes = <String, (SetUp?, Scene)>{
   'conversa': (null, _conversa),
   'momentos': ((d) => d.tap(d.tab(_moments)), _momentosScene),
-  'praca': ((d) => d.tap(d.tab(_square)), _praca),
+  'praca': ((d) => d.tap(d.tab(_feed)), _praca),
+  'algoritmo': ((d) => d.tap(d.tab(_feed)), _algoritmo),
   'voz': ((d) => d.tap(d.tab(_voice)), _voz),
   'dados': ((d) => d.tap(d.tab(_profile)), _dados),
-  'calma': ((d) => d.tap(d.tab(_square)), _calma),
+  'calma': ((d) => d.tap(d.tab(_feed)), _calma),
   'tour': (null, _tour),
 };
 
@@ -110,43 +117,59 @@ Future<void> _momentosScene(Director d, DemoKit kit) async {
 }
 
 Future<void> _praca(Director d, DemoKit kit) async {
-  await d.at(1, 'toca em "sem algoritmo"');
-  await d.tap(d.key('chronological'));
-  await d.at(3, 'curte');
-  await d.tap(d.key('like_p1'));
-  await d.at(4.2, 'abre a publicação');
-  await d.tap(d.key('post_p1'), at: const Offset(0.5, 0.06));
-  await d.at(5.2, 'responde');
-  await d.tap(d.key('reply_field'));
-  await d.typeText('Leva a gente na próxima! 💜');
-  await d.at(7.4, 'envia a resposta');
-  await d.tap(d.key('reply_send'));
-  await d.at(8.8, 'volta');
+  await d.at(1, '$_feedName · Para você: rola até o vídeo de surfe');
+  await d.reveal('post_r-surf', alignment: 0.12, duration: const Duration(milliseconds: 1600));
+  await d.at(4.8, 'reel de futebol, "Parceria paga com @varzeawear"');
+  await d.reveal('post_r-futebol', alignment: 0.1, duration: const Duration(milliseconds: 1200));
+  await d.at(7.8, 'post "Patrocinado"');
+  await d.reveal('post_ad-livraria', alignment: 0.12, duration: const Duration(milliseconds: 1200));
+  await d.at(9.4, '"Por que este anúncio?"');
+  await d.tap(d.key('why_ad_ad-livraria'));
+  await d.at(12, 'fecha');
+  await d.tap(d.key('ad_sheet_close'));
+  await d.at(12.6, 'post em parceria: Café Baobá e Barraca da Dona Zefa');
+  await d.reveal('post_collab', alignment: 0.12, duration: const Duration(milliseconds: 1000));
+  await d.at(14, '"Por que estou vendo isto?"');
+  await d.tap(d.key('why_collab'));
+  await d.at(16.2, 'fecha');
+  await d.tap(_aboveSheet);
+  await d.at(17, 'rola até o reel de comida de rua');
+  await d.reveal('post_r-comida', alignment: 0.1, duration: const Duration(milliseconds: 1000));
+  await d.at(18.6, 'abre o reel em tela cheia');
+  await d.tap(d.key('reel_r-comida'));
+  await d.at(20.8, 'desliza para o próximo');
+  await d.drag(const Offset(_width / 2, 700), const Offset(0, -460), duration: const Duration(milliseconds: 380));
+  await d.at(23, 'fecha');
+  await d.tap(d.key('reel_close'));
+  await d.at(23.8, 'aba Seguindo');
+  await d.tap(d.key('tab_following'));
+  await d.at(24.6, 'rola até "Você está em dia"');
+  await d.scrollToEnd('feed', duration: const Duration(milliseconds: 2200));
+  await d.hold(28.8);
+}
+
+Future<void> _algoritmo(Director d, DemoKit kit) async {
+  await d.at(1, 'abre "Escolha seu algoritmo"');
+  await d.tap(d.key('choose_algorithm'));
+  await d.at(2.6, 'escolhe "Só arte de Pernambuco"');
+  await d.tap(d.key('algorithm_arte-pe'));
+  await d.at(4, 'rola até os temas');
+  await d.reveal('topic_música e capoeira', alignment: 0.6, duration: const Duration(milliseconds: 1000));
+  await d.at(5.6, 'desliga o tema "música e capoeira"');
+  await d.tap(d.key('topic_música e capoeira'));
+  await d.at(7, 'volta: o feed mudou');
   await d.tap(d.type<BackButton>());
-  await d.at(9.8, 'rola');
-  await d.reveal('post_image_p3');
-  await d.at(12, 'toque duplo na foto');
-  await d.doubleTap(d.key('post_image_p3'));
-  await d.at(13.4, 'rola');
-  await d.reveal('repost_p5', alignment: 0.75, duration: const Duration(milliseconds: 1200));
-  await d.at(15, 'reposta');
-  await d.tap(d.key('repost_p5'));
-  await d.at(16.4, 'volta ao topo');
-  await d.scrollTo('feed', 0, duration: const Duration(milliseconds: 1100));
-  await d.at(17.8, 'escreve');
-  await d.tap(d.key('compose'));
-  await d.at(18.6);
-  await d.typeText(
-    'Feira de Casa Amarela hoje cedo: manga a 5 reais e prosa boa de graça 🥭',
-    perChar: const Duration(milliseconds: 38),
-  );
-  await d.at(21.8, 'anexa foto');
-  await d.tap(d.key('compose_photo'));
-  await d.at(23.4, 'publica');
-  await d.tap(d.key('publish'));
-  await d.at(25, 'rola até o fim: "Você está em dia"');
-  await d.scrollToEnd('feed', duration: const Duration(milliseconds: 2400));
-  await d.hold(29.4);
+  await d.at(10, '"Por que estou vendo isto?"');
+  await d.tap(d.key('why_olinda'));
+  await d.at(12.5, 'fecha');
+  await d.tap(_aboveSheet);
+  await d.at(13.4, 'volta ao Padrão Chama');
+  await d.tap(d.key('choose_algorithm'));
+  await d.at(14.6);
+  await d.tap(d.key('algorithm_padrao'));
+  await d.at(15.6);
+  await d.tap(d.type<BackButton>());
+  await d.hold(18.6);
 }
 
 Future<void> _dados(Director d, DemoKit kit) async {
@@ -215,16 +238,20 @@ Future<void> _sign(Director d, double at) async {
 }
 
 Future<void> _calma(Director d, DemoKit kit) async {
-  await d.at(1, 'rola a Praça até o fim');
-  await d.scrollToEnd('feed', duration: const Duration(milliseconds: 2800));
+  await d.at(1, 'aba Seguindo');
+  await d.tap(d.key('tab_following'));
+  await d.at(1.6, 'rola até "Você está em dia"');
+  await d.scrollToEnd('feed', duration: const Duration(milliseconds: 2400));
   await d.at(5.3, 'Perfil');
   await d.tap(d.tab(_profile));
   await _limit(d, 6.3);
   await d.at(10, 'liga o Modo descanso');
   await d.tap(d.key('rest_mode'));
-  await d.at(11.2);
+  await d.at(11);
   await d.reveal('grey_mode', alignment: 0.8, duration: const Duration(milliseconds: 900));
-  await d.at(12.6, 'esconde as curtidas');
+  await d.at(12, 'desliga a reprodução automática de vídeos');
+  await d.tap(d.key('autoplay'));
+  await d.at(12.8, 'esconde as curtidas');
   await d.tap(d.key('hide_likes'));
   await d.at(13.6, 'modo cinza');
   await d.tap(d.key('grey_mode'));
@@ -272,23 +299,27 @@ Future<void> _tour(Director d, DemoKit kit) async {
   await _story(d, 14.2, reply: true);
   await d.at(26.5, 'fecha');
   await d.tap(d.key('moment_close'));
-  // Praça
-  await d.at(28, 'aba Praça');
-  await d.tap(d.tab(_square));
-  await d.at(29, 'toca em "sem algoritmo"');
-  await d.tap(d.key('chronological'));
-  await d.at(31, 'rola');
-  await d.reveal('post_image_p3');
-  await d.at(33.2, 'toque duplo na foto');
-  await d.doubleTap(d.key('post_image_p3'));
-  await d.at(34.6, 'volta ao topo');
-  await d.scrollTo('feed', 0, duration: const Duration(milliseconds: 1000));
+  // Feed
+  await d.at(28, 'aba $_feedName · Para você');
+  await d.tap(d.tab(_feed));
+  await d.at(29, 'rola: reel de surfe tocando');
+  await d.reveal('post_r-surf', alignment: 0.12, duration: const Duration(milliseconds: 1400));
+  await d.at(31, 'reel com "Parceria paga"');
+  await d.reveal('post_r-futebol', alignment: 0.1, duration: const Duration(milliseconds: 900));
+  await d.at(32.2, 'post "Patrocinado"');
+  await d.reveal('post_ad-livraria', alignment: 0.12, duration: const Duration(milliseconds: 1000));
+  await d.at(33.6, '"Por que este anúncio?"');
+  await d.tap(d.key('why_ad_ad-livraria'));
+  await d.at(35.4, 'fecha');
+  await d.tap(d.key('ad_sheet_close'));
   await d.at(36, 'escreve');
   await d.tap(d.key('compose'));
   await d.at(36.8);
-  await d.typeText('Conversa, momentos e praça num lugar só. E é nosso 💜', perChar: const Duration(milliseconds: 40));
-  await d.at(39.6, 'publica');
+  await d.typeText('Conversa, momentos e vídeos num lugar só. E é nosso 💜', perChar: const Duration(milliseconds: 40));
+  await d.at(39.4, 'publica');
   await d.tap(d.key('publish'));
+  await d.at(40.4, 'aba Seguindo: o post novo no topo');
+  await d.tap(d.key('tab_following'));
   // Voz
   await d.at(42, 'aba Voz');
   await d.tap(d.tab(_voice));

@@ -44,3 +44,20 @@ Photos from Unsplash (https://unsplash.com), used under the Unsplash License (ht
 | fotos/coco.jpg | InHbSXYP-9g | Merve Kalafat Yılmaz, @merveky | https://unsplash.com/photos/InHbSXYP-9g |
 | fotos/musica.jpg | S_v3yDsXrfE | francisco monteiro, @franciskku | https://unsplash.com/photos/S_v3yDsXrfE |
 | fotos/rio-noite.jpg | rTTTJmfvdNg | Mauro Lima, @limamauro23 | https://unsplash.com/photos/rTTTJmfvdNg |
+
+## Videos
+
+Videos from Pixabay (https://pixabay.com), used under the Pixabay Content License (https://pixabay.com/service/license-summary/); attribution not required.
+Videos from Pexels (https://www.pexels.com), used under the Pexels License (https://www.pexels.com/license/); attribution not required.
+
+Each clip is a 6-second excerpt, cropped to 9:16, scaled to 540x960, audio removed; the `.jpg` next to it is its first frame.
+
+| File | Source | Video ID | Creator | Page URL |
+|------|--------|----------|---------|----------|
+| videos/praia-surf.mp4 | Pixabay | 339840 | TonyDias7 | https://pixabay.com/videos/surfer-nature-sea-beach-surfboard-339840/ |
+| videos/comida-de-rua.mp4 | Pexels | 16027909 | Levent Yucelman | https://www.pexels.com/video/a-street-vendor-selling-boiled-corn-16027909/ |
+| videos/capoeira.mp4 | Pixabay | 2089 | Che_co | https://pixabay.com/videos/capoeira-dance-brazil-happy-people-2089/ |
+| videos/futebol.mp4 | Pixabay | 67824 | ninosouza | https://pixabay.com/videos/players-ball-football-play-game-67824/ |
+| videos/rua-cidade.mp4 | Pexels | 19434326 | Th2city Santana | https://www.pexels.com/video/a-crowded-street-with-many-cars-and-umbrellas-19434326/ |
+| videos/rio-amazonia.mp4 | Pexels | 27594648 | Daan Warmerdam | https://www.pexels.com/video/a-man-travelling-on-a-boat-through-the-amazon-27594648/ |
+| videos/feira.mp4 | Pexels | 34767388 | bizarreaudio | https://www.pexels.com/video/vibrant-fruit-stand-at-outdoor-market-34767388/ |

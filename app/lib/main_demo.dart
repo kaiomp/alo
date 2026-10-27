@@ -18,7 +18,7 @@ import 'l10n/app_localizations.dart';
 import 'services/models.dart';
 
 /// The pitch demo: the real screens on fictional data, no server, already
-/// signed in, with Momentos, Praça and Perfil. Web only (the photos live in
+/// signed in, with Momentos, the feed, Voz and Perfil. Web only (the photos live in
 /// web/demo). `?cena=<name>` plays a scene by itself (demo/scenes.dart).
 ///   flutter build web -t lib/main_demo.dart
 void main() {
@@ -73,8 +73,11 @@ class _StageState extends State<_Stage> {
   }
 
   Future<void> _preload() async {
+    final social = widget.social;
+    final posts = [...social.feed.value, ...social.forYou.value, ...social.postsBy(me.id)];
     final avatars = {
       for (final c in widget.kit.chat.world.chats) ...[c.avatar, for (final p in c.members) p.avatar],
+      for (final p in posts) ...[p.author.avatar, p.coAuthor?.avatar],
       me.avatar,
     }.nonNulls;
     final photos = {
@@ -83,7 +86,7 @@ class _StageState extends State<_Stage> {
       photo('feira'),
     };
     final net = {
-      for (final p in [...widget.social.feed.value, ...widget.social.postsBy(me.id)]) ?p.image,
+      for (final p in posts) ?p.image,
       for (final g in widget.social.moments.value) ...g.moments.map((m) => m.image),
     };
     await _pool([
