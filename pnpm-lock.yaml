@@ -14,7 +14,11 @@ importers:
         specifier: ^1.12.0
         version: 1.13.15
 
-  site: {}
+  site:
+    dependencies:
+      '@resvg/resvg-wasm':
+        specifier: 2.6.2
+        version: 2.6.2
 
   tools/peer:
     dependencies:
@@ -36,6 +40,10 @@ packages:
   '@matrix-org/matrix-sdk-crypto-wasm@18.9.0':
     resolution: {integrity: sha512-NtLzNDTEfNASBjNCTGZHuk7N0jrQhS6Zx2CM857rCHZYYh/rpbKGQNrJ7azktm4S1P5Jy3WU3nwJTGohGw26qQ==}
     engines: {node: '>= 18'}
+
+  '@resvg/resvg-wasm@2.6.2':
+    resolution: {integrity: sha512-FqALmHI8D4o6lk/LRWDnhw95z5eO+eAa6ORjVg09YRR7BkcM6oPHU9uyC0gtQG5vpFLvgpeU4+zEAz2H8APHNw==}
+    engines: {node: '>= 10'}
 
   '@types/events@3.0.3':
     resolution: {integrity: sha512-trOc4AAUThEz9hapPtSd7wf5tiQKvTtu5b371UxXdTuqzIh0ArcRspRP0i0Viu+LXstIQ1z96t1nsPxT9ol01g==}
@@ -94,6 +102,8 @@ snapshots:
   '@babel/runtime@8.0.8': {}
 
   '@matrix-org/matrix-sdk-crypto-wasm@18.9.0': {}
+
+  '@resvg/resvg-wasm@2.6.2': {}
 
   '@types/events@3.0.3': {}
 

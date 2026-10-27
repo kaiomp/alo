@@ -27,6 +27,8 @@ ferramentas de análise de audiência.
 | `src/worker.ts` | Redireciona `www` e `http`, recebe os formulários, põe os cabeçalhos de segurança |
 | `src/validar.ts` | Regras de cada campo (tamanhos, formatos) |
 | `src/intervalo.ts` | Entrega o vídeo em pedaços, como o iPhone exige |
+| `src/convite.ts`, `src/imagem.ts` | Links de convite (`/convite?de=Ana`) e a imagem de prévia gerada na hora |
+| `og/modelo.html`, `og/gerar.sh` | Modelo e gerador das imagens de prévia fixas (`public/img/og-*.jpg`) |
 | `migrations/` | Tabelas do banco D1 |
 | `test/` | Testes (`pnpm --filter alo-site test`) |
 
@@ -45,6 +47,7 @@ formulário funciona sem verificação de verdade, e grava num banco local (`sit
 ## Publicar
 
 ```sh
+pnpm install                  # na raiz do repositório, uma vez (traz o @resvg/resvg-wasm)
 cd site
 pnpm --filter alo-site test   # ou: node --test test/
 wrangler deploy
@@ -118,3 +121,41 @@ wrangler d1 execute alo-inscricoes --remote --command "DELETE FROM pedidos WHERE
 
 Atualize a data no fim de `privacidade.html` e a constante `POLITICA` em `src/validar.ts`. Cada
 inscrição guarda a versão que a pessoa aceitou.
+
+## Prévias de link (WhatsApp, Telegram, redes sociais)
+
+Cada página tem a sua imagem de prévia, em dois formatos: 1200×630 (`og-<página>.jpg`) e
+quadrada 600×600 (`og-<página>-quadrado.jpg`), todas abaixo de 300 KB, porque o WhatsApp
+ignora imagens grandes. A página inicial também aponta o vídeo (`og:video`) para quem toca
+vídeo na prévia.
+
+Para mudar o desenho, edite `og/modelo.html` e gere de novo (precisa do Google Chrome):
+
+```sh
+cd site && sh og/gerar.sh && wrangler deploy
+```
+
+## Links de convite
+
+Depois de enviar o formulário, a pessoa vê **Convide alguém** com botões de compartilhar. O link
+é `https://usealo.app/convite?de=<primeiro nome>`. O Worker:
+
+- limpa o nome (só letras, espaço, apóstrofo ou hífen; de 2 a 24 caracteres); qualquer coisa
+  estranha cai na versão genérica ("Te chamaram para o Alô");
+- reescreve título e prévias da página `/convite` com o nome;
+- desenha a imagem `/og/convite.png?de=Ana` (e `/og/convite-quadrado.png`) na hora e guarda no
+  cache da Cloudflare por 7 dias.
+
+A página `/convite` tem `noindex`, para não aparecer em buscadores.
+
+## A prévia antiga continua aparecendo?
+
+Os aplicativos guardam a prévia de cada link. Para forçar a atualização:
+
+| Onde | Como |
+|---|---|
+| WhatsApp, Facebook, Instagram | [Sharing Debugger](https://developers.facebook.com/tools/debug/): cole o link e clique em **Scrape Again**. Conversas antigas mantêm a prévia antiga. |
+| LinkedIn | [Post Inspector](https://www.linkedin.com/post-inspector/): cole o link. |
+| Telegram | Mande o link para o robô **@WebpageBot** no Telegram. |
+| X | Não há botão; a prévia expira em cerca de 7 dias. |
+| Qualquer um, na hora | Compartilhe o link com um parâmetro novo, por exemplo `https://usealo.app/?v=2`. |

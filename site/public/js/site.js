@@ -122,6 +122,39 @@ function mostrar(form, codigo) {
   }
 }
 
+/* Personal invite link. Only the first name goes in it; the server cleans it again. */
+const LETRA = 'A-Za-zÀ-ÖØ-öø-ÿ';
+const NOME = new RegExp(`^[${LETRA}]+(?:['-][${LETRA}]+)*$`);
+
+function prepararConvite(caixa, nomeCompleto) {
+  const primeiro = nomeCompleto.trim().split(/\s+/)[0] || '';
+  const valido = primeiro.length >= 2 && primeiro.length <= 24 && NOME.test(primeiro);
+  const link = `${location.origin}/convite${valido ? `?de=${encodeURIComponent(primeiro)}` : ''}`;
+  const texto = 'Te chamei para o Alô: livre, aberto, sem dono. Feito no Brasil.';
+  const e = encodeURIComponent;
+  const destinos = {
+    whatsapp: `https://wa.me/?text=${e(`${texto} ${link}`)}`,
+    telegram: `https://t.me/share/url?url=${e(link)}&text=${e(texto)}`,
+    x: `https://twitter.com/intent/tweet?text=${e(texto)}&url=${e(link)}`,
+  };
+  caixa.querySelectorAll('[data-rede]').forEach((a) => (a.href = destinos[a.dataset.rede]));
+
+  const compartilhar = caixa.querySelector('[data-compartilhar]');
+  if (navigator.share) {
+    compartilhar.hidden = false;
+    compartilhar.addEventListener('click', () => navigator.share({ title: 'Alô', text: texto, url: link }).catch(() => {}));
+  }
+  const copiar = caixa.querySelector('[data-copiar]');
+  copiar.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+      copiar.textContent = 'Link copiado!';
+    } catch {
+      copiar.textContent = link;
+    }
+  });
+}
+
 for (const form of formularios) {
   const botao = form.querySelector('[type=submit]');
   form.addEventListener('focusin', carregarTurnstile, { once: true });
@@ -156,6 +189,7 @@ for (const form of formularios) {
         const ok = form.parentElement.querySelector('[data-sucesso]');
         form.hidden = true;
         ok.hidden = false;
+        if (form.elements.nome) prepararConvite(ok, form.elements.nome.value);
         ok.focus();
         return;
       }

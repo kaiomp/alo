@@ -1,4 +1,6 @@
-// usealo.app: static pages from ./public plus the two form endpoints.
+// usealo.app: static pages from ./public, the two form endpoints and personal invite links.
+import { nomeConvite, textosConvite } from './convite.ts';
+import { imagemConvite } from './imagem.ts';
 import { comIntervalo } from './intervalo.ts';
 import { ErroValidacao, validarInscricao, validarPedido } from './validar.ts';
 
@@ -10,6 +12,8 @@ type Env = {
   LIMITE: { limit(o: { key: string }): Promise<{ success: boolean }> };
   TURNSTILE_SECRET?: string;
 };
+
+type Ctx = { waitUntil(p: Promise<unknown>): void };
 
 const MAX_CORPO = 10_000;
 
@@ -101,8 +105,39 @@ async function formulario(req: Request, env: Env, rota: string): Promise<Respons
   return json({ ok: true }, 201);
 }
 
+// /convite?de=Ana: the static page with its share tags rewritten for that name.
+function paginaConvite(url: URL, res: Response): Response {
+  const nome = nomeConvite(url.searchParams.get('de'));
+  if (!nome || !res.ok) return res;
+  const t = textosConvite(nome);
+  const de = encodeURIComponent(nome);
+  const base = `https://${url.host}`;
+  const conteudo = (valor: string) => ({ element: (e: Element) => void e.setAttribute('content', valor) });
+  return new HTMLRewriter()
+    .on('title', { element: (e) => void e.setInnerContent(t.titulo) })
+    .on('[data-titulo]', conteudo(t.titulo))
+    .on('[data-descricao]', conteudo(t.descricao))
+    .on('[data-url]', conteudo(`${base}/convite?de=${de}`))
+    .on('[data-imagem]', conteudo(`${base}/og/convite.png?de=${de}`))
+    .on('[data-imagem-quadrada]', conteudo(`${base}/og/convite-quadrado.png?de=${de}`))
+    .on('[data-imagem-tipo]', conteudo('image/png'))
+    .on('[data-imagem-alt]', conteudo(t.alt))
+    .on('[data-nome]', { element: (e) => void e.setInnerContent(nome) })
+    .transform(res);
+}
+
+async function responder(req: Request, env: Env, ctx: Ctx, url: URL): Promise<Response> {
+  const p = url.pathname;
+  if (p === '/api/inscricao' || p === '/api/pedido') return formulario(req, env, p);
+  if (p === '/og/convite.png' || p === '/og/convite-quadrado.png') return imagemConvite(url, ctx);
+  const res = await env.ASSETS.fetch(req);
+  if (p === '/convite') return paginaConvite(url, res);
+  if (p.startsWith('/video/')) return comIntervalo(req.headers.get('Range'), res);
+  return res;
+}
+
 export default {
-  async fetch(req: Request, env: Env): Promise<Response> {
+  async fetch(req: Request, env: Env, ctx: Ctx): Promise<Response> {
     const url = new URL(req.url);
     // CF-Visitor carries the visitor's real scheme; local dev rewrites req.url, so it is not trusted here.
     const http = req.headers.get('CF-Visitor')?.includes('"http"') ?? false;
@@ -112,10 +147,7 @@ export default {
       return Response.redirect(url.toString(), 301);
     }
 
-    const api = url.pathname === '/api/inscricao' || url.pathname === '/api/pedido';
-    let res = api ? await formulario(req, env, url.pathname) : await env.ASSETS.fetch(req);
-    if (url.pathname.startsWith('/video/')) res = await comIntervalo(req.headers.get('Range'), res);
-
+    const res = await responder(req, env, ctx, url);
     const saida = new Response(res.body, res);
     for (const [k, v] of Object.entries(SEGURANCA)) saida.headers.set(k, v);
     const cc = cache(url.pathname);
