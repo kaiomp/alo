@@ -43,7 +43,10 @@ class _PostScreenState extends State<PostScreen> {
       valueListenable: social.feed,
       builder: (context, posts, _) {
         bool mine(Post p) => p.id == widget.postId;
-        final post = posts.where(mine).firstOrNull ?? social.postsBy(social.me.person.id).where(mine).firstOrNull;
+        final post =
+            posts.where(mine).firstOrNull ??
+            social.forYou.value.where(mine).firstOrNull ??
+            social.postsBy(social.me.person.id).where(mine).firstOrNull;
         if (post == null) return const Scaffold();
         final replies = social.repliesTo(post.id);
         return Scaffold(

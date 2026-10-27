@@ -7,7 +7,10 @@ import '../common/net_image.dart';
 import '../common/theme.dart';
 import '../common/time_format.dart';
 import '../l10n/app_localizations.dart';
+import '../profile/person_screen.dart';
 import '../services/social_service.dart';
+import 'reel.dart';
+import 'why_sheet.dart';
 
 /// One post: author, text, photo and the like / reply / repost / share row.
 /// A double tap on the photo likes it with a heart that pops over it.
@@ -19,7 +22,9 @@ class PostCard extends StatefulWidget {
     required this.onRepost,
     required this.onShare,
     this.onOpen,
+    this.onOpenReel,
     this.large = false,
+    this.showReason = false,
   });
 
   final Post post;
@@ -30,8 +35,14 @@ class PostCard extends StatefulWidget {
   /// Opens the post with its replies; null on the post's own page.
   final VoidCallback? onOpen;
 
+  /// Opens the full-screen reel viewer at this post.
+  final VoidCallback? onOpenReel;
+
   /// The post's own page: bigger text.
   final bool large;
+
+  /// "Para você": the reason line and the "Por que estou vendo isto?" menu.
+  final bool showReason;
 
   @override
   State<PostCard> createState() => _PostCardState();
@@ -67,6 +78,8 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (post.sponsored) _SponsoredLine(post: post),
+            if (widget.showReason && post.reason != null) _ReasonLine(post: post),
             if (post.repostedBy != null)
               Padding(
                 padding: const EdgeInsets.only(left: 30, bottom: 6),
@@ -84,13 +97,28 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Avatar(name: post.author.name, seed: post.author.id, mxc: post.author.avatar, radius: 21),
+                GestureDetector(
+                  onTap: () => PersonScreen.open(context, post.author),
+                  child: _Avatars(post: post),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _Byline(post: post),
+                      _Byline(
+                        post: post,
+                        onMore: widget.showReason && !post.sponsored ? () => showWhySheet(context, post) : null,
+                      ),
+                      if (post.paidPartner != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 2),
+                          child: Text(
+                            l.paidPartnership(post.paidPartner!.handle.split('@').first),
+                            key: Key('paid_${post.id}'),
+                            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: muted),
+                          ),
+                        ),
                       if (post.text.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(top: 2, right: 4),
@@ -103,7 +131,12 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                             ),
                           ),
                         ),
-                      if (image != null)
+                      if (post.isReel)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 10, right: 4),
+                          child: ReelInline(post: post, onOpen: widget.onOpenReel ?? () {}),
+                        )
+                      else if (image != null)
                         Padding(
                           padding: const EdgeInsets.only(top: 10, right: 4),
                           child: GestureDetector(
@@ -145,34 +178,173 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
 }
 
 class _Byline extends StatelessWidget {
-  const _Byline({required this.post});
+  const _Byline({required this.post, this.onMore});
   final Post post;
+  final VoidCallback? onMore;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final muted = scheme.onSurfaceVariant;
     final l = L10n.of(context);
-    return Row(
+    final co = post.coAuthor;
+    final name = co == null ? post.author.name : l.collabNames(post.author.name, co.name);
+    final line = Row(
       children: [
         Flexible(
+          flex: 5,
           child: Text(
-            post.author.name,
+            name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: scheme.onSurface),
           ),
         ),
+        if (post.author.business != null) ...[
+          const SizedBox(width: 4),
+          Icon(Icons.storefront_outlined, size: 15, color: ChatColors.of(context).accent),
+        ],
         const SizedBox(width: 6),
         Flexible(
+          flex: 3,
           child: Text(
-            '@${post.author.handle.split('@').first} · ${ago(post.time, DateTime.now(), l)}',
+            co == null ? '${ago(post.time, DateTime.now(), l)} · ${post.author.at}' : ago(post.time, DateTime.now(), l),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(fontSize: 14, color: muted, fontFeatures: tabularFigures),
           ),
         ),
       ],
+    );
+    if (onMore == null) return line;
+    return Row(
+      children: [
+        Expanded(child: line),
+        SizedBox(
+          width: 32,
+          height: 24,
+          child: IconButton(
+            key: Key('why_${post.id}'),
+            tooltip: l.whyThis,
+            padding: EdgeInsets.zero,
+            iconSize: 20,
+            color: muted,
+            onPressed: onMore,
+            icon: const Icon(Icons.more_horiz_rounded),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The author's photo; a collab adds the second author's, overlapping.
+class _Avatars extends StatelessWidget {
+  const _Avatars({required this.post});
+  final Post post;
+
+  @override
+  Widget build(BuildContext context) {
+    final a = post.author;
+    final co = post.coAuthor;
+    final main = Avatar(name: a.name, seed: a.id, mxc: a.avatar, radius: 21);
+    if (co == null) return main;
+    return SizedBox(
+      width: 42,
+      height: 46,
+      child: Stack(
+        children: [
+          main,
+          Positioned(
+            right: -4,
+            bottom: 0,
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, shape: BoxShape.circle),
+              child: Avatar(name: co.name, seed: co.id, mxc: co.avatar, radius: 11),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "Porque você segue @ju.ferreira": tap it for the reasons sheet.
+class _ReasonLine extends StatelessWidget {
+  const _ReasonLine({required this.post});
+  final Post post;
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    final r = post.reason!;
+    return InkWell(
+      key: Key('reason_${post.id}'),
+      onTap: () => showWhySheet(context, post),
+      child: Padding(
+        padding: const EdgeInsets.only(left: 30, bottom: 6),
+        child: Row(
+          children: [
+            Icon(reasonIcon(r.kind), size: 15, color: muted),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                reasonText(r, L10n.of(context)),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: muted),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// "Patrocinado · Por que este anúncio?", always on top of an ad.
+class _SponsoredLine extends StatelessWidget {
+  const _SponsoredLine({required this.post});
+  final Post post;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L10n.of(context);
+    final colors = ChatColors.of(context);
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    return InkWell(
+      key: Key('why_ad_${post.id}'),
+      onTap: () => showAdSheet(context, post),
+      child: Padding(
+        padding: const EdgeInsets.only(left: 30, bottom: 6),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(color: colors.tint, borderRadius: BorderRadius.circular(6)),
+              child: Text(
+                l.sponsored,
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: colors.onTint),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                l.whyThisAd,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: muted,
+                  decoration: TextDecoration.underline,
+                  decorationColor: muted,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -328,7 +328,7 @@ class DemoWorld {
   }
 }
 
-/// Praça, newest first.
+/// The feed's "Seguindo" list, newest first.
 List<Post> demoFeed(DateTime now) {
   DateTime ago({int h = 0, int m = 0}) => now.subtract(Duration(hours: h, minutes: m));
   Post post(
@@ -341,6 +341,7 @@ List<Post> demoFeed(DateTime now) {
     int r = 0,
     int s = 0,
     Person? by,
+    String? topic,
   }) => Post(
     id: id,
     author: who,
@@ -352,6 +353,7 @@ List<Post> demoFeed(DateTime now) {
     replies: r,
     reposts: s,
     repostedBy: by,
+    topic: topic,
   );
   return [
     post(
@@ -368,7 +370,7 @@ List<Post> demoFeed(DateTime now) {
       'p2',
       pedro,
       ago(m: 34),
-      'Lembrete de quinta: sua timeline não precisa de algoritmo pra ser boa. Precisa de gente boa.',
+      'Lembrete de quinta: algoritmo bom é o que você escolhe e consegue ler. O resto é vitrine.',
       l: 1204,
       r: 2,
       s: 312,
@@ -403,6 +405,7 @@ List<Post> demoFeed(DateTime now) {
       l: 278,
       r: 33,
       s: 20,
+      topic: 'futebol de várzea',
     ),
     post(
       'p6',
@@ -550,3 +553,240 @@ List<Post> demoMyPosts(DateTime now) {
     p('b8', 'coco', 520, 'Água de coco é meu combustível', 133),
   ];
 }
+
+// ---- "Para você": creators, local businesses and one ad (all fictional) ----
+
+Uri video(String name) => Uri.parse('demo/videos/$name.mp4');
+Uri poster(String name) => Uri.parse('demo/videos/$name.jpg');
+
+Person _creator(String key, String name, {Uri? avatar, String? business}) =>
+    Person(id: '@$key:chama.chat', name: name, handle: '$key@chama.chat', avatar: avatar, business: business);
+
+final iara = _creator('iara.surf', 'Iara Mendes');
+final bento = _creator('mestrebento', 'Mestre Bento');
+final cozinhaDaRua = _creator('cozinhadarua', 'Cozinha da Rua');
+final recifeAPe = _creator('recifeape', 'Recife a Pé');
+final ribeirinho = _creator('ribeirinho', 'Ribeirinho Filmes');
+final coletivo = _creator('coletivo.mangue', 'Coletivo Mangue Arte');
+final cordel = _creator('cordelvivo', 'Ateliê Cordel Vivo');
+final cafeBaoba = _creator('cafebaoba', 'Café Baobá', avatar: photo('cafe'), business: 'Café · Boa Vista, Recife');
+final donaZefa = _creator(
+  'barracadazefa',
+  'Barraca da Dona Zefa',
+  avatar: photo('feira'),
+  business: 'Frutas e verduras · Feira de Casa Amarela',
+);
+final varzeaWear = _creator('varzeawear', 'Várzea Wear', business: 'Uniformes esportivos · Recife');
+final livrariaMare = _creator('livrariamare', 'Livraria Maré', business: 'Livraria · Recife Antigo');
+
+const topicsAll = ['praia', 'futebol de várzea', 'comida', 'arte', 'música e capoeira', 'natureza', 'cidade'];
+
+/// Posts that "Perto de você" keeps (Recife and around).
+const nearIds = {'r-surf', 'r-futebol', 'collab', 'r-capoeira', 'cafe-text', 'olinda', 'r-rua', 'r-feira', 'cordel'};
+
+/// "Para você" in Padrão Chama order, before the ad goes in.
+List<Post> demoForYou(DateTime now, List<Post> following) {
+  DateTime ago(int minutes) => now.subtract(Duration(minutes: minutes));
+  Post friend(String id, Reason reason, String topic) =>
+      following.firstWhere((p) => p.id == id).copyWith(reason: reason, topic: topic);
+  Reason follows(Person p) => Reason(ReasonKind.follows, p.at);
+  Post reel(
+    String id,
+    Person who,
+    int minutes,
+    String file,
+    String text,
+    Reason reason,
+    String topic, {
+    int l = 0,
+    int r = 0,
+    Person? partner,
+  }) => Post(
+    id: id,
+    author: who,
+    time: ago(minutes),
+    text: text,
+    video: video(file),
+    image: poster(file),
+    imageRatio: 9 / 16,
+    likes: l,
+    replies: r,
+    reason: reason,
+    topic: topic,
+    paidPartner: partner,
+  );
+  const popular = Reason(ReasonKind.popular, 'Recife');
+  return [
+    friend('p1', follows(juliana), 'natureza'),
+    friend('p2', follows(pedro), 'cidade'),
+    reel('r-surf', iara, 25, 'praia-surf', 'Maré boa hoje cedo. Quem vem amanhã? 🌊', popular, 'praia', l: 3120, r: 88),
+    reel(
+      'r-futebol',
+      thiago,
+      40,
+      'futebol',
+      'Uniforme novo pro time da quebrada 🙌 Domingo tem final!',
+      follows(thiago),
+      'futebol de várzea',
+      l: 641,
+      r: 57,
+      partner: varzeaWear,
+    ),
+    Post(
+      id: 'collab',
+      author: cafeBaoba,
+      coAuthor: donaZefa,
+      time: ago(55),
+      text: 'Café coado de Garanhuns + tapioca da feira: só neste sábado, na barraca da Dona Zefa ☕',
+      image: photo('cafe'),
+      imageRatio: 0.8,
+      likes: 402,
+      replies: 31,
+      reason: const Reason(ReasonKind.near, 'Boa Vista'),
+      topic: 'comida',
+    ),
+    reel(
+      'r-comida',
+      cozinhaDaRua,
+      70,
+      'comida-de-rua',
+      'Milho cozido na esquina: o lanche mais honesto do Brasil 🌽',
+      const Reason(ReasonKind.topic, 'comida'),
+      'comida',
+      l: 1880,
+      r: 140,
+    ),
+    friend('p3', follows(fernanda), 'natureza'),
+    reel(
+      'r-capoeira',
+      bento,
+      90,
+      'capoeira',
+      'Roda de sábado na praça. Chega mais, ninguém fica de fora.',
+      popular,
+      'música e capoeira',
+      l: 2240,
+      r: 96,
+    ),
+    Post(
+      id: 'cafe-text',
+      author: cafeBaoba,
+      time: ago(110),
+      text: 'Bolo de rolo saindo do forno agora. Café coado até as 20h, aqui na Boa Vista.',
+      likes: 87,
+      replies: 6,
+      reason: const Reason(ReasonKind.near, 'Boa Vista'),
+      topic: 'comida',
+    ),
+    Post(
+      id: 'olinda',
+      author: coletivo,
+      time: ago(130),
+      text: 'Muro novo no Amparo, em Olinda. Tinta, vizinhança e três dias de mutirão.',
+      image: photo('olinda'),
+      imageRatio: 0.8,
+      likes: 958,
+      replies: 44,
+      reason: const Reason(ReasonKind.topic, 'arte'),
+      topic: 'arte',
+    ),
+    reel(
+      'r-rua',
+      recifeAPe,
+      150,
+      'rua-cidade',
+      'Sábado de manhã no centro. Barulho bom.',
+      popular,
+      'cidade',
+      l: 1310,
+      r: 52,
+    ),
+    reel(
+      'r-feira',
+      donaZefa,
+      170,
+      'feira',
+      'Chegou manga, caju e pitomba! Até meio-dia na feira de Casa Amarela.',
+      const Reason(ReasonKind.near, 'Casa Amarela'),
+      'comida',
+      l: 276,
+      r: 19,
+    ),
+    Post(
+      id: 'cordel',
+      author: cordel,
+      time: ago(200),
+      text: 'Oficina de xilogravura aberta ao público, domingo, no mercado da Boa Vista. Traga papel e vontade.',
+      likes: 312,
+      replies: 27,
+      reason: const Reason(ReasonKind.topic, 'arte'),
+      topic: 'arte',
+    ),
+    reel(
+      'r-rio',
+      ribeirinho,
+      240,
+      'rio-amazonia',
+      'Amanhecer no rio. Nenhuma notificação chega aqui.',
+      const Reason(ReasonKind.topic, 'natureza'),
+      'natureza',
+      l: 4410,
+      r: 120,
+    ),
+    friend('p12', follows(juliana), 'cidade'),
+  ];
+}
+
+/// The one ad of the demo: clearly a sponsored post, chosen by topic only.
+List<Post> demoAds(DateTime now) => [
+  Post(
+    id: 'ad-livraria',
+    author: livrariaMare,
+    time: now.subtract(const Duration(hours: 5)),
+    text: 'Sarau de violão e livros independentes. Sábado, 16h, no Recife Antigo. Entrada franca.',
+    image: photo('musica'),
+    imageRatio: 0.8,
+    likes: 129,
+    sponsored: true,
+    topic: 'arte',
+  ),
+];
+
+const demoAlgorithms = [
+  FeedChoice(
+    id: 'padrao',
+    name: 'Padrão Chama',
+    about: 'Quem você segue, perto de você e temas de que gosta, em equilíbrio.',
+  ),
+  FeedChoice(id: 'perto', name: 'Perto de você', about: 'O que acontece em Recife e arredores.'),
+  FeedChoice(id: 'seguindo', name: 'Só quem eu sigo', about: 'Sem recomendações: igual à aba Seguindo.'),
+  FeedChoice(
+    id: 'arte-pe',
+    name: 'Só arte de Pernambuco',
+    about: 'Arte, música e capoeira feitas aqui.',
+    by: 'coletivo.mangue',
+    users: 12400,
+  ),
+  FeedChoice(
+    id: 'varzea',
+    name: 'Várzea de todo o Brasil',
+    about: 'Futebol de bairro, de Norte a Sul.',
+    by: 'ligadavarzea',
+    users: 8350,
+  ),
+];
+
+/// Profile bios for the people and businesses of "Para você".
+final demoBios = {
+  cafeBaoba.id: 'Café coado, bolo de rolo e mesa na calçada. Seg a sáb, 7h às 20h, na Boa Vista.',
+  donaZefa.id: 'Frutas da estação há 31 anos na feira de Casa Amarela. Sábado e domingo até meio-dia.',
+  varzeaWear.id: 'Uniforme para time de bairro, feito em Recife.',
+  livrariaMare.id: 'Livros independentes e saraus no Recife Antigo.',
+  iara.id: 'Surfe, mar e Boa Viagem cedinho.',
+  bento.id: 'Capoeira Angola desde 1989. Roda aberta aos sábados.',
+  cozinhaDaRua.id: 'A comida de rua do Brasil, uma esquina por vez.',
+  recifeAPe.id: 'Recife a pé, sem pressa.',
+  ribeirinho.id: 'Filmes curtos sobre a vida nos rios.',
+  coletivo.id: 'Arte de rua, mutirão e muro bonito.',
+  cordel.id: 'Xilogravura e cordel com a vizinhança.',
+};

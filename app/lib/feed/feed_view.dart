@@ -5,11 +5,14 @@ import '../common/deps.dart';
 import '../common/theme.dart';
 import '../l10n/app_localizations.dart';
 import '../services/social_service.dart';
+import 'algorithm_screen.dart';
 import 'post_card.dart';
 import 'post_screen.dart';
+import 'reel.dart';
 
-/// Praça: everyone I follow, newest first, never ranked. The label on top
-/// says so; a tap explains it.
+/// The feed tab: "Para você" (recommended, each post says why) and
+/// "Seguindo" (people I follow, newest first, with an end). The tune button
+/// opens "Escolha seu algoritmo".
 class FeedView extends StatefulWidget {
   const FeedView({super.key});
 
@@ -17,7 +20,122 @@ class FeedView extends StatefulWidget {
   State<FeedView> createState() => _FeedViewState();
 }
 
-class _FeedViewState extends State<FeedView> {
+class _FeedViewState extends State<FeedView> with SingleTickerProviderStateMixin {
+  late final _tabs = TabController(length: 2, vsync: this)..addListener(() => setState(() {}));
+
+  @override
+  void dispose() {
+    _tabs.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = L10n.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: TabBar(
+                controller: _tabs,
+                labelColor: scheme.onSurface,
+                unselectedLabelColor: scheme.onSurfaceVariant,
+                labelStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                unselectedLabelStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                indicatorColor: scheme.primary,
+                indicatorWeight: 3,
+                indicatorSize: TabBarIndicatorSize.label,
+                dividerColor: scheme.outlineVariant,
+                tabs: [
+                  Tab(key: const Key('tab_for_you'), text: l.forYou),
+                  Tab(key: const Key('tab_following'), text: l.followingTab),
+                ],
+              ),
+            ),
+            IconButton(
+              key: const Key('choose_algorithm'),
+              tooltip: l.chooseAlgorithm,
+              onPressed: () =>
+                  Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AlgorithmScreen())),
+              icon: const Icon(Icons.tune_rounded),
+            ),
+            const SizedBox(width: 4),
+          ],
+        ),
+        Expanded(
+          child: IndexedStack(index: _tabs.index, children: const [_ForYou(), _Following()]),
+        ),
+      ],
+    );
+  }
+}
+
+PostCard _card(BuildContext context, SocialService social, Post post, List<Post> all, {bool reasons = false}) =>
+    PostCard(
+      key: Key('post_${post.id}'),
+      post: post,
+      showReason: reasons,
+      onLike: () => social.toggleLike(post.id),
+      onRepost: () => repost(context, social, post),
+      onShare: () => sharePost(context, post),
+      onOpen: post.isReel
+          ? null
+          : () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PostScreen(postId: post.id))),
+      onOpenReel: () => ReelViewer.open(context, [
+        for (final p in all)
+          if (p.isReel) p,
+      ], post),
+    );
+
+/// "Para você": the chosen algorithm's picks, ending honestly too.
+class _ForYou extends StatelessWidget {
+  const _ForYou();
+
+  @override
+  Widget build(BuildContext context) {
+    final social = Deps.of(context).social!;
+    final l = L10n.of(context);
+    return ValueListenableBuilder<List<Post>>(
+      valueListenable: social.forYou,
+      builder: (context, posts, _) => RefreshIndicator(
+        onRefresh: social.refresh,
+        child: CustomScrollView(
+          key: const Key('feed_for_you'),
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverList.separated(
+              itemCount: posts.length,
+              separatorBuilder: (_, _) => const Divider(indent: 16, endIndent: 16),
+              itemBuilder: (context, i) => _card(context, social, posts[i], posts, reasons: true),
+            ),
+            SliverToBoxAdapter(
+              child: _CaughtUp(
+                key: const Key('for_you_end'),
+                title: l.forYouEnd,
+                body: l.forYouEndBody,
+                action: l.chooseAlgorithm,
+                onAction: () =>
+                    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AlgorithmScreen())),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// "Seguindo": everyone I follow, newest first, and then it ends.
+class _Following extends StatefulWidget {
+  const _Following();
+
+  @override
+  State<_Following> createState() => _FollowingState();
+}
+
+class _FollowingState extends State<_Following> {
   /// Posts on screen when the tab opened; newer ones slide in.
   Set<String>? _known;
 
@@ -41,23 +159,14 @@ class _FeedViewState extends State<FeedView> {
                 separatorBuilder: (_, _) => const Divider(indent: 16, endIndent: 16),
                 itemBuilder: (context, i) {
                   final post = posts[i];
-                  final card = PostCard(
-                    key: Key('post_${post.id}'),
-                    post: post,
-                    onLike: () => social.toggleLike(post.id),
-                    onRepost: () => repost(context, social, post),
-                    onShare: () => sharePost(context, post),
-                    onOpen: () =>
-                        Navigator.of(context)
-                            .push(MaterialPageRoute<void>(builder: (_) => PostScreen(postId: post.id))),
-                  );
+                  final card = _card(context, social, post, posts);
                   if (known.contains(post.id)) return card;
                   known.add(post.id);
                   return _SlideIn(key: ValueKey('in_${post.id}'), child: card);
                 },
               ),
               SliverToBoxAdapter(
-                child: _CaughtUp(title: l.feedUpToDate, body: l.feedUpToDateBody),
+                child: _CaughtUp(key: const Key('feed_end'), title: l.feedUpToDate, body: l.feedUpToDateBody),
               ),
             ],
           ),
@@ -201,20 +310,21 @@ class _SlideInState extends State<_SlideIn> with SingleTickerProviderStateMixin 
   }
 }
 
-/// The end of the feed: no infinite scroll, no suggestions, no ads.
+/// The end of a feed: no infinite scroll, no filler.
 class _CaughtUp extends StatelessWidget {
-  const _CaughtUp({required this.title, required this.body});
+  const _CaughtUp({super.key, required this.title, required this.body, this.action, this.onAction});
   final String title;
   final String body;
+  final String? action;
+  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final colors = ChatColors.of(context);
     return Container(
-      key: const Key('feed_end'),
       margin: const EdgeInsets.fromLTRB(16, 24, 16, 120),
-      padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
       decoration: BoxDecoration(color: colors.tint, borderRadius: BorderRadius.circular(22)),
       child: Column(
         children: [
@@ -222,6 +332,7 @@ class _CaughtUp extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             title,
+            textAlign: TextAlign.center,
             style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: scheme.onSurface),
           ),
           const SizedBox(height: 6),
@@ -230,6 +341,10 @@ class _CaughtUp extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 15, height: 21 / 15, color: scheme.onSurfaceVariant),
           ),
+          if (action != null) ...[
+            const SizedBox(height: 12),
+            TextButton.icon(onPressed: onAction, icon: const Icon(Icons.tune_rounded, size: 18), label: Text(action!)),
+          ],
         ],
       ),
     );

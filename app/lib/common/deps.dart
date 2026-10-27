@@ -45,7 +45,7 @@ class Deps extends InheritedWidget {
   final PickFile pickFile;
   final ShareText shareText;
 
-  /// Momentos, Praça and Perfil tabs; null keeps the chat-only home.
+  /// Momentos, feed and Perfil tabs; null keeps the chat-only home.
   final SocialService? social;
 
   /// The Voz tab; null leaves it out.

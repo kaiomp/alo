@@ -25,6 +25,9 @@ abstract interface class WellbeingService {
   ValueNotifier<bool> get hideSeenBy;
   ValueNotifier<bool> get grey;
 
+  /// Reels in the feed play by themselves, muted, while on screen.
+  ValueNotifier<bool> get autoplay;
+
   /// The daily limit is reached and the pause card should show.
   ValueListenable<bool> get pauseDue;
 

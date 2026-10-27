@@ -58,6 +58,7 @@ class WellbeingScreen extends StatelessWidget {
           toggle('rest_mode', w.restMode, l.restMode, l.restModeBody(_hm(rest.from), _hm(rest.to))),
           toggle('digest', w.digest, l.digest, l.digestBody(w.digestTimes.map(_hm).join(' · '))),
           SectionHeader(l.calmOptions),
+          toggle('autoplay', w.autoplay, l.autoplayVideos, l.autoplayVideosBody),
           toggle('hide_likes', w.hideLikes, l.hideLikes),
           toggle('hide_seen_by', w.hideSeenBy, l.hideSeenBy),
           toggle('grey_mode', w.grey, l.greyMode, l.greyModeBody),

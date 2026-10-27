@@ -3,16 +3,34 @@ import 'package:flutter/foundation.dart';
 /// Someone who posts or shares moments. [avatar] is an image address the
 /// [Avatar] widget loads through ChatService.thumbnail.
 class Person {
-  const Person({required this.id, required this.name, required this.handle, this.avatar});
+  const Person({required this.id, required this.name, required this.handle, this.avatar, this.business});
   final String id;
   final String name;
 
   /// Fediverse-style address without the leading "@", e.g. `bia@chama.app`.
   final String handle;
   final Uri? avatar;
+
+  /// A business profile's line ("Café · Boa Vista, Recife"); null for people.
+  final String? business;
+
+  /// "@ju.ferreira".
+  String get at => '@${handle.split('@').first}';
 }
 
-/// One post in Praça: short text, maybe a photo.
+/// Why a post is in "Para você". Every recommendation says why: Chama
+/// ranks, but never in secret.
+enum ReasonKind { follows, popular, near, topic, community }
+
+class Reason {
+  const Reason(this.kind, this.value);
+  final ReasonKind kind;
+
+  /// The handle, place, topic or community feed name.
+  final String value;
+}
+
+/// One post in the feed: text, a photo, or a short vertical video (reel).
 class Post {
   const Post({
     required this.id,
@@ -27,6 +45,12 @@ class Post {
     this.reposts = 0,
     this.reposted = false,
     this.repostedBy,
+    this.video,
+    this.reason,
+    this.topic,
+    this.coAuthor,
+    this.paidPartner,
+    this.sponsored = false,
   });
 
   final String id;
@@ -46,20 +70,47 @@ class Post {
   /// Someone I follow shared it; it shows at the time they did.
   final Person? repostedBy;
 
-  Post copyWith({int? likes, bool? liked, int? replies, int? reposts, bool? reposted}) => Post(
-    id: id,
-    author: author,
-    time: time,
-    text: text,
-    image: image,
-    imageRatio: imageRatio,
-    likes: likes ?? this.likes,
-    liked: liked ?? this.liked,
-    replies: replies ?? this.replies,
-    reposts: reposts ?? this.reposts,
-    reposted: reposted ?? this.reposted,
-    repostedBy: repostedBy,
-  );
+  /// A reel: short, vertical, muted until opened; [image] is its poster.
+  final Uri? video;
+
+  /// Why it is recommended; null in "Seguindo".
+  final Reason? reason;
+
+  /// "comida de rua": what "Mostrar mais/menos disso" and topic switches act on.
+  final String? topic;
+
+  /// A collab post with two authors.
+  final Person? coAuthor;
+
+  /// "Parceria paga com @marca": the creator was paid by this brand.
+  final Person? paidPartner;
+
+  /// An ad, always labelled "Patrocinado".
+  final bool sponsored;
+
+  bool get isReel => video != null;
+
+  Post copyWith({int? likes, bool? liked, int? replies, int? reposts, bool? reposted, Reason? reason, String? topic}) =>
+      Post(
+        id: id,
+        author: author,
+        time: time,
+        text: text,
+        image: image,
+        imageRatio: imageRatio,
+        likes: likes ?? this.likes,
+        liked: liked ?? this.liked,
+        replies: replies ?? this.replies,
+        reposts: reposts ?? this.reposts,
+        reposted: reposted ?? this.reposted,
+        repostedBy: repostedBy,
+        video: video,
+        reason: reason ?? this.reason,
+        topic: topic ?? this.topic,
+        coAuthor: coAuthor,
+        paidPartner: paidPartner,
+        sponsored: sponsored,
+      );
 }
 
 /// One full-screen photo in someone's Momentos.
@@ -96,6 +147,19 @@ class SocialProfile {
   final int posts;
 }
 
+/// One way to build "Para você". Community feeds are made and shared by
+/// people, with open rules.
+class FeedChoice {
+  const FeedChoice({required this.id, required this.name, required this.about, this.by, this.users});
+  final String id;
+  final String name;
+  final String about;
+
+  /// The community feed's author handle ("coletivo.mangue"); null for Chama's own.
+  final String? by;
+  final int? users;
+}
+
 /// A finished export of everything the user owns.
 class DataExport {
   const DataExport({required this.fileName, required this.bytes});
@@ -103,13 +167,31 @@ class DataExport {
   final int bytes;
 }
 
-/// The social tabs (Momentos, Praça, Perfil). The home screen shows them
+/// The social tabs (Momentos, the feed, Perfil). The home screen shows them
 /// only when [Deps.social] holds one. Limit: only the demo implements it
 /// today; the real one (Matrix rooms for moments, ActivityPub for posts and
 /// followers) replaces it without touching the screens.
 abstract interface class SocialService {
-  /// Posts of the people I follow and mine, newest first. Never ranked.
+  /// "Seguindo": posts of the people I follow and mine, newest first.
   ValueListenable<List<Post>> get feed;
+
+  /// "Para você": recommended by the chosen [algorithm], each post with its
+  /// [Post.reason]; at most one ad in any ten items.
+  ValueListenable<List<Post>> get forYou;
+
+  List<FeedChoice> get algorithms;
+  ValueListenable<String> get algorithm;
+  void chooseAlgorithm(String id);
+
+  /// Topics I can switch off; [hiddenTopics] never show in "Para você".
+  List<String> get topics;
+  ValueListenable<Set<String>> get hiddenTopics;
+  void setTopic(String topic, bool on);
+  void moreLike(String postId);
+  void lessLike(String postId);
+
+  /// Bio and counts for anyone's profile page.
+  SocialProfile profileOf(Person person);
 
   /// Contacts with moments; unseen first, then seen, each newest first.
   ValueListenable<List<MomentGroup>> get moments;

@@ -6,7 +6,7 @@ import '../common/net_image.dart';
 import '../common/theme.dart';
 import '../l10n/app_localizations.dart';
 
-/// A new post for Praça: text and maybe one photo. Pops true once posted.
+/// A new post for the feed: text and maybe one photo. Pops true once posted.
 class ComposeScreen extends StatefulWidget {
   const ComposeScreen({super.key});
 

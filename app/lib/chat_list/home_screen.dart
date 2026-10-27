@@ -234,14 +234,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Conversas · Momentos · Praça · Perfil. Each tab keeps its scroll
+  /// Conversas · Momentos · feed (tabFeed) · Voz · Perfil. Each tab keeps its scroll
   /// position while another one shows.
   Widget _socialPhone(BuildContext context, L10n l) {
     final voz = _deps.civic != null;
     final tabs = [
       (Icons.chat_bubble_outline_rounded, l.tabChats),
       (Icons.motion_photos_on_outlined, l.tabMoments),
-      (Icons.dynamic_feed_outlined, l.tabSquare),
+      (Icons.dynamic_feed_outlined, l.tabFeed),
       if (voz) (Icons.campaign_outlined, l.tabVoice),
       (Icons.person_outline_rounded, l.tabProfile),
     ];

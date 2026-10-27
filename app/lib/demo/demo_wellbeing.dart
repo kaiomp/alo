@@ -36,6 +36,8 @@ class DemoWellbeing implements WellbeingService {
   final hideSeenBy = ValueNotifier(false);
   @override
   final grey = ValueNotifier(false);
+  @override
+  final autoplay = ValueNotifier(true);
 
   @override
   ({Duration from, Duration to}) get restHours => (from: const Duration(hours: 22), to: const Duration(hours: 7));

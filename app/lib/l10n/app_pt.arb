@@ -429,7 +429,7 @@
   "channelMessages": "Mensagens",
   "channelGroups": "Grupos",
   "tabMoments": "Momentos",
-  "tabSquare": "Praça",
+  "tabFeed": "Rede",
   "tabProfile": "Perfil",
   "chronological": "Em ordem de chegada · sem algoritmo",
   "chronologicalExplain": "Você vê tudo de quem segue, na ordem em que foi publicado. Ninguém escolhe, esconde ou impulsiona nada por você.",
@@ -760,5 +760,107 @@
         "type": "String"
       }
     }
-  }
+  },
+  "forYou": "Para você",
+  "followingTab": "Seguindo",
+  "whyThis": "Por que estou vendo isto?",
+  "moreLikeThis": "Mostrar mais disso",
+  "lessLikeThis": "Mostrar menos disso",
+  "moreLikeThisDone": "Certo: mais disso em Para você.",
+  "lessLikeThisDone": "Certo: menos disso em Para você.",
+  "topicLabel": "Tema: {topic}",
+  "@topicLabel": {
+    "placeholders": {
+      "topic": {
+        "type": "String"
+      }
+    }
+  },
+  "topicsTitle": "Temas",
+  "chooseAlgorithm": "Escolha seu algoritmo",
+  "algorithmOpen": "O código do algoritmo é aberto. Ele busca conversas e conexões reais, não o seu tempo de tela.",
+  "algorithmsChama": "Do Chama",
+  "communityFeeds": "Feitos pela comunidade",
+  "communityBy": "por @{handle} · {count} pessoas usam",
+  "@communityBy": {
+    "placeholders": {
+      "handle": {
+        "type": "String"
+      },
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "sponsored": "Patrocinado",
+  "whyThisAd": "Por que este anúncio?",
+  "whyThisAdBody": "Mostrado pelo tema que você segue: {topic}. Nunca usamos suas conversas. Sem rastrear você fora do Chama.",
+  "@whyThisAdBody": {
+    "placeholders": {
+      "topic": {
+        "type": "String"
+      }
+    }
+  },
+  "adsRule": "No máximo 1 anúncio a cada 10 publicações. Nunca nas conversas nem nos Momentos.",
+  "paidPartnership": "Parceria paga com @{brand}",
+  "@paidPartnership": {
+    "placeholders": {
+      "brand": {
+        "type": "String"
+      }
+    }
+  },
+  "collabNames": "{a} e {b}",
+  "@collabNames": {
+    "placeholders": {
+      "a": {
+        "type": "String"
+      },
+      "b": {
+        "type": "String"
+      }
+    }
+  },
+  "businessProfile": "Perfil comercial",
+  "follow": "Seguir",
+  "message": "Mensagem",
+  "forYouEnd": "Fim das recomendações de hoje",
+  "forYouEndBody": "Nada de rolagem infinita. Quer ver outras coisas?",
+  "autoplayVideos": "Reproduzir vídeos automaticamente",
+  "autoplayVideosBody": "Sem som, só enquanto o vídeo está na tela.",
+  "reel": "Vídeo",
+  "reasonFollows": "Porque você segue {handle}",
+  "@reasonFollows": {
+    "placeholders": {
+      "handle": {
+        "type": "String"
+      }
+    }
+  },
+  "reasonPopular": "Popular em {place}",
+  "@reasonPopular": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "reasonNear": "Perto de você · {place}",
+  "@reasonNear": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "reasonCommunity": "Do feed {name}",
+  "@reasonCommunity": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "topicOn": "Mostrar este tema"
 }
