@@ -8,6 +8,7 @@ import '../common/time_format.dart';
 import '../feed/post_screen.dart';
 import '../l10n/app_localizations.dart';
 import '../services/social_service.dart';
+import '../wellbeing/wellbeing_screen.dart';
 import 'your_data.dart';
 
 /// Perfil: my name, address, bio and counts, the "Seus dados são seus"
@@ -28,6 +29,7 @@ class MeView extends StatelessWidget {
           slivers: [
             SliverToBoxAdapter(child: _Header(profile: profile)),
             const SliverToBoxAdapter(child: YourDataCard()),
+            const SliverToBoxAdapter(child: _WellbeingRow()),
             SliverToBoxAdapter(child: _GridTitle(count: profile.posts)),
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(2, 0, 2, 96),
@@ -194,6 +196,60 @@ class _Tile extends StatelessWidget {
                 style: TextStyle(fontSize: 12.5, color: colors.onTint),
               ),
             ),
+    );
+  }
+}
+
+/// "Bem-estar · Hoje: 24 min", when the app tracks time.
+class _WellbeingRow extends StatelessWidget {
+  const _WellbeingRow();
+
+  @override
+  Widget build(BuildContext context) {
+    final w = Deps.of(context).wellbeing;
+    if (w == null) return const SizedBox.shrink();
+    final l = L10n.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final colors = ChatColors.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      child: Material(
+        color: scheme.surfaceContainer,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          key: const Key('wellbeing_entry'),
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const WellbeingScreen())),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(color: colors.tint, shape: BoxShape.circle),
+                  child: Icon(Icons.spa_outlined, size: 20, color: colors.onTint),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(l.wellbeing, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600)),
+                      ValueListenableBuilder(
+                        valueListenable: w.todayMinutes,
+                        builder: (context, m, _) =>
+                            Text(l.wellbeingToday(m), style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant)),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

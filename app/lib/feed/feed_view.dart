@@ -201,6 +201,7 @@ class _SlideInState extends State<_SlideIn> with SingleTickerProviderStateMixin 
   }
 }
 
+/// The end of the feed: no infinite scroll, no suggestions, no ads.
 class _CaughtUp extends StatelessWidget {
   const _CaughtUp({required this.title, required this.body});
   final String title;
@@ -209,21 +210,25 @@ class _CaughtUp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(32, 28, 32, 96),
+    final colors = ChatColors.of(context);
+    return Container(
+      key: const Key('feed_end'),
+      margin: const EdgeInsets.fromLTRB(16, 24, 16, 120),
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
+      decoration: BoxDecoration(color: colors.tint, borderRadius: BorderRadius.circular(22)),
       child: Column(
         children: [
-          Icon(Icons.check_circle_outline_rounded, size: 32, color: ChatColors.of(context).accent),
-          const SizedBox(height: 10),
+          Icon(Icons.check_circle_outline_rounded, size: 36, color: colors.onTint),
+          const SizedBox(height: 12),
           Text(
             title,
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: scheme.onSurface),
+            style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: scheme.onSurface),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
             body,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13.5, color: scheme.onSurfaceVariant),
+            style: TextStyle(fontSize: 15, height: 21 / 15, color: scheme.onSurfaceVariant),
           ),
         ],
       ),

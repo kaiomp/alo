@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../common/avatar.dart';
+import '../common/deps.dart';
 import '../common/net_image.dart';
 import '../common/theme.dart';
 import '../common/time_format.dart';
@@ -185,12 +186,14 @@ class _Actions extends StatelessWidget {
     final l = L10n.of(context);
     final post = widget.post;
     final colors = ChatColors.of(context);
-    return Row(
+    // Calm option: the heart stays, the number goes.
+    final hide = Deps.of(context).wellbeing?.hideLikes;
+    Widget row(bool hideLikes) => Row(
       children: [
         _ActionButton(
           key: Key('like_${post.id}'),
           tooltip: l.like,
-          count: post.likes,
+          count: hideLikes ? null : post.likes,
           active: post.liked,
           activeColor: Theme.of(context).brightness == Brightness.dark ? Tokens.likeLight : Tokens.like,
           icon: Icons.favorite_border_rounded,
@@ -222,6 +225,7 @@ class _Actions extends StatelessWidget {
         ),
       ],
     );
+    return hide == null ? row(false) : ValueListenableBuilder(valueListenable: hide, builder: (_, h, _) => row(h));
   }
 }
 

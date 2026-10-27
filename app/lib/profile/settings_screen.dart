@@ -9,6 +9,7 @@ import '../common/deps.dart';
 import '../common/widgets.dart';
 import '../config.dart';
 import '../l10n/app_localizations.dart';
+import '../wellbeing/wellbeing_screen.dart';
 import 'profile_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -148,6 +149,14 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
               setState(() {});
             },
           ),
+          if (Deps.of(context).wellbeing != null)
+            ListTile(
+              key: const Key('settings_wellbeing'),
+              leading: const Icon(Icons.spa_outlined),
+              title: Text(l.wellbeing),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const WellbeingScreen())),
+            ),
           SectionHeader(l.tabChats),
           ListTile(
             enabled: false,

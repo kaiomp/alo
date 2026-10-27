@@ -8,6 +8,7 @@ import 'common/theme.dart';
 import 'l10n/app_localizations.dart';
 import 'profile/profile_screen.dart';
 import 'services/chat_service.dart';
+import 'wellbeing/wellbeing_layer.dart';
 
 /// The app. Expects a [Deps] above it (see `bootstrap` in main.dart).
 class ChamaApp extends StatelessWidget {
@@ -28,6 +29,10 @@ class ChamaApp extends StatelessWidget {
     // pt-BR first: any locale we do not have falls back to Portuguese.
     localeResolutionCallback: (locale, supported) =>
         supported.firstWhere((s) => s.languageCode == locale?.languageCode, orElse: () => const Locale('pt')),
+    builder: (context, child) {
+      final wellbeing = Deps.of(context).wellbeing;
+      return wellbeing == null ? child! : WellbeingLayer(service: wellbeing, child: child!);
+    },
     home: const _AuthGate(),
   );
 }
