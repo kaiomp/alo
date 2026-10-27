@@ -436,7 +436,7 @@
   "newPost": "Nova publicação",
   "postHint": "Conte algo para quem te segue",
   "publish": "Publicar",
-  "postReach": "Seus seguidores veem aqui e em qualquer app do padrão aberto (ActivityPub).",
+  "postReach": "Seus seguidores veem aqui e em outros apps abertos.",
   "posted": "Publicado",
   "like": "Curtir",
   "repost": "Repostar",
@@ -489,7 +489,7 @@
   },
   "myMoment": "Seu momento",
   "addMoment": "Adicionar",
-  "momentsPrivate": "Só seus contatos veem. Criptografia de ponta a ponta.",
+  "momentsPrivate": "Só seus contatos veem.",
   "recentMoments": "Recentes",
   "seenMoments": "Já vistos",
   "momentReplyHint": "Responder a {name}…",
@@ -508,7 +508,7 @@
   "editProfile": "Editar perfil",
   "shareProfile": "Compartilhar perfil",
   "yourDataTitle": "Seus dados são seus",
-  "yourDataBody": "Baixe tudo o que é seu ou leve seus seguidores para qualquer servidor do padrão aberto. Sem pedir licença.",
+  "yourDataBody": "Baixe tudo ou leve seus seguidores para outro lugar.",
   "exportAll": "Exportar tudo",
   "moveFollowers": "Levar seguidores",
   "exportTitle": "Exportar seus dados",
@@ -517,13 +517,13 @@
   "exportMedia": "Fotos, vídeos e áudios",
   "exportPosts": "Publicações e momentos",
   "exportNetwork": "Seguidores e quem você segue",
-  "exportFormat": "Formato aberto (JSON e ActivityPub). Abre em qualquer app compatível.",
+  "exportFormat": "Formato aberto: abre em outros apps.",
   "exportStart": "Exportar",
   "exportWorking": "Preparando seu arquivo…",
   "exportDone": "Pronto. Seu arquivo é seu.",
   "save": "Salvar",
   "moveTitle": "Levar seus seguidores",
-  "moveBody": "Seus {count} seguidores vão junto, sem precisar seguir você de novo. Funciona com qualquer servidor do padrão aberto ActivityPub, como o Mastodon.",
+  "moveBody": "Seus {count} seguidores vão junto. Ninguém precisa seguir você de novo.",
   "@moveBody": {
     "placeholders": {
       "count": {
@@ -563,7 +563,7 @@
   "civicVote": "Vote",
   "civicPropose": "Proponha",
   "civicMobilize": "Mobilize",
-  "civicIntro": "Fatos com fonte, sem ranking e sem partido. Quem decide o que importa é você.",
+  "civicIntro": "Fatos com fonte, sem partido.",
   "yourRepresentatives": "Seus representantes · {place}",
   "@yourRepresentatives": {
     "placeholders": {
@@ -676,7 +676,7 @@
       }
     }
   },
-  "petitionRule": "Meta legal: 1% do eleitorado em pelo menos 5 estados",
+  "petitionRule": "Meta: 1% dos eleitores em 5 estados",
   "petitionStates": "{reached} de 5 estados com o mínimo",
   "@petitionStates": {
     "placeholders": {
@@ -691,7 +691,7 @@
   "proposeIdea": "Propor uma ideia",
   "join": "Entrar",
   "joined": "Participando",
-  "mobilizeIntro": "Canais abertos de movimentos e causas, de todos os lados. Nenhum algoritmo escolhe quem aparece.",
+  "mobilizeIntro": "Causas de todos os lados. Ninguém fica escondido.",
   "wellbeing": "Bem-estar",
   "wellbeingToday": "Hoje: {minutes} min",
   "@wellbeingToday": {
@@ -701,7 +701,7 @@
       }
     }
   },
-  "wellbeingIntro": "O Chama não ganha nada com o seu tempo. Use o quanto fizer bem.",
+  "wellbeingIntro": "O Chama não mede sucesso pelo seu tempo de tela.",
   "last7Days": "Últimos 7 dias",
   "dailyLimit": "Limite diário",
   "minutesPerDay": "{minutes} min por dia",
@@ -716,7 +716,7 @@
   "lessTime": "Menos tempo",
   "moreTime": "Mais tempo",
   "restMode": "Modo descanso",
-  "restModeBody": "Das {from} às {to} as notificações esperam a manhã, menos as dos seus favoritos.",
+  "restModeBody": "Das {from} às {to}, só os favoritos avisam.",
   "@restModeBody": {
     "placeholders": {
       "from": {
@@ -728,7 +728,7 @@
     }
   },
   "digest": "Resumo",
-  "digestBody": "Notificações juntas, só às {times}.",
+  "digestBody": "Avisos juntos, às {times}.",
   "@digestBody": {
     "placeholders": {
       "times": {
@@ -740,9 +740,9 @@
   "hideLikes": "Esconder número de curtidas",
   "hideSeenBy": "Não mostrar \"visto por\" nos Momentos",
   "greyMode": "Modo cinza",
-  "greyModeBody": "Tela em tons de cinza: o celular chama menos a atenção.",
+  "greyModeBody": "Tela em cinza: o celular chama menos.",
   "pauseTitle": "Hora de uma pausa",
-  "pauseBody": "Você chegou ao limite que escolheu para hoje: {minutes} min. Que tal dar uma volta?",
+  "pauseBody": "Você chegou ao seu limite de hoje ({minutes} min). Que tal uma volta?",
   "@pauseBody": {
     "placeholders": {
       "minutes": {
@@ -828,7 +828,7 @@
   "forYouEnd": "Fim das recomendações de hoje",
   "forYouEndBody": "Nada de rolagem infinita. Quer ver outras coisas?",
   "autoplayVideos": "Reproduzir vídeos automaticamente",
-  "autoplayVideosBody": "Sem som, só enquanto o vídeo está na tela.",
+  "autoplayVideosBody": "Sem som, só enquanto aparece.",
   "reel": "Vídeo",
   "reasonFollows": "Porque você segue {handle}",
   "@reasonFollows": {
@@ -862,5 +862,87 @@
       }
     }
   },
-  "topicOn": "Mostrar este tema"
+  "topicOn": "Mostrar este tema",
+  "learnMore": "Saiba mais",
+  "undo": "Desfazer",
+  "yourDataMore": "Seu arquivo vem num formato aberto, que outros apps conseguem ler. Seus seguidores podem ir junto para outro servidor que use o mesmo padrão aberto, como o do Mastodon. Ninguém precisa pedir licença ao Chama.",
+  "algorithmMore": "Cada algoritmo mostra as próprias regras, e o código é aberto. Troque quando quiser ou use um feito pela comunidade. Cada post diz por que aparece para você.",
+  "simpleMode": "Modo simples",
+  "simpleModeBody": "Letras maiores e menos botões",
+  "simpleOffer": "Prefere letras maiores e menos botões?",
+  "simpleOfferBody": "Dá para mudar depois em Configurações.",
+  "simpleYes": "Sim, quero",
+  "simpleNo": "Agora não",
+  "storyNext": "Próximo",
+  "storyPrevious": "Anterior",
+  "repostUndone": "Repostagem desfeita",
+  "followingPlaces": "Seguindo: {places}",
+  "@followingPlaces": {
+    "placeholders": {
+      "places": {
+        "type": "String"
+      }
+    }
+  },
+  "editPlaces": "Editar lugares",
+  "support": "Apoiar",
+  "supported": "Você apoia",
+  "neighboursSupport": "{count} vizinhos apoiam",
+  "@neighboursSupport": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "hearing": "Audiência pública",
+  "remindMe": "Lembrar",
+  "reminderSet": "Vamos lembrar você um dia antes.",
+  "reportProblem": "Relatar um problema",
+  "votesAt": "{place}: {count} votos",
+  "@votesAt": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      },
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "residentVerified": "Morador verificado de {place}",
+  "@residentVerified": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "cityAgenda": "Pauta da Câmara Municipal",
+  "neighbourhoodProblems": "Problemas do bairro",
+  "chooseOption": "Escolha uma opção",
+  "photoOf": "Foto: {what}",
+  "@photoOf": {
+    "placeholders": {
+      "what": {
+        "type": "String"
+      }
+    }
+  },
+  "videoOf": "Vídeo: {what}",
+  "@videoOf": {
+    "placeholders": {
+      "what": {
+        "type": "String"
+      }
+    }
+  },
+  "weekSummary": "Últimos 7 dias, em minutos: {days}",
+  "@weekSummary": {
+    "placeholders": {
+      "days": {
+        "type": "String"
+      }
+    }
+  }
 }

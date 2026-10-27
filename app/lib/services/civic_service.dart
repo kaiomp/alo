@@ -2,6 +2,17 @@ import 'package:flutter/foundation.dart';
 
 enum Choice { yes, no, abstain }
 
+/// Where a fact, a vote or a cause belongs: the whole country down to my
+/// neighbourhood.
+enum CivicLevel { country, state, city, neighbourhood }
+
+/// A place at one level, e.g. (city, "Recife").
+class Place {
+  const Place(this.level, this.name);
+  final CivicLevel level;
+  final String name;
+}
+
 /// How a representative voted on one bill.
 class RecordedVote {
   const RecordedVote({required this.bill, required this.title, required this.choice});
@@ -24,9 +35,11 @@ class Representative {
     required this.votes,
     required this.bills,
     required this.source,
+    this.level = CivicLevel.country,
   });
   final String id;
   final String name;
+  final CivicLevel level;
 
   /// "Deputada federal · PE".
   final String role;
@@ -61,6 +74,11 @@ class Consulta {
     this.chamberYes,
     this.chamberTotal = 513,
     this.myVote,
+    this.level = CivicLevel.country,
+    this.place = 'Brasil',
+    this.options = const [],
+    this.optionVotes = const [],
+    this.myOption,
   });
   final String id;
   final String bill;
@@ -79,8 +97,20 @@ class Consulta {
   final int? chamberYes;
   final int chamberTotal;
   final Choice? myVote;
+  final CivicLevel level;
 
-  int get total => yes + no + abstain;
+  /// Where the results count ("Casa Amarela: 1.240 votos").
+  final String place;
+
+  /// Choices other than Sim/Não/Abstenção (participatory budget, the
+  /// neighbourhood's own questions); empty for a bill.
+  final List<String> options;
+  final List<int> optionVotes;
+  final int? myOption;
+
+  bool get voted => myVote != null || myOption != null;
+
+  int get total => options.isEmpty ? yes + no + abstain : optionVotes.fold(0, (a, b) => a + b);
   double get yesShare => total == 0 ? 0 : yes / total;
 
   Consulta withVote(Choice c) => Consulta(
@@ -96,6 +126,25 @@ class Consulta {
     chamberYes: chamberYes,
     chamberTotal: chamberTotal,
     myVote: c,
+    level: level,
+    place: place,
+  );
+
+  Consulta withOption(int i) => Consulta(
+    id: id,
+    bill: bill,
+    title: title,
+    summary: summary,
+    closes: closes,
+    yes: yes,
+    no: no,
+    abstain: abstain,
+    byState: byState,
+    level: level,
+    place: place,
+    options: options,
+    optionVotes: [for (final (j, v) in optionVotes.indexed) j == i ? v + 1 : v],
+    myOption: i,
   );
 }
 
@@ -109,6 +158,8 @@ class Petition {
     required this.goal,
     required this.statesReached,
     this.signed = false,
+    this.level = CivicLevel.country,
+    this.rule,
   });
   final String id;
   final String title;
@@ -121,6 +172,22 @@ class Petition {
   /// States with at least 0.3% of their voters signing (5 needed).
   final int statesReached;
   final bool signed;
+  final CivicLevel level;
+
+  /// The legal threshold in words when it is not the national one.
+  final String? rule;
+
+  Petition copyWith({int add = 0, bool? signed, int? states}) => Petition(
+    id: id,
+    title: title,
+    summary: summary,
+    signatures: signatures + add,
+    goal: goal,
+    statesReached: states ?? statesReached,
+    signed: signed ?? this.signed,
+    level: level,
+    rule: rule,
+  );
 }
 
 /// A big open channel for a movement or cause.
@@ -131,12 +198,48 @@ class Channel {
     required this.about,
     required this.members,
     this.joined = false,
+    this.level = CivicLevel.country,
   });
   final String id;
   final String name;
   final String about;
   final int members;
   final bool joined;
+  final CivicLevel level;
+}
+
+/// A problem neighbours reported (a hole in the street, a dark corner),
+/// with a photo and how many support it.
+class LocalIssue {
+  const LocalIssue({
+    required this.id,
+    required this.title,
+    required this.street,
+    required this.photo,
+    required this.supporters,
+    this.status,
+    this.supported = false,
+  });
+  final String id;
+  final String title;
+  final String street;
+  final Uri photo;
+  final int supporters;
+
+  /// "Prefeitura respondeu"; null while nobody answered.
+  final String? status;
+  final bool supported;
+}
+
+/// A public hearing or a council session people can attend.
+class Hearing {
+  const Hearing({required this.level, required this.title, required this.when, required this.where});
+  final CivicLevel level;
+  final String title;
+
+  /// "Quinta, 19h".
+  final String when;
+  final String where;
 }
 
 /// The Voz tab: follow representatives, vote in consultations, sign
@@ -149,7 +252,16 @@ abstract interface class CivicService {
 
   /// "Recife · Pernambuco".
   String get place;
+
+  /// My places, one per level: Brasil, my state, my city, my neighbourhood.
+  List<Place> get places;
+
+  /// Other places I follow ("Olinda").
+  List<String> get followedPlaces;
   List<Representative> get representatives;
+  List<Hearing> get hearings;
+  ValueListenable<List<LocalIssue>> get issues;
+  void toggleSupport(String issueId);
   ValueListenable<List<Consulta>> get consultas;
   ValueListenable<List<Petition>> get petitions;
   ValueListenable<List<Channel>> get channels;
@@ -158,6 +270,7 @@ abstract interface class CivicService {
   ValueListenable<bool> get verified;
   Future<void> verify();
   Future<void> vote(String consultaId, Choice choice);
+  Future<void> voteOption(String consultaId, int option);
   Future<void> sign(String petitionId);
   void toggleJoin(String channelId);
 }

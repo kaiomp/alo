@@ -44,6 +44,9 @@ Photos from Unsplash (https://unsplash.com), used under the Unsplash License (ht
 | fotos/coco.jpg | InHbSXYP-9g | Merve Kalafat Yılmaz, @merveky | https://unsplash.com/photos/InHbSXYP-9g |
 | fotos/musica.jpg | S_v3yDsXrfE | francisco monteiro, @franciskku | https://unsplash.com/photos/S_v3yDsXrfE |
 | fotos/rio-noite.jpg | rTTTJmfvdNg | Mauro Lima, @limamauro23 | https://unsplash.com/photos/rTTTJmfvdNg |
+| fotos/buraco.jpg | mk4QsXmOoYU | ACatInABox, @acatinabox | https://unsplash.com/photos/mk4QsXmOoYU |
+| fotos/iluminacao.jpg | -0J8oBmqbRg | Lukas Stoermer, @lukassto | https://unsplash.com/photos/-0J8oBmqbRg |
+| fotos/calcada.jpg | LA5O8v4bJhw | Regi Munandar, @regimunandar | https://unsplash.com/photos/LA5O8v4bJhw |
 
 ## Videos
 

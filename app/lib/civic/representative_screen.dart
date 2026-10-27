@@ -20,7 +20,7 @@ class RepresentativeScreen extends StatelessWidget {
     final scheme = theme.colorScheme;
     final biggest = r.spendingItems.fold(0, (m, i) => i.$2 > m ? i.$2 : m);
     return Scaffold(
-      appBar: AppBar(title: Text(r.name), actions: const [SampleTag()]),
+      appBar: AppBar(title: Text(r.name)),
       body: ListView(
         key: const Key('rep_page'),
         padding: const EdgeInsets.only(bottom: 32),
@@ -35,6 +35,8 @@ class RepresentativeScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      const SampleTag(),
+                      const SizedBox(height: 6),
                       Text(r.name, style: theme.textTheme.titleLarge),
                       Text(r.role, style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant)),
                     ],

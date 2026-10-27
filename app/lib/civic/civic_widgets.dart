@@ -82,24 +82,27 @@ class ShareBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: share.clamp(0, 1)),
-      duration: const Duration(milliseconds: 900),
-      curve: Curves.easeOutCubic,
-      builder: (context, v, _) => ClipRRect(
-        borderRadius: BorderRadius.circular(height),
-        child: SizedBox(
-          height: height,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              ColoredBox(color: scheme.surfaceContainerHighest),
-              FractionallySizedBox(
-                alignment: Alignment.centerLeft,
-                widthFactor: v,
-                child: ColoredBox(color: color ?? scheme.primary),
-              ),
-            ],
+    return Semantics(
+      value: percent(share),
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: share.clamp(0, 1)),
+        duration: const Duration(milliseconds: 900),
+        curve: Curves.easeOutCubic,
+        builder: (context, v, _) => ClipRRect(
+          borderRadius: BorderRadius.circular(height),
+          child: SizedBox(
+            height: height,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                ColoredBox(color: scheme.surfaceContainerHighest),
+                FractionallySizedBox(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: v,
+                  child: ColoredBox(color: color ?? scheme.primary),
+                ),
+              ],
+            ),
           ),
         ),
       ),
