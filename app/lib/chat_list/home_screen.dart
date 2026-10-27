@@ -7,6 +7,7 @@ import '../civic/voz_view.dart';
 import '../common/avatar.dart';
 import '../common/brand.dart';
 import '../common/connection_banner.dart';
+import '../common/motion.dart';
 import '../common/simple_mode.dart';
 import '../common/deps.dart';
 import '../common/theme.dart';
@@ -288,7 +289,7 @@ class _HomeScreenState extends State<HomeScreen> {
     };
     return Scaffold(
       appBar: AppBar(
-        title: index == 0 ? const ChamaMark(size: 34, tile: true) : Text(tabs[index].$3),
+        title: TabLockup(icon: tabs[index].$2, label: tabs[index].$3),
         actions: [
           if (current == 'profile')
             IconButton(
@@ -324,6 +325,45 @@ class _HomeScreenState extends State<HomeScreen> {
             onSelected: (i) => setState(() => _socialTab = tabs[i].$1),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The top bar of a main tab: the app's mark and the tab's own icon in one
+/// soft pill, no words (the bottom bar names the tab). Screen readers hear
+/// the tab name.
+class TabLockup extends StatelessWidget {
+  const TabLockup({super.key, required this.icon, required this.label});
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final big = SimpleMode.of(context);
+    final mark = big ? 38.0 : 32.0;
+    return Semantics(
+      header: true,
+      label: label,
+      excludeSemantics: true,
+      child: Container(
+        key: const Key('tab_lockup'),
+        padding: EdgeInsets.fromLTRB(4, 4, big ? 16 : 14, 4),
+        decoration: BoxDecoration(color: scheme.surfaceContainer, borderRadius: BorderRadius.circular(mark)),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ChamaMark(size: mark, tile: true),
+            SizedBox(width: big ? 12 : 10),
+            Container(width: 1, height: mark * 0.55, color: scheme.outlineVariant),
+            SizedBox(width: big ? 12 : 10),
+            AnimatedSwitcher(
+              duration: motion(context, const Duration(milliseconds: 220)),
+              child: Icon(icon, key: ValueKey(icon), size: big ? 28 : 23, color: ChatColors.of(context).accent),
+            ),
+          ],
+        ),
       ),
     );
   }

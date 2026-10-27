@@ -89,7 +89,7 @@ void main() {
     );
     await tester.runAsync(contacts.start);
     await tester.pump();
-    expect(find.text('Encontre seus contatos no Chama'), findsOneWidget);
+    expect(find.text('Encontre seus contatos no Alô'), findsOneWidget);
     expect(find.byKey(const Key('new_chat_phone')), findsOneWidget, reason: 'by number works without contacts');
     expect(find.byKey(const Key('contact_search')), findsNothing);
     expect(find.text('Ana Souza'), findsNothing);

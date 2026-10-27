@@ -1,6 +1,6 @@
 {
   "@@locale": "en",
-  "appName": "Chama",
+  "appName": "Alô",
   "signInTitle": "Enter your phone number",
   "signInExplain": "{app} will send an SMS with a code to confirm your number.",
   "countryCode": "Country",
@@ -123,7 +123,7 @@
   "resetConfirm": "Reset and continue",
   "errSessionExpired": "Your session has expired. Sign out and sign in again.",
   "errInvalidKeys": "The new keys could not be saved. Ask for a new code and try again.",
-  "wordmark": "chama",
+  "wordmark": "alô",
   "countryBrazil": "BR",
   "trustLine": "End-to-end encrypted · Open source",
   "e2eShort": "End-to-end encrypted",

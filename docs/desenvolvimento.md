@@ -326,7 +326,7 @@ WhatsApp Web:
 
 Uma versão do app com dados fictícios, para apresentações e para gravar os vídeos do
 projeto. Não precisa de servidor, já abre conectada como "Bia Santana" e mostra as cinco
-abas que o Chama terá: **Conversas**, **Momentos**, **Rede**, **Voz** e **Perfil**, além
+abas que o app terá (com o nome Alô): **Conversas**, **Momentos**, **Rede**, **Voz** e **Perfil**, além
 da tela **Bem-estar**. Roda só na web (as fotos ficam em `app/web/demo/`, com os créditos
 em `app/web/demo/CREDITS.md`).
 
@@ -376,7 +376,7 @@ flowchart LR
 - **Rede** tem duas abas. **Para você** recomenda, mas nunca em segredo: cada item diz por
   que está ali ("Porque você segue @ju.ferreira", "Perto de você · Boa Vista", "Tema:
   comida"), e "Por que estou vendo isto?" tem "Mostrar mais/menos disso" e liga ou desliga o
-  tema. Em **Escolha seu algoritmo** a pessoa troca o algoritmo (Padrão Chama, Perto de você,
+  tema. Em **Escolha seu algoritmo** a pessoa troca o algoritmo (Padrão Alô, Perto de você,
   Só quem eu sigo ou feeds feitos pela comunidade) e os temas. **Seguindo** mostra só quem
   você segue, do mais novo ao mais antigo, e termina em "Você está em dia".
 - A Rede mistura posts de texto, de foto e **vídeos curtos verticais (reels)**, que tocam
@@ -386,7 +386,7 @@ flowchart LR
   (`app/lib/feed/ads.dart`, com teste), escolhido só pelo tema, nunca pelas conversas.
   Nunca há anúncio nas conversas nem nos Momentos. Marcas e criadores da demonstração são
   inventados. Os vídeos vêm do Pixabay e do Pexels (créditos em `app/web/demo/CREDITS.md`).
-- O nome do app que aparece na tela vem de uma chave só, `appName`, em
+- O nome do app que aparece na tela (hoje **Alô**) vem de uma chave só, `appName`, em
   `app/lib/l10n/app_pt.arb` (e `app_en.arb`): os textos usam `{app}` no lugar do nome. O
   nome da aba Rede vem da chave `tabFeed`. Os perfis da demonstração usam um servidor
   inventado (`exemplo.social`) que a tela não mostra.
@@ -406,7 +406,7 @@ flowchart LR
 
 **Cenas que se apresentam sozinhas.** Com `?cena=<nome>` na URL a demonstração faz tudo
 sozinha: toca, digita, rola e mostra um círculo onde "toca". O título da página muda para
-`Chama · cena <nome> · inicio` no instante zero e para `… · fim` no final. O console mostra
+`Alô · cena <nome> · inicio` no instante zero e para `… · fim` no final. O console mostra
 cada passo com o tempo (`CENA conversa 7.00 s: chega mensagem`) e a linha `cena:fim` no
 começo da pausa final de 2 s.
 

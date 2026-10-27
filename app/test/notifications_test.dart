@@ -58,7 +58,7 @@ void main() {
 
     final m = notifications.shown.single;
     expect((m.chatName, m.senderName, m.senderId, m.body), ('', '', '', ''));
-    expect(notificationMessage(m, l).person!.name, 'Chama');
+    expect(notificationMessage(m, l).person!.name, 'Alô');
     expect(notificationBody(m, l), 'Nova mensagem');
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
   });

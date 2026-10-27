@@ -1,6 +1,6 @@
 {
   "@@locale": "pt",
-  "appName": "Chama",
+  "appName": "Alô",
   "signInTitle": "Insira seu número de telefone",
   "signInExplain": "O {app} vai enviar um SMS com um código para confirmar seu número.",
   "countryCode": "País",
@@ -230,7 +230,7 @@
   "resetConfirm": "Redefinir e continuar",
   "errSessionExpired": "Sua sessão expirou. Saia e entre de novo.",
   "errInvalidKeys": "Não foi possível salvar as novas chaves. Peça um novo código e tente de novo.",
-  "wordmark": "chama",
+  "wordmark": "alô",
   "countryBrazil": "BR",
   "trustLine": "Criptografado de ponta a ponta · Código aberto",
   "e2eShort": "Criptografado de ponta a ponta",

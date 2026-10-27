@@ -172,7 +172,7 @@ void main() {
     expect(m, isNotNull);
     expect((m!.senderName, m.chatName, m.senderId, m.body, m.isGroup), ('', '', '', '', false));
     expect(notificationBody(m, l), 'Nova mensagem');
-    expect(notificationMessage(m, l).person!.name, 'Chama');
+    expect(notificationMessage(m, l).person!.name, 'Alô');
   }
 
   test('a message from someone else shows sender and text', () {
