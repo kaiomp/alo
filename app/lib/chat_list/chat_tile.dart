@@ -111,7 +111,7 @@ class ChatTile extends StatelessWidget {
                                 key: const Key('not_encrypted_icon'),
                                 size: 16,
                                 color: muted,
-                                semanticLabel: l.notEncryptedNotice,
+                                semanticLabel: l.notEncryptedNotice(l.appName),
                               ),
                               const SizedBox(width: 3),
                             ],

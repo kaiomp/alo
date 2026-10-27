@@ -62,7 +62,7 @@ class AlgorithmScreen extends StatelessWidget {
                 ],
               ),
             ),
-            SectionHeader(l.algorithmsChama),
+            SectionHeader(l.algorithmsChama(l.appName)),
             for (final a in own) _Choice(choice: a, selected: social.algorithm.value == a.id),
             SectionHeader(l.communityFeeds),
             for (final a in community) _Choice(choice: a, selected: social.algorithm.value == a.id),

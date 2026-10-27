@@ -65,7 +65,7 @@ class YourDataCard extends StatelessWidget {
               minimumSize: const Size(48, 44),
               alignment: Alignment.centerLeft,
             ),
-            onPressed: () => showLearnMore(context, l.yourDataTitle, l.yourDataMore),
+            onPressed: () => showLearnMore(context, l.yourDataTitle, l.yourDataMore(l.appName)),
             child: Text(l.learnMore),
           ),
           const SizedBox(height: 16),

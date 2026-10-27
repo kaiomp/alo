@@ -60,7 +60,7 @@ class _Header extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final colors = ChatColors.of(context);
     final p = profile.person;
-    final [user, server] = p.handle.split('@');
+    final user = p.handle.split('@').first;
     Widget stat(int n, String label) => Text.rich(
       TextSpan(
         children: [
@@ -93,7 +93,7 @@ class _Header extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(color: colors.tint, borderRadius: BorderRadius.circular(10)),
-                          child: Text(server, style: TextStyle(fontSize: 12.5, color: colors.onTint)),
+                          child: Text(l.appName, style: TextStyle(fontSize: 12.5, color: colors.onTint)),
                         ),
                       ],
                     ),

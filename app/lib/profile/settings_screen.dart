@@ -69,7 +69,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     final id = Deps.of(context).chat.myUserId;
     await showSheetOrDialog<void>(
       context,
-      title: l.about,
+      title: l.about(l.appName),
       action: l.close,
       builder: (context) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,7 +96,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     final l = L10n.of(context);
     final ok = await confirm(
       context,
-      title: l.signOutQuestion,
+      title: l.signOutQuestion(l.appName),
       body: l.signOutExplain,
       action: l.signOut,
       destructive: true,
@@ -189,10 +189,10 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
                   title: Text(l.sectionNotifications),
                   subtitle: Text(
                     !_allowed
-                        ? l.notificationsBlocked
+                        ? l.notificationsBlocked(l.appName)
                         : registered
                         ? l.notificationsOn
-                        : l.notificationsNeedApp,
+                        : l.notificationsNeedApp(l.appName),
                   ),
                   // Blocked: the system screen that unblocks them. No
                   // distributor: try again (one may have been installed).
@@ -206,7 +206,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
             ),
           ],
           SectionHeader(l.sectionHelp),
-          ListTile(leading: const Icon(Icons.info_outline), title: Text(l.about), onTap: _about),
+          ListTile(leading: const Icon(Icons.info_outline), title: Text(l.about(l.appName)), onTap: _about),
           const SizedBox(height: 16),
           const Divider(),
           ListTile(

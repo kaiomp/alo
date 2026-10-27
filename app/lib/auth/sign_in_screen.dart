@@ -124,7 +124,7 @@ class _SignInScreenState extends State<SignInScreen> {
       return OnboardingScaffold(
         cta: cta,
         children: [
-          OnboardingTitle(title: l.signInTitle, body: l.signInExplain),
+          OnboardingTitle(title: l.signInTitle, body: l.signInExplain(l.appName)),
           TextField(
             key: const Key('phone_number'),
             controller: _number,

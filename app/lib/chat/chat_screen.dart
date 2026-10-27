@@ -288,7 +288,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 }
                 return _session.encrypted
                     ? E2eNotice(text: l.e2eNotice)
-                    : E2eNotice(text: l.notEncryptedNotice, encrypted: false);
+                    : E2eNotice(text: l.notEncryptedNotice(l.appName), encrypted: false);
               }
               return switch (items[i]) {
                 DayDivider(:final day) => SystemChip(

@@ -401,7 +401,7 @@ class _EmptyPane extends StatelessWidget {
                   const ChamaMark(size: 80),
                   const SizedBox(height: 24),
                   Text(
-                    l.chamaForWeb,
+                    l.chamaForWeb(l.appName),
                     style: theme.textTheme.displaySmall?.copyWith(color: theme.colorScheme.onSurface),
                   ),
                   const SizedBox(height: 12),

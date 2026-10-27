@@ -386,9 +386,10 @@ flowchart LR
   (`app/lib/feed/ads.dart`, com teste), escolhido só pelo tema, nunca pelas conversas.
   Nunca há anúncio nas conversas nem nos Momentos. Marcas e criadores da demonstração são
   inventados. Os vídeos vêm do Pixabay e do Pexels (créditos em `app/web/demo/CREDITS.md`).
-- O nome da aba Rede ainda não está decidido. Ele vem de uma chave só, `tabFeed`, em
-  `app/lib/l10n/app_pt.arb` (e `app_en.arb`): mude ali e a barra de baixo, o título e o
-  registro das cenas acompanham.
+- O nome do app que aparece na tela vem de uma chave só, `appName`, em
+  `app/lib/l10n/app_pt.arb` (e `app_en.arb`): os textos usam `{app}` no lugar do nome. O
+  nome da aba Rede vem da chave `tabFeed`. Os perfis da demonstração usam um servidor
+  inventado (`exemplo.social`) que a tela não mostra.
 - **Modo simples** (em Configurações, e oferecido na primeira vez: "Prefere letras maiores
   e menos botões?"): letras 25% maiores, só três abas (Conversas, Rede, Voz), fotos maiores
   na lista, botão de áudio maior, fundo de conversa liso e sem animações decorativas.

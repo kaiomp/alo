@@ -45,7 +45,7 @@ class _PhoneLookupFieldState extends State<PhoneLookupField> {
       final userId = await Deps.of(context).chat.findByPhone(digits);
       if (!mounted) return;
       if (userId == null) {
-        setState(() => _error = l.notOnChama);
+        setState(() => _error = l.notOnChama(l.appName));
         return;
       }
       await widget.onUser(userId, digits);

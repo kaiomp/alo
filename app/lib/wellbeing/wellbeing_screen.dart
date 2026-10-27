@@ -49,7 +49,7 @@ class WellbeingScreen extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
-            child: Text(l.wellbeingIntro, style: TextStyle(fontSize: 14.5, color: scheme.onSurfaceVariant)),
+            child: Text(l.wellbeingIntro(l.appName), style: TextStyle(fontSize: 14.5, color: scheme.onSurfaceVariant)),
           ),
           _Week(service: w),
           SectionHeader(l.dailyLimit),

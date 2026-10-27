@@ -166,7 +166,7 @@ Future<void> _algoritmo(Director d, DemoKit kit) async {
   await d.tap(d.key('why_olinda'));
   await d.at(12.5, 'fecha');
   await d.tap(_aboveSheet);
-  await d.at(13.4, 'volta ao Padrão Chama');
+  await d.at(13.4, 'volta ao Padrão $appName');
   await d.tap(d.key('choose_algorithm'));
   await d.at(14.6);
   await d.tap(d.key('algorithm_padrao'));

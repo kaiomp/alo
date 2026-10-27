@@ -7,6 +7,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import '../common/theme.dart';
+import '../l10n/app_localizations.dart';
 
 /// Plays a scene by itself on the live app: real pointer events (so the
 /// screens react exactly as to a finger), typing into the focused field,
@@ -32,7 +33,10 @@ class Director {
   void _announce(String state) {
     unawaited(
       SystemChrome.setApplicationSwitcherDescription(
-        ApplicationSwitcherDescription(label: 'Chama · cena $name · $state', primaryColor: Tokens.acai.toARGB32()),
+        ApplicationSwitcherDescription(
+          label: '${lookupL10n(const Locale('pt')).appName} · cena $name · $state',
+          primaryColor: Tokens.acai.toARGB32(),
+        ),
       ),
     );
     beat(state);

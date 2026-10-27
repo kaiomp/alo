@@ -108,7 +108,8 @@ class _NewChatScreenState extends State<NewChatScreen> {
                     blocked: contacts.access == ContactsAccess.blocked,
                     onAllow: () => runOrSnack(context, contacts.allow),
                   ),
-                if (onChama.isNotEmpty) SectionHeader(l.contactsOnChama, key: const Key('contacts_on_chama')),
+                if (onChama.isNotEmpty)
+                  SectionHeader(l.contactsOnChama(l.appName), key: const Key('contacts_on_chama')),
                 for (final c in onChama)
                   ContactRow(
                     key: ValueKey('contact_${c.userId}'),
@@ -117,7 +118,7 @@ class _NewChatScreenState extends State<NewChatScreen> {
                     seed: c.userId,
                     onTap: _opening ? null : () => _open(c.userId),
                   ),
-                if (invite.isNotEmpty) SectionHeader(l.inviteToChama, key: const Key('contacts_invite')),
+                if (invite.isNotEmpty) SectionHeader(l.inviteToChama(l.appName), key: const Key('contacts_invite')),
                 for (final c in invite)
                   ContactRow(
                     key: ValueKey('invite_${c.phone}'),
@@ -125,7 +126,8 @@ class _NewChatScreenState extends State<NewChatScreen> {
                     phone: c.phone,
                     seed: c.phone,
                     trailing: TextButton(
-                      onPressed: () => runOrSnack(context, () => deps.shareText(l.inviteText(chamaInviteUrl))),
+                      onPressed: () =>
+                          runOrSnack(context, () => deps.shareText(l.inviteText(chamaInviteUrl, l.appName))),
                       child: Text(l.invite, semanticsLabel: '${l.invite} ${ContactRow.labelOf(c.name, c.phone)}'),
                     ),
                   ),
@@ -204,14 +206,14 @@ class ContactsRationale extends StatelessWidget {
               Expanded(
                 child: Semantics(
                   header: true,
-                  child: Text(l.contactsRationaleTitle, style: theme.textTheme.titleMedium),
+                  child: Text(l.contactsRationaleTitle(l.appName), style: theme.textTheme.titleMedium),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
-            l.contactsRationale,
+            l.contactsRationale(l.appName),
             style: theme.textTheme.bodyMedium?.copyWith(fontSize: 14, color: scheme.onSurfaceVariant),
           ),
           const SizedBox(height: 16),

@@ -243,7 +243,7 @@ Future<void> showE2eExplainer(BuildContext context) {
     context,
     title: l.e2eTitle,
     icon: Icons.lock_outline,
-    builder: (context) => Text(l.e2eExplain),
+    builder: (context) => Text(l.e2eExplain(l.appName)),
     action: l.gotIt,
   );
 }

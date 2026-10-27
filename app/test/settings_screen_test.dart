@@ -67,7 +67,7 @@ void main() {
     await tester.scrollUntilVisible(row, 100);
 
     // Permission denied: off, and the tap opens the system settings.
-    expect(find.descendant(of: row, matching: find.text(l.notificationsBlocked)), findsOneWidget);
+    expect(find.descendant(of: row, matching: find.text(l.notificationsBlocked(l.appName))), findsOneWidget);
     await tester.tap(row);
     expect(notifications.settingsOpened, 1);
 
@@ -76,7 +76,7 @@ void main() {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pump();
-    expect(find.descendant(of: row, matching: find.text(l.notificationsNeedApp)), findsOneWidget);
+    expect(find.descendant(of: row, matching: find.text(l.notificationsNeedApp(l.appName))), findsOneWidget);
     await tester.tap(row);
     expect(push.registered, 1);
 

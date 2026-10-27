@@ -20,7 +20,7 @@ class ChamaApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-    title: 'Chama',
+    onGenerateTitle: (context) => L10n.of(context).appName,
     debugShowCheckedModeBanner: false,
     theme: chamaTheme(Brightness.light),
     darkTheme: chamaTheme(Brightness.dark),

@@ -2,7 +2,7 @@
   "@@locale": "pt",
   "appName": "Chama",
   "signInTitle": "Insira seu número de telefone",
-  "signInExplain": "O Chama vai enviar um SMS com um código para confirmar seu número.",
+  "signInExplain": "O {app} vai enviar um SMS com um código para confirmar seu número.",
   "countryCode": "País",
   "phoneNumber": "Número de telefone",
   "next": "Avançar",
@@ -212,13 +212,13 @@
   "leaveGroup": "Sair do grupo",
   "leaveQuestion": "Sair do grupo?",
   "startChat": "Conversar",
-  "notOnChama": "Este número não usa o Chama.",
+  "notOnChama": "Este número não usa o {app}.",
   "download": "Baixar",
   "downloadFailed": "Não foi possível baixar.",
   "errForbidden": "Este número não está mais ligado a esta conta. Saia e entre de novo.",
   "errRecoveryKey": "Chave incorreta. Confira e tente de novo.",
   "recoveryKeyTitle": "Sua chave de recuperação",
-  "recoveryKeyExplain": "Guarde esta chave em um lugar seguro. Com ela você lê suas conversas se trocar de aparelho. O Chama não consegue recuperá-la.",
+  "recoveryKeyExplain": "Guarde esta chave em um lugar seguro. Com ela você lê suas conversas se trocar de aparelho. O {app} não consegue recuperá-la.",
   "continueLabel": "Continuar",
   "tryAgain": "Tentar de novo",
   "settingUpEncryption": "Preparando a criptografia…",
@@ -235,7 +235,7 @@
   "trustLine": "Criptografado de ponta a ponta · Código aberto",
   "e2eShort": "Criptografado de ponta a ponta",
   "e2eTitle": "Criptografia de ponta a ponta",
-  "e2eExplain": "As mensagens desta conversa ficam só entre você e as pessoas que estão nela. Nem o Chama consegue lê-las: as chaves ficam nos seus aparelhos.",
+  "e2eExplain": "As mensagens desta conversa ficam só entre você e as pessoas que estão nela. Nem o {app} consegue lê-las: as chaves ficam nos seus aparelhos.",
   "gotIt": "Entendi",
   "noChatsTitle": "Nenhuma conversa ainda",
   "noChatsBody": "Toque em + para começar.",
@@ -247,7 +247,7 @@
   "communitiesSoonBody": "Reúna grupos do mesmo assunto em um só lugar, como os da escola ou do bairro.",
   "callsSoonTitle": "Ligações chegam em breve",
   "callsSoonBody": "Ligações de voz e vídeo com a mesma criptografia das mensagens.",
-  "chamaForWeb": "Chama para web",
+  "chamaForWeb": "{app} para web",
   "emoji": "Emoji",
   "attach": "Anexar",
   "deleteBodyEveryone": "A mensagem será apagada para todos nesta conversa.",
@@ -303,11 +303,11 @@
   "profileRowSub": "Nome e foto",
   "theme": "Tema",
   "themeSystem": "Padrão do sistema",
-  "about": "Sobre o Chama",
+  "about": "Sobre o {app}",
   "aboutBody": "Mensageiro livre e de código aberto, com criptografia de ponta a ponta. Licença AGPL-3.0.",
   "technicalId": "ID técnico",
   "copied": "Copiado",
-  "signOutQuestion": "Sair do Chama?",
+  "signOutQuestion": "Sair do {app}?",
   "signOutExplain": "Para ler suas conversas de novo neste aparelho, você vai precisar da chave de recuperação.",
   "close": "Fechar",
   "recoveryKeySaved": "Guardei minha chave em lugar seguro",
@@ -391,7 +391,7 @@
       }
     }
   },
-  "notEncryptedNotice": "Esta conversa não é criptografada. O Chama não envia mensagens nela.",
+  "notEncryptedNotice": "Esta conversa não é criptografada. O {app} não envia mensagens nela.",
   "notEncryptedNoSend": "Não é possível enviar mensagens em uma conversa sem criptografia.",
   "smsCodeLabel": "Código do SMS",
   "send": "Enviar",
@@ -407,24 +407,27 @@
   "sendVoice": "Enviar mensagem de voz",
   "cancelRecording": "Cancelar gravação",
   "searchContacts": "Pesquisar nome ou número",
-  "contactsOnChama": "Contatos no Chama",
-  "inviteToChama": "Convidar para o Chama",
+  "contactsOnChama": "Contatos no {app}",
+  "inviteToChama": "Convidar para o {app}",
   "invite": "Convidar",
-  "inviteText": "Vamos conversar no Chama? É gratuito e tem criptografia de ponta a ponta. Baixe em {url}",
+  "inviteText": "Vamos conversar no {app}? É gratuito e tem criptografia de ponta a ponta. Baixe em {url}",
   "@inviteText": {
     "placeholders": {
       "url": {
         "type": "String"
+      },
+      "app": {
+        "type": "String"
       }
     }
   },
-  "contactsRationaleTitle": "Encontre seus contatos no Chama",
-  "contactsRationale": "Para mostrar quem da sua agenda já usa o Chama, o app envia ao servidor cada número da agenda em forma codificada (hash). Nomes e outros dados não saem do seu celular, e o servidor não guarda a lista. Sem isso, você ainda pode conversar digitando o número.",
+  "contactsRationaleTitle": "Encontre seus contatos no {app}",
+  "contactsRationale": "Para mostrar quem da sua agenda já usa o {app}, o app envia ao servidor cada número da agenda em forma codificada (hash). Nomes e outros dados não saem do seu celular, e o servidor não guarda a lista. Sem isso, você ainda pode conversar digitando o número.",
   "contactsAllow": "Permitir acesso aos contatos",
   "contactsOpenSettings": "Abrir configurações",
   "notificationsOn": "Ativadas",
-  "notificationsNeedApp": "Para receber notificações, instale um app UnifiedPush, como o ntfy, e abra o Chama de novo.",
-  "notificationsBlocked": "Desativadas: o Android está bloqueando as notificações do Chama. Toque para ativar.",
+  "notificationsNeedApp": "Para receber notificações, instale um app UnifiedPush, como o ntfy, e abra o {app} de novo.",
+  "notificationsBlocked": "Desativadas: o Android está bloqueando as notificações do {app}. Toque para ativar.",
   "newMessage": "Nova mensagem",
   "channelMessages": "Mensagens",
   "channelGroups": "Grupos",
@@ -701,7 +704,7 @@
       }
     }
   },
-  "wellbeingIntro": "O Chama não mede sucesso pelo seu tempo de tela.",
+  "wellbeingIntro": "O {app} não mede sucesso pelo seu tempo de tela.",
   "last7Days": "Últimos 7 dias",
   "dailyLimit": "Limite diário",
   "minutesPerDay": "{minutes} min por dia",
@@ -751,7 +754,7 @@
     }
   },
   "pauseMore": "Mais 5 minutos",
-  "pauseClose": "Fechar o Chama",
+  "pauseClose": "Fechar o {app}",
   "goalReached": "Meta alcançada · o projeto vai para a Câmara",
   "channelMembers": "{count} membros",
   "@channelMembers": {
@@ -779,7 +782,7 @@
   "topicsTitle": "Temas",
   "chooseAlgorithm": "Escolha seu algoritmo",
   "algorithmOpen": "O código do algoritmo é aberto. Ele busca conversas e conexões reais, não o seu tempo de tela.",
-  "algorithmsChama": "Do Chama",
+  "algorithmsChama": "Do {app}",
   "communityFeeds": "Feitos pela comunidade",
   "communityBy": "por @{handle} · {count} pessoas usam",
   "@communityBy": {
@@ -794,10 +797,13 @@
   },
   "sponsored": "Patrocinado",
   "whyThisAd": "Por que este anúncio?",
-  "whyThisAdBody": "Mostrado pelo tema que você segue: {topic}. Nunca usamos suas conversas. Sem rastrear você fora do Chama.",
+  "whyThisAdBody": "Mostrado pelo tema que você segue: {topic}. Nunca usamos suas conversas. Sem rastrear você fora do {app}.",
   "@whyThisAdBody": {
     "placeholders": {
       "topic": {
+        "type": "String"
+      },
+      "app": {
         "type": "String"
       }
     }
@@ -865,7 +871,7 @@
   "topicOn": "Mostrar este tema",
   "learnMore": "Saiba mais",
   "undo": "Desfazer",
-  "yourDataMore": "Seu arquivo vem num formato aberto, que outros apps conseguem ler. Seus seguidores podem ir junto para outro servidor que use o mesmo padrão aberto, como o do Mastodon. Ninguém precisa pedir licença ao Chama.",
+  "yourDataMore": "Seu arquivo vem num formato aberto, que outros apps conseguem ler. Seus seguidores podem ir junto para outro servidor que use o mesmo padrão aberto, como o do Mastodon. Ninguém precisa pedir licença ao {app}.",
   "algorithmMore": "Cada algoritmo mostra as próprias regras, e o código é aberto. Troque quando quiser ou use um feito pela comunidade. Cada post diz por que aparece para você.",
   "simpleMode": "Modo simples",
   "simpleModeBody": "Letras maiores e menos botões",
@@ -941,6 +947,132 @@
   "@weekSummary": {
     "placeholders": {
       "days": {
+        "type": "String"
+      }
+    }
+  },
+  "@signInExplain": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "@notOnChama": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "@recoveryKeyExplain": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "@e2eExplain": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "@chamaForWeb": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "@about": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "@signOutQuestion": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "@notEncryptedNotice": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "@contactsOnChama": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "@inviteToChama": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "@contactsRationaleTitle": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "@contactsRationale": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "@notificationsNeedApp": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "@notificationsBlocked": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "@wellbeingIntro": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "@pauseClose": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "@algorithmsChama": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "@yourDataMore": {
+    "placeholders": {
+      "app": {
         "type": "String"
       }
     }

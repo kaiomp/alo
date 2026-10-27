@@ -117,7 +117,7 @@ class _EncryptionScreenState extends State<EncryptionScreen> {
           child: Text(l.continueLabel),
         ),
         children: [
-          OnboardingTitle(title: l.recoveryKeyTitle, body: l.recoveryKeyExplain),
+          OnboardingTitle(title: l.recoveryKeyTitle, body: l.recoveryKeyExplain(l.appName)),
           _KeyCard(recoveryKey: key),
           const SizedBox(height: 12),
           Align(

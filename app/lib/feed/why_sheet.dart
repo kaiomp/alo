@@ -164,7 +164,7 @@ Future<void> showAdSheet(BuildContext context, Post post) {
             ),
             const SizedBox(height: 12),
             Text(
-              l.whyThisAdBody(post.topic ?? ''),
+              l.whyThisAdBody(post.topic ?? '', l.appName),
               style: TextStyle(fontSize: 15.5, height: 22 / 15.5, color: scheme.onSurface),
             ),
             const SizedBox(height: 12),

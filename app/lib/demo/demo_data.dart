@@ -1,5 +1,8 @@
 import 'dart:math' as math;
 
+import 'package:flutter/widgets.dart';
+
+import '../l10n/app_localizations.dart';
 import '../services/models.dart';
 import '../services/social_service.dart';
 import '../services/ticks.dart';
@@ -10,22 +13,29 @@ import '../services/ticks.dart';
 Uri avatar(String name) => Uri.parse('demo/avatares/$name.jpg');
 Uri photo(String name) => Uri.parse('demo/fotos/$name.jpg');
 
-Person _p(String key, String name, String handle) =>
-    Person(id: '@$key:chama.chat', name: name, handle: handle, avatar: avatar(key));
+/// The app's name as people see it (one l10n key, `appName`).
+final appName = lookupL10n(const Locale('pt')).appName;
 
-final me = _p('bia', 'Bia Santana', 'bia@chama.chat');
-final mae = _p('mae', 'Mãe', 'helena.santana@chama.chat');
-final pai = _p('joao', 'Pai', 'joao.santana@chama.chat');
-final ana = _p('ana', 'Ana Clara', 'anaclara@chama.chat');
-final rafael = _p('rafael', 'Rafael Lima', 'rafa@chama.chat');
-final juliana = _p('juliana', 'Juliana Ferreira', 'ju.ferreira@chama.chat');
-final thiago = _p('thiago', 'Thiago Oliveira', 'thiagoo@chama.chat');
-final cida = _p('cida', 'Dona Cida', 'dona.cida@chama.chat');
-final carol = _p('carol', 'Carol Souza', 'carolsouza@chama.chat');
-final pedro = _p('pedro', 'Pedro Alves', 'pedroalves@chama.chat');
-final lucas = _p('lucas', 'Lucas Martins', 'lucasm@chama.chat');
-final fernanda = _p('fernanda', 'Fernanda Rocha', 'fe.rocha@chama.chat');
-final marcos = _p('marcos', 'Marcos Vinícius', 'marcosv@chama.chat');
+/// The demo's made-up server: handles and IDs only, never shown as a real
+/// address (profiles show the app's name instead).
+const demoHost = 'exemplo.social';
+
+Person _p(String key, String name, String user) =>
+    Person(id: '@$key:$demoHost', name: name, handle: '$user@$demoHost', avatar: avatar(key));
+
+final me = _p('bia', 'Bia Santana', 'bia');
+final mae = _p('mae', 'Mãe', 'helena.santana');
+final pai = _p('joao', 'Pai', 'joao.santana');
+final ana = _p('ana', 'Ana Clara', 'anaclara');
+final rafael = _p('rafael', 'Rafael Lima', 'rafa');
+final juliana = _p('juliana', 'Juliana Ferreira', 'ju.ferreira');
+final thiago = _p('thiago', 'Thiago Oliveira', 'thiagoo');
+final cida = _p('cida', 'Dona Cida', 'dona.cida');
+final carol = _p('carol', 'Carol Souza', 'carolsouza');
+final pedro = _p('pedro', 'Pedro Alves', 'pedroalves');
+final lucas = _p('lucas', 'Lucas Martins', 'lucasm');
+final fernanda = _p('fernanda', 'Fernanda Rocha', 'fe.rocha');
+final marcos = _p('marcos', 'Marcos Vinícius', 'marcosv');
 
 /// Photo sizes (width, height) of the files in web/demo/fotos.
 const photoSizes = {
@@ -560,7 +570,7 @@ Uri video(String name) => Uri.parse('demo/videos/$name.mp4');
 Uri poster(String name) => Uri.parse('demo/videos/$name.jpg');
 
 Person _creator(String key, String name, {Uri? avatar, String? business}) =>
-    Person(id: '@$key:chama.chat', name: name, handle: '$key@chama.chat', avatar: avatar, business: business);
+    Person(id: '@$key:$demoHost', name: name, handle: '$key@$demoHost', avatar: avatar, business: business);
 
 final iara = _creator('iara.surf', 'Iara Mendes');
 final bento = _creator('mestrebento', 'Mestre Bento');
@@ -584,7 +594,7 @@ const topicsAll = ['praia', 'futebol de várzea', 'comida', 'arte', 'música e c
 /// Posts that "Perto de você" keeps (Recife and around).
 const nearIds = {'r-surf', 'r-futebol', 'collab', 'r-capoeira', 'cafe-text', 'olinda', 'r-rua', 'r-feira', 'cordel'};
 
-/// "Para você" in Padrão Chama order, before the ad goes in.
+/// "Para você" in the default order, before the ad goes in.
 List<Post> demoForYou(DateTime now, List<Post> following) {
   DateTime ago(int minutes) => now.subtract(Duration(minutes: minutes));
   Post friend(String id, Reason reason, String topic) =>
@@ -752,10 +762,10 @@ List<Post> demoAds(DateTime now) => [
   ),
 ];
 
-const demoAlgorithms = [
+final demoAlgorithms = [
   FeedChoice(
     id: 'padrao',
-    name: 'Padrão Chama',
+    name: 'Padrão $appName',
     about: 'Quem você segue, perto de você e temas de que gosta, em equilíbrio.',
   ),
   FeedChoice(id: 'perto', name: 'Perto de você', about: 'O que acontece em Recife e arredores.'),

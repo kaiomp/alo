@@ -222,7 +222,7 @@ class DemoSocialService implements SocialService {
       progress(i / 30);
     }
     final day = DateTime.now().toIso8601String().substring(0, 10);
-    return DataExport(fileName: 'chama-bia-santana-$day.zip', bytes: 1288490189);
+    return DataExport(fileName: 'bia-santana-$day.zip', bytes: 1288490189);
   }
 
   @override

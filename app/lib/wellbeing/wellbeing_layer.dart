@@ -86,7 +86,7 @@ class _PauseCard extends StatelessWidget {
                     // On the web the tab stays open: let it go on.
                     service.snooze();
                   },
-                  child: Text(l.pauseClose),
+                  child: Text(l.pauseClose(l.appName)),
                 ),
               ),
               const SizedBox(height: 8),
