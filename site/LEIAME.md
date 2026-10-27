@@ -77,8 +77,9 @@ ffmpeg -i NOVO-VIDEO.mp4 -vf scale=720:1280 -c:v libx264 -preset slow -crf 26 \
 cd site && wrangler deploy
 ```
 
-Mantenha o arquivo abaixo de 10 MB (o atual tem 5,9 MB). O navegador guarda o vídeo por até
-1 hora, então quem já viu pode levar esse tempo para receber a versão nova.
+Antes do `wrangler deploy`, aumente o número em `visao-geral.mp4?v=2` no `public/index.html`
+(por exemplo, `?v=3`), para que quem já visitou o site receba o vídeo novo na hora. Mantenha o
+arquivo abaixo de 10 MB (o atual, com narração e música, tem 6,2 MB).
 
 ## Ler as inscrições
 
