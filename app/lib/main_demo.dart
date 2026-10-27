@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
-import 'chat/voice/voice_recorder.dart';
 import 'common/brand.dart';
 import 'common/deps.dart';
 import 'common/net_image.dart';
 import 'common/theme.dart';
 import 'demo/demo_chat.dart';
 import 'demo/demo_civic.dart';
+import 'common/simple_mode.dart';
 import 'demo/demo_data.dart';
+import 'demo/demo_recorder.dart';
 import 'demo/demo_services.dart';
 import 'demo/demo_social.dart';
 import 'demo/demo_wellbeing.dart';
@@ -20,11 +22,17 @@ import 'services/models.dart';
 /// The pitch demo: the real screens on fictional data, no server, already
 /// signed in, with Momentos, the feed, Voz and Perfil. Web only (the photos live in
 /// web/demo). `?cena=<name>` plays a scene by itself (demo/scenes.dart).
-///   flutter build web -t lib/main_demo.dart
-void main() {
+///   app/scripts/build-demo-web.sh
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final now = DateTime.now();
   final name = Uri.base.queryParameters['cena'];
+  // The first-launch question: in the simples scene, and once in the
+  // clickable demo (remembered in this browser).
+  final prefs = await SharedPreferences.getInstance();
+  const askedKey = 'demo.simple.asked';
+  final simple = SimpleMode(offered: name == null ? prefs.getBool(askedKey) ?? false : name != 'simples');
+  if (name == null) simple.addListener(() => prefs.setBool(askedKey, simple.offered));
   final chat = DemoChatService(DemoWorld(now));
   final social = DemoSocialService(now, chat);
   final kit = DemoKit(
@@ -41,7 +49,8 @@ void main() {
       social: social,
       civic: DemoCivic(now),
       wellbeing: kit.wellbeing,
-      newRecorder: RecordVoiceRecorder.new,
+      simpleMode: simple,
+      newRecorder: DemoRecorder.new,
       pickFile: ({required image}) async =>
           PickedFile(name: 'feira.jpg', bytes: await demoBytes(photo('feira')), mimeType: 'image/jpeg'),
       shareText: (_) async {},

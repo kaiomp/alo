@@ -38,7 +38,10 @@ const _width = 412.0;
 final scenes = <String, (SetUp?, Scene)>{
   'conversa': (null, _conversa),
   'momentos': ((d) => d.tap(d.tab(_moments)), _momentosScene),
-  'praca': ((d) => d.tap(d.tab(_feed)), _praca),
+  'rede': ((d) => d.tap(d.tab(_feed)), _rede),
+  // The scene's first name; same scene.
+  'praca': ((d) => d.tap(d.tab(_feed)), _rede),
+  'simples': (null, _simples),
   'algoritmo': ((d) => d.tap(d.tab(_feed)), _algoritmo),
   'voz': ((d) => d.tap(d.tab(_voice)), _voz),
   'dados': ((d) => d.tap(d.tab(_profile)), _dados),
@@ -116,7 +119,7 @@ Future<void> _momentosScene(Director d, DemoKit kit) async {
   await d.hold(23.5);
 }
 
-Future<void> _praca(Director d, DemoKit kit) async {
+Future<void> _rede(Director d, DemoKit kit) async {
   await d.at(1, '$_feedName · Para você: rola até o vídeo de surfe');
   await d.reveal('post_r-surf', alignment: 0.12, duration: const Duration(milliseconds: 1600));
   await d.at(4.8, 'reel de futebol, "Parceria paga com @varzeawear"');
@@ -183,7 +186,7 @@ Future<void> _dados(Director d, DemoKit kit) async {
   await d.tap(d.key('move_followers'));
   await d.at(10.2, 'digita o novo endereço');
   await d.tap(d.key('move_address'));
-  await d.typeText('bia@praca.exemplo.social', perChar: const Duration(milliseconds: 60));
+  await d.typeText('bia@rede.exemplo.social', perChar: const Duration(milliseconds: 60));
   await d.at(12.5, 'muda de servidor');
   await d.tap(d.key('move_start'));
   await d.at(19.5, 'conclui');
@@ -194,25 +197,38 @@ Future<void> _dados(Director d, DemoKit kit) async {
 }
 
 Future<void> _voz(Director d, DemoKit kit) async {
-  await d.at(1, 'abre a ficha de Helena Barros');
-  await d.tap(d.key('rep_helena'));
-  await d.at(2, 'presença e gastos, com fonte');
-  await d.scrollTo('rep_page', 360, duration: const Duration(milliseconds: 1500));
-  await d.at(4.2, 'como votou');
-  await d.scrollTo('rep_page', 760, duration: const Duration(milliseconds: 1200));
-  await d.at(6.4, 'volta');
+  await d.at(1, 'Pernambuco');
+  await d.tap(d.key('level_state'));
+  await d.at(2.4, 'Recife');
+  await d.tap(d.key('level_city'));
+  await d.at(3.8, 'Casa Amarela: problemas do bairro');
+  await d.tap(d.key('level_neighbourhood'));
+  await d.at(5.4, 'apoia o buraco da Rua Padre Lemos');
+  await d.tap(d.key('support_buraco'));
+  await d.at(6.6, 'Vote');
+  await d.tap(d.key('voz_section_1'));
+  await d.at(7.4, 'abre "Nova praça ou posto de saúde 24h?"');
+  await d.tap(d.key('consulta_b1'));
+  await d.at(8.4, 'verifica: morador de Casa Amarela');
+  await d.tap(d.key('verify'));
+  await d.at(10.4, 'escolhe "Posto de saúde 24h"');
+  await d.tap(d.key('option_1'));
+  await d.at(11.2, 'confirma: Casa Amarela: 1.240 votos');
+  await d.tap(d.key('confirm_vote'));
+  await d.at(13.6, 'volta');
   await d.tap(d.type<BackButton>());
-  await _vote(d, 7.3);
-  await d.at(15.6, 'resultado por estado');
-  await d.reveal('by_state', alignment: 0.15, duration: const Duration(milliseconds: 1200));
-  await d.at(17.6, 'volta');
+  await d.at(14.4, 'Brasil');
+  await d.tap(d.key('level_country'));
+  await d.at(15.4, 'abre o PL 2841/2026');
+  await d.tap(d.key('consulta_c1'));
+  await d.at(16.6, 'Sim');
+  await d.tap(d.key('choice_yes'));
+  await d.at(17.4, 'confirma: o povo 78% x a Câmara 41%');
+  await d.tap(d.key('confirm_vote'));
+  await d.at(20.6, 'volta');
   await d.tap(d.type<BackButton>());
-  await _sign(d, 18.4);
-  await d.at(22.6, 'Mobilize');
-  await d.tap(d.key('voz_section_3'));
-  await d.at(23.6, 'entra num canal');
-  await d.tap(d.key('join_passe'));
-  await d.hold(26.6);
+  await _sign(d, 21.4);
+  await d.hold(27);
 }
 
 /// Vote → open the consultation, verify, vote yes, see people vs Chamber.
@@ -326,7 +342,12 @@ Future<void> _tour(Director d, DemoKit kit) async {
   await _vote(d, 43);
   await d.at(51, 'volta');
   await d.tap(d.type<BackButton>());
-  await _sign(d, 52);
+  await d.at(52, 'Acompanhe');
+  await d.tap(d.key('voz_section_0'));
+  await d.at(52.8, 'Casa Amarela: problemas do bairro');
+  await d.tap(d.key('level_neighbourhood'));
+  await d.at(54.2, 'apoia');
+  await d.tap(d.key('support_buraco'));
   // Perfil
   await d.at(57, 'aba Perfil');
   await d.tap(d.tab(_profile));
@@ -340,7 +361,7 @@ Future<void> _tour(Director d, DemoKit kit) async {
   await d.tap(d.key('move_followers'));
   await d.at(66);
   await d.tap(d.key('move_address'));
-  await d.typeText('bia@praca.exemplo.social', perChar: const Duration(milliseconds: 55));
+  await d.typeText('bia@rede.exemplo.social', perChar: const Duration(milliseconds: 55));
   await d.at(67.6, 'muda de servidor');
   await d.tap(d.key('move_start'));
   await d.at(73.2, 'conclui');
@@ -349,11 +370,39 @@ Future<void> _tour(Director d, DemoKit kit) async {
   await _limit(d, 74.5);
   await d.at(78, '"Hora de uma pausa"');
   kit.wellbeing.elapse(1);
-  await d.at(80.5, 'mais 5 minutos');
+  await d.at(80, 'mais 5 minutos');
   await d.tap(d.key('pause_more'));
-  await d.at(81.5, 'volta');
+  await d.at(80.8, 'volta');
   await d.tap(d.type<BackButton>());
-  await d.at(82.5, 'volta para Conversas');
+  // Modo simples
+  await d.at(81.6, 'Configurações');
+  await d.tap(d.key('settings'));
+  await d.at(82.6, 'liga o Modo simples');
+  await d.tap(d.key('simple_switch'));
+  await d.at(84.6, 'desliga');
+  await d.tap(d.key('simple_switch'));
+  await d.at(85.6, 'volta');
+  await d.tap(d.type<BackButton>());
+  await d.at(86.4, 'volta para Conversas');
   await d.tap(d.tab(0));
-  await d.hold(84.5);
+  await d.hold(88.4);
+}
+
+/// First launch: the Modo simples question, then a voice message to Mãe.
+Future<void> _simples(Director d, DemoKit kit) async {
+  final chat = kit.chat;
+  await d.at(1.5, '"Sim, quero": letras maiores, três abas');
+  await d.tap(d.key('simple_yes'));
+  await d.at(3.5, 'abre a conversa com a Mãe');
+  await d.tap(d.key('chat_Mãe'));
+  await d.at(5, 'toca no microfone: gravando');
+  await d.tap(d.key('mic'));
+  await d.at(7.5, 'envia o áudio');
+  await d.tap(d.key('send_voice'));
+  await d.at(9.6, 'Mãe digitando');
+  chat.setTyping('!mae', mae, true);
+  await d.at(11, 'Mãe responde');
+  chat.setTyping('!mae', mae, false);
+  chat.receive('!mae', chat.world.text(mae, 'Que bom ouvir sua voz, filha 💛', DateTime.now()));
+  await d.hold(14);
 }
