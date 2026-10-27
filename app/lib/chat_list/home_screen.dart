@@ -309,7 +309,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Expanded(
             child: IndexedStack(
               index: index,
-              children: [for (final t in tabs) KeyedSubtree(key: ValueKey(t.$1), child: t.$4)],
+              children: [for (final t in tabs) KeyedSubtree(key: ValueKey('tab_${t.$1}'), child: t.$4)],
             ),
           ),
         ],
