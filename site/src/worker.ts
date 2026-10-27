@@ -147,6 +147,12 @@ export default {
       return Response.redirect(url.toString(), 301);
     }
 
+    // Short aliases for the sign-up form link.
+    if (url.pathname === '/quero-ajudar' || url.pathname === '/form') {
+      url.pathname = '/ajudar';
+      return Response.redirect(url.toString(), 301);
+    }
+
     const res = await responder(req, env, ctx, url);
     const saida = new Response(res.body, res);
     for (const [k, v] of Object.entries(SEGURANCA)) saida.headers.set(k, v);
