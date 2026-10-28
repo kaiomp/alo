@@ -206,7 +206,7 @@ class _HomeScreenState extends State<HomeScreen> {
     ][_tab];
     return Scaffold(
       appBar: AppBar(
-        title: _tab == 0 ? const ChamaMark(size: 34, tile: true) : Text(tabs[_tab].$2),
+        title: _tab == 0 ? const AloMark(size: 34, tile: true) : Text(tabs[_tab].$2),
         actions: [_menu(false), const SizedBox(width: 4)],
       ),
       body: Column(
@@ -354,7 +354,7 @@ class TabLockup extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ChamaMark(size: mark, tile: true),
+            AloMark(size: mark, tile: true),
             SizedBox(width: big ? 12 : 10),
             Container(width: 1, height: mark * 0.55, color: scheme.outlineVariant),
             SizedBox(width: big ? 12 : 10),
@@ -438,10 +438,10 @@ class _EmptyPane extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const ChamaMark(size: 80),
+                  const AloMark(size: 80),
                   const SizedBox(height: 24),
                   Text(
-                    l.chamaForWeb(l.appName),
+                    l.aloForWeb(l.appName),
                     style: theme.textTheme.displaySmall?.copyWith(color: theme.colorScheme.onSurface),
                   ),
                   const SizedBox(height: 12),

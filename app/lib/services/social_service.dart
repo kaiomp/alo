@@ -7,7 +7,7 @@ class Person {
   final String id;
   final String name;
 
-  /// Fediverse-style address without the leading "@", e.g. `bia@chama.app`.
+  /// Fediverse-style address without the leading "@", e.g. `bia@alo.app`.
   final String handle;
   final Uri? avatar;
 
@@ -18,7 +18,7 @@ class Person {
   String get at => '@${handle.split('@').first}';
 }
 
-/// Why a post is in "Para você". Every recommendation says why: Chama
+/// Why a post is in "Para você". Every recommendation says why: Alô
 /// ranks, but never in secret.
 enum ReasonKind { follows, popular, near, topic, community }
 
@@ -155,7 +155,7 @@ class FeedChoice {
   final String name;
   final String about;
 
-  /// The community feed's author handle ("coletivo.mangue"); null for Chama's own.
+  /// The community feed's author handle ("coletivo.mangue"); null for Alô's own.
   final String? by;
   final int? users;
 }

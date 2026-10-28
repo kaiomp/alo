@@ -1,18 +1,18 @@
 // Test peer for the app's end-to-end test. Signs in one phone number, sets up
-// cross-signing like a real Chama device (spec §5: keys only reach verified
+// cross-signing like a real Alô device (spec §5: keys only reach verified
 // devices), joins every invite, and answers like a real person would:
 //   - says "oi, entrei" after joining a chat,
-//   - acks each message with Olm-encrypted to-device chat.chama.delivered (grey ✓✓),
+//   - acks each message with Olm-encrypted to-device app.usealo.delivered (grey ✓✓),
 //   - sends a read receipt 3 s later (blue ✓✓),
 //   - replies "eco: <text>" to text (not to edits), "recebi: foto criptografada" to an
 //     encrypted image and "recebi: voz criptografada" to an encrypted voice note,
 //   - answers a text that starts with "demora" 30 s later instead of 3 s (time
 //     to close the app and receive the answer as a push).
-// Env: PEER_PHONE (E.164 digits, required), CHAMA_BASE_URL (default
+// Env: PEER_PHONE (E.164 digits, required), ALO_BASE_URL (default
 // http://localhost:8080), PEER_NAME (default "Peer").
 import * as sdk from 'matrix-js-sdk';
 
-const baseUrl = process.env.CHAMA_BASE_URL ?? 'http://localhost:8080';
+const baseUrl = process.env.ALO_BASE_URL ?? 'http://localhost:8080';
 const phone = process.env.PEER_PHONE;
 if (!phone) {
   console.error('PEER_PHONE is required');
@@ -76,7 +76,7 @@ async function answer(ev: sdk.MatrixEvent, roomId: string): Promise<void> {
   const devices = [...((await client.getCrypto()!.getUserDeviceInfo([sender])).get(sender)?.keys() ?? [])];
   await client.queueToDevice(
     await client.getCrypto()!.encryptToDeviceMessages(
-      'chat.chama.delivered',
+      'app.usealo.delivered',
       devices.map((deviceId) => ({ userId: sender, deviceId })),
       { room_id: roomId, event_ids: [ev.getId()], ts: ev.getTs() },
     ),

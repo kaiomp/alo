@@ -1,13 +1,13 @@
 # Operação em produção
 
-Este documento é para quem vai operar um servidor Chama: instituições, equipes de
+Este documento é para quem vai operar um servidor Alô: instituições, equipes de
 infraestrutura e financiadores que querem entender o que custa e o que dá trabalho. Ele separa
-com clareza o que **já existe** no repositório do que **ainda falta** (o marco M7, [issue #6](https://github.com/kaiomp/chama/issues/6)).
+com clareza o que **já existe** no repositório do que **ainda falta** (o marco M7, [issue #6](https://github.com/kaiomp/alo/issues/6)).
 
-> **Situação hoje (outubro de 2026): o Chama ainda não roda em produção.** A pilha deste
+> **Situação hoje (outubro de 2026): o Alô ainda não roda em produção.** A pilha deste
 > repositório é a de desenvolvimento. O ponto que bloqueia é o SMS: não há provedor de SMS real,
-> e o chama-id se recusa a iniciar fora do modo de desenvolvimento
-> (`no SMS provider configured (set CHAMA_DEV=1 for development)`). Todo o resto já funciona no
+> e o alo-id se recusa a iniciar fora do modo de desenvolvimento
+> (`no SMS provider configured (set ALO_DEV=1 for development)`). Todo o resto já funciona no
 > mesmo formato que a produção vai usar, com workers, push e isolamento de rede, mas ainda
 > precisa dos ajustes listados aqui.
 
@@ -36,12 +36,12 @@ arquitetura completa, veja o [documento de arquitetura](design/2026-10-24-archit
 | Área | Já existe | Falta (M7) |
 |---|---|---|
 | Servidor Matrix | Synapse v1.163.2 com workers separados para sync, mídia e push, PostgreSQL 17, Redis | mais réplicas de sync com roteamento fixo por usuário, workers `client_reader`, `event_persister` e de federação, PgBouncer e réplicas do PostgreSQL |
-| Entrada por SMS | chama-id completo, com limites de tentativa e cotas testados; SMS simulado (código no log) | adaptador para um provedor real de SMS |
-| Banco do chama-id | SQLite e limites em memória (uma réplica só) | PostgreSQL próprio e limites no Redis, para rodar várias réplicas |
+| Entrada por SMS | alo-id completo, com limites de tentativa e cotas testados; SMS simulado (código no log) | adaptador para um provedor real de SMS |
+| Banco do alo-id | SQLite e limites em memória (uma réplica só) | PostgreSQL próprio e limites no Redis, para rodar várias réplicas |
 | Proxy | Caddy com as rotas e o bloqueio da API admin | HTTPS com domínio real |
 | Push | Synapse → Sygnal → UnifiedPush ou FCM, só com IDs; Sygnal numa rede isolada | firewall de saída do Sygnal na produção; tirar a liberação da rede de desenvolvimento |
 | Mídia | worker de mídia em disco local | armazenamento compatível com S3 e uma CDN na frente |
-| Retenção | logs de IP do Synapse por 7 dias | política de 30 dias para mensagens e mídia ([issue #12](https://github.com/kaiomp/chama/issues/12)); rotação dos logs do Docker |
+| Retenção | logs de IP do Synapse por 7 dias | política de 30 dias para mensagens e mídia ([issue #12](https://github.com/kaiomp/alo/issues/12)); rotação dos logs do Docker |
 | Monitoramento | verificações de saúde em cada serviço | métricas, alertas e um teste de carga |
 | App | builds de release só com HTTPS, assinatura vinda do ambiente, flavors F-Droid e Play | publicação nas lojas |
 | Documentação | este documento | guia de implantação passo a passo |
@@ -55,7 +55,7 @@ O ambiente local já usa o mesmo desenho da produção. Na produção cada peça
 
 ```mermaid
 flowchart TB
-    users["Apps Chama<br/>Android · web"]
+    users["Apps Alô<br/>Android · web"]
     cdn["CDN<br/>(só vê mídia cifrada)"]
     proxy["Proxy reverso com HTTPS"]
     users --> proxy
@@ -74,16 +74,16 @@ flowchart TB
     proxy --> reader
     proxy --> main
     proxy --> media
-    proxy --> chamaid["chama-id<br/>(várias réplicas)"]
-    chamaid -- "API admin, rede interna" --> main
-    chamaid --> idpg[("PostgreSQL do chama-id")]
-    chamaid --> redis
+    proxy --> aloid["alo-id<br/>(várias réplicas)"]
+    aloid -- "API admin, rede interna" --> main
+    aloid --> idpg[("PostgreSQL do alo-id")]
+    aloid --> redis
     synapse --> redis[("Redis<br/>replicação e limites")]
     synapse --> bouncer["PgBouncer"] --> pg[("PostgreSQL principal<br/>+ réplicas")]
     media --> s3[("Armazenamento S3")]
     pusher --> sygnal["Sygnal<br/>só internet pública"]
     sygnal --> pushsrv["Servidores UnifiedPush<br/>ou FCM"]
-    chamaid --> sms["Provedor de SMS"]
+    aloid --> sms["Provedor de SMS"]
 ```
 
 Metas para os primeiros meses ([arquitetura, seção 12](design/2026-10-24-architecture.md#12-escala-milhões-de-usuários-desde-o-lançamento)):
@@ -97,8 +97,8 @@ Metas para os primeiros meses ([arquitetura, seção 12](design/2026-10-24-archi
 
 > **Limite conhecido.** Uma única instalação do Synapse está comprovada com centenas de milhares
 > de usuários ativos, não dezenas de milhões. Acima disso, a ideia é dividir os usuários entre
-> vários servidores Chama federados, por exemplo por região ([arquitetura, seção 13](design/2026-10-24-architecture.md#13-modelo-de-federação-proposta)). A
-> estimativa de custo da [issue #6](https://github.com/kaiomp/chama/issues/6) calcula cerca de 20 servidores federados (entre 10 e 40) para
+> vários servidores Alô federados, por exemplo por região ([arquitetura, seção 13](design/2026-10-24-architecture.md#13-modelo-de-federação-proposta)). A
+> estimativa de custo da [issue #6](https://github.com/kaiomp/alo/issues/6) calcula cerca de 20 servidores federados (entre 10 e 40) para
 > 1 milhão de usuários por dia.
 
 ---
@@ -110,15 +110,15 @@ um servidor público.
 
 | Onde | Hoje (desenvolvimento) | Em produção |
 |---|---|---|
-| `server/compose.yaml`, serviço `chama-id` | `CHAMA_DEV: "1"`: aceita o código `000000` e imprime os códigos no log | sem `CHAMA_DEV`, com um provedor de SMS real |
-| `server/data/.env` | `SERVER_NAME=chama.test`, `PUBLIC_BASEURL=http://localhost:8080` | o domínio definitivo e um endereço `https://` |
+| `server/compose.yaml`, serviço `alo-id` | `ALO_DEV: "1"`: aceita o código `000000` e imprime os códigos no log | sem `ALO_DEV`, com um provedor de SMS real |
+| `server/data/.env` | `SERVER_NAME=alo.test`, `PUBLIC_BASEURL=http://localhost:8080` | o domínio definitivo e um endereço `https://` |
 | `server/caddy/Caddyfile` | `auto_https off`, portas só em `127.0.0.1` | HTTPS ligado, porta 443 pública |
 | `server/compose.yaml`, serviço `ntfy` e porta 8081 | servidor UnifiedPush para o emulador | remover (os usuários escolhem o próprio distribuidor) |
 | `server/synapse/homeserver.yaml.tmpl` | `ip_range_whitelist: ['10.0.2.0/24']` para o Synapse alcançar o Sygnal | remover; o Sygnal fica num endereço próprio, fora das redes internas |
 | `server/synapse/homeserver.yaml.tmpl` | `federation_domain_whitelist: []`: federação desligada | abrir quando a federação regional for adotada |
 | `server/synapse/appservice.yaml.tmpl` | o token do application service só é aceito de faixas privadas; no ambiente local até os clientes em `localhost` chegam por um endereço privado do Docker (comentário `Limit:` no arquivo) | só protege de verdade com clientes vindo de IPs públicos; confirmar que o Synapse lê o IP real do cliente atrás do proxy |
-| `server/sygnal/sygnal.yaml` | `vapid_contact_email: push@chama.test` | um e-mail de contato real do operador |
-| `services/chama-id/src/db.ts` | SQLite e limites em memória, uma réplica só | PostgreSQL e Redis |
+| `server/sygnal/sygnal.yaml` | `vapid_contact_email: push@alo.test` | um e-mail de contato real do operador |
+| `services/alo-id/src/db.ts` | SQLite e limites em memória, uma réplica só | PostgreSQL e Redis |
 | `server/scripts/init.sh` | arquivos de configuração renderizados com permissão 0644 dentro de uma pasta 0700 | permissões mais fechadas e segredos num cofre |
 | Mídia | disco local (`server/data/media`) | armazenamento S3 com CDN |
 
@@ -131,12 +131,12 @@ code:
 ```yaml
 login_via_existing_session:
   enabled: true
-  require_ui_auth: false   # sem pedir senha: as contas do Chama não têm senha
-  token_timeout: 2m        # o token vale 2 minutos, como o ponto de encontro do chama-id
+  require_ui_auth: false   # sem pedir senha: as contas do Alô não têm senha
+  token_timeout: 2m        # o token vale 2 minutos, como o ponto de encontro do alo-id
 ```
 
 - **Por que sem autenticação interativa.** Por padrão o Synapse pede a senha ou um login SSO
-  antes de emitir o token. As contas do Chama entram por JWT e não têm senha nem SSO, então,
+  antes de emitir o token. As contas do Alô entram por JWT e não têm senha nem SSO, então,
   com a confirmação ligada, a rota nunca daria certo.
 - **Por que é seguro.** O pedido exige o token de acesso de um aparelho da conta; o token chega
   à web cifrado para a chave do QR code; vale uma vez e por 2 minutos; e o aparelho novo não
@@ -157,7 +157,7 @@ login_via_existing_session:
 
 ## 4. Provedor de SMS
 
-O chama-id já tem a interface para isso em `services/chama-id/src/sms.ts`:
+O alo-id já tem a interface para isso em `services/alo-id/src/sms.ts`:
 
 ```ts
 export interface SmsProvider { send(phoneDigits: string, text: string): Promise<void>; }
@@ -165,11 +165,11 @@ export interface SmsProvider { send(phoneDigits: string, text: string): Promise<
 
 Hoje só existe a `ConsoleSms`, que escreve o código no log. Um provedor real é uma nova classe
 com o mesmo método `send`, escolhida na inicialização em `src/server.ts`. O texto enviado é
-`Seu código Chama: 123456. Não compartilhe com ninguém.`
+`Seu código Alô: 123456. Não compartilhe com ninguém.`
 
 Os limites que protegem o custo e as pessoas já estão prontos e testados: 1 código a cada 60 s
 e 5 por dia por telefone, 10 pedidos por hora por IP, código válido por 5 minutos e no máximo 5
-tentativas (tabela completa na [API do chama-id](chama-id-api.md#limites)).
+tentativas (tabela completa na [API do alo-id](alo-id-api.md#limites)).
 
 Opções citadas na [arquitetura, seção 12](design/2026-10-24-architecture.md#12-escala-milhões-de-usuários-desde-o-lançamento): Zenvia, Infobip, Twilio ou verificação por chamada perdida
 (flash call). O custo pesa:
@@ -182,7 +182,7 @@ Opções citadas na [arquitetura, seção 12](design/2026-10-24-architecture.md#
 
 Esse é um custo único de cadastro; novos aparelhos e redefinições geram mais SMS depois.
 
-Ponto em aberto ([issue #6](https://github.com/kaiomp/chama/issues/6)): tentativas erradas de código ainda não têm limite por IP. Um atacante
+Ponto em aberto ([issue #6](https://github.com/kaiomp/alo/issues/6)): tentativas erradas de código ainda não têm limite por IP. Um atacante
 pode gastar as tentativas diárias de um número e bloquear a pessoa por 24 horas.
 
 ---
@@ -192,22 +192,22 @@ pode gastar as tentativas diárias de um número e bloquear a pessoa por 24 hora
 - **O `server_name` é definitivo.** Ele faz parte de todos os IDs de conta
   (`@u…:<server_name>`). Trocar depois de ter usuários quebra todas as contas. Escolha o
   domínio antes do primeiro cadastro.
-- `PUBLIC_BASEURL` passa a ser `https://<domínio>`. O chama-id devolve esse valor no campo
+- `PUBLIC_BASEURL` passa a ser `https://<domínio>`. O alo-id devolve esse valor no campo
   `homeserver`.
 - O app de release é compilado com o mesmo endereço:
-  `make app-apk CHAMA_BASE_URL=https://<domínio>`. Builds release recusam qualquer endereço
+  `make app-apk ALO_BASE_URL=https://<domínio>`. Builds release recusam qualquer endereço
   sem `https://`.
 - O Caddy obtém e renova certificados sozinho quando `auto_https` não está desligado e o domínio
   aponta para o servidor. A configuração de produção do Caddy ainda não está no repositório
   (faz parte do guia de implantação da etapa M7).
-- O chama-id confia no cabeçalho `X-Forwarded-For` para saber o IP do cliente. Por isso ele não
+- O alo-id confia no cabeçalho `X-Forwarded-For` para saber o IP do cliente. Por isso ele não
   pode ter porta pública: só o proxy pode alcançá-lo.
 
 ---
 
 ## 6. Hospedagem e custos
 
-Duas estimativas foram checadas em 24/10/2026 (comentários da [issue #6](https://github.com/kaiomp/chama/issues/6)). Valores em dólar por
+Duas estimativas foram checadas em 24/10/2026 (comentários da [issue #6](https://github.com/kaiomp/alo/issues/6)). Valores em dólar por
 mês, sem SMS.
 
 | Usuários ativos por dia | AWS São Paulo (serviços gerenciados) | Bare metal em São Paulo (Latitude.sh + Backblaze B2) |
@@ -255,7 +255,7 @@ flowchart LR
 
 Na proposta de federação, o DDD do número escolhe o servidor na entrada, então a pessoa só
 digita o número. Um operador com problema afeta só a própria região. É uma proposta, ainda
-com questões em aberto ([issue #13](https://github.com/kaiomp/chama/issues/13)).
+com questões em aberto ([issue #13](https://github.com/kaiomp/alo/issues/13)).
 
 ---
 
@@ -266,7 +266,7 @@ O que guardar, do mais crítico para o menos:
 | O quê | Onde fica hoje | Se for perdido |
 |---|---|---|
 | `server/data/.env` (todos os segredos) | arquivo, permissão 600 | o `init.sh` gera segredos novos que não batem com os dados existentes (a senha do PostgreSQL, por exemplo), e o servidor não sobe |
-| Banco do chama-id: telefone → conta | `server/data/chama-id/chama-id.sqlite` | ninguém volta para a própria conta: cada número ganha uma conta nova e vazia |
+| Banco do alo-id: telefone → conta | `server/data/alo-id/alo-id.sqlite` | ninguém volta para a própria conta: cada número ganha uma conta nova e vazia |
 | Banco do Synapse | volume Docker `pgdata` (PostgreSQL) | todas as contas, salas e mensagens cifradas pendentes |
 | Chave de assinatura do Synapse | `server/data/synapse/signing.key` | o servidor perde a identidade dele na federação |
 | Chave VAPID do Sygnal | `server/data/push/vapid.pem` | o push pelo FCM para de funcionar até cada app se registrar de novo |
@@ -279,10 +279,10 @@ Comandos que funcionam na pilha atual (rode da raiz do repositório):
 docker compose -f server/compose.yaml --env-file server/data/.env exec -T postgres \
   pg_dump -U synapse -Fc synapse > synapse.dump
 
-# Banco do chama-id: cópia consistente com o serviço rodando
-docker compose -f server/compose.yaml --env-file server/data/.env exec -T chama-id \
-  node -e "require('node:fs').rmSync('/data/backup.sqlite', {force: true}); new (require('node:sqlite').DatabaseSync)('/data/chama-id.sqlite').exec(\"VACUUM INTO '/data/backup.sqlite'\")"
-# a cópia aparece em server/data/chama-id/backup.sqlite
+# Banco do alo-id: cópia consistente com o serviço rodando
+docker compose -f server/compose.yaml --env-file server/data/.env exec -T alo-id \
+  node -e "require('node:fs').rmSync('/data/backup.sqlite', {force: true}); new (require('node:sqlite').DatabaseSync)('/data/alo-id.sqlite').exec(\"VACUUM INTO '/data/backup.sqlite'\")"
+# a cópia aparece em server/data/alo-id/backup.sqlite
 ```
 
 Cuidados:
@@ -305,7 +305,7 @@ Já existe: cada serviço tem uma verificação de saúde, usada pelo Docker Com
 |---|---|
 | Synapse principal | `GET /health` na porta 8008 |
 | `sync1`, `media1`, `pusher1` | `GET /health` nas portas 8083, 8085 e 8086 |
-| chama-id | `GET /id/v1/health` (também acessível por fora: `curl https://<domínio>/id/v1/health`) |
+| alo-id | `GET /id/v1/health` (também acessível por fora: `curl https://<domínio>/id/v1/health`) |
 | Sygnal | `GET /health` na porta 5000 |
 | PostgreSQL, Redis | `pg_isready`, `redis-cli ping` |
 
@@ -327,7 +327,7 @@ Falta (M7):
 - um teste de carga que comprove as metas da seção 2.
 
 O monitoramento não pode ler conversas, porque o servidor não tem as chaves. Mesmo assim, logs e
-métricas devem evitar dados pessoais: o chama-id nunca registra tokens nem os hashes da busca de
+métricas devem evitar dados pessoais: o alo-id nunca registra tokens nem os hashes da busca de
 contatos.
 
 ---
@@ -341,15 +341,15 @@ no futuro.
 |---|---|---|
 | IPs dos usuários no Synapse | 7 dias (`user_ips_max_age: 7d`) | configurado |
 | Logs dos contêineres | sem IPs além de 7 dias ([arquitetura, seção 11](design/2026-10-24-architecture.md#11-operação-e-confiança)) | **falta:** os logs do Synapse e do Docker ainda não têm rotação |
-| Mensagens e mídia no servidor | só até a entrega, no máximo 30 dias, como no WhatsApp ([issue #12](https://github.com/kaiomp/chama/issues/12)) | **decidido, não configurado:** política de retenção do Synapse e limpeza de mídia |
-| Códigos SMS no chama-id | só o hash; apagado ao ser usado; registros de tentativa somem depois de 24 h | configurado |
-| Pedidos por IP no chama-id | apagados depois de 1 hora | configurado |
+| Mensagens e mídia no servidor | só até a entrega, no máximo 30 dias, como no WhatsApp ([issue #12](https://github.com/kaiomp/alo/issues/12)) | **decidido, não configurado:** política de retenção do Synapse e limpeza de mídia |
+| Códigos SMS no alo-id | só o hash; apagado ao ser usado; registros de tentativa somem depois de 24 h | configurado |
+| Pedidos por IP no alo-id | apagados depois de 1 hora | configurado |
 | Hashes da busca de contatos | nunca guardados; só uma contagem por conta | configurado |
 | Números reciclados | registro da conta aposentada (`retired_accounts`) | guardado sem prazo hoje |
 
 Com a retenção de 30 dias, um aparelho novo ou a versão web só verão os últimos 30 dias de
 conversa no servidor. Um backup de conversas controlado pela própria pessoa ainda vai ser
-desenhado ([issue #12](https://github.com/kaiomp/chama/issues/12)).
+desenhado ([issue #12](https://github.com/kaiomp/alo/issues/12)).
 
 ---
 
@@ -362,13 +362,13 @@ endereço interno e fazer o Sygnal acessar serviços da própria rede do operado
 chama SSRF, falsificação de requisição do lado do servidor).
 
 Por isso o Sygnal fica isolado. No ambiente local isso já é verdade e é testado pelo `check.sh`:
-o Sygnal não alcança Synapse, chama-id, PostgreSQL nem Redis.
+o Sygnal não alcança Synapse, alo-id, PostgreSQL nem Redis.
 
 ```mermaid
 flowchart LR
     pusher["worker de push<br/>do Synapse"] --> sygnal["Sygnal"]
     sygnal -- "HTTPS 443<br/>só IPs públicos" --> internet["Servidores UnifiedPush<br/>e FCM"]
-    sygnal -- "bloqueado" --x internos["Synapse principal, replicação,<br/>chama-id, PostgreSQL, Redis"]
+    sygnal -- "bloqueado" --x internos["Synapse principal, replicação,<br/>alo-id, PostgreSQL, Redis"]
     sygnal -- "bloqueado" --x privadas["faixas privadas,<br/>metadados da nuvem"]
 ```
 
@@ -382,9 +382,9 @@ A regra de firewall de produção (descrita em `server/sygnal/sygnal.yaml`):
 | Link-local (`169.254.0.0/16`, inclui o serviço de metadados da nuvem) | bloqueado |
 | CGNAT (`100.64.0.0/10`) | bloqueado |
 | IPv6 local único (ULA) e link-local | bloqueado |
-| Rede do Synapse principal, replicação dos workers, chama-id, PostgreSQL, Redis | o Sygnal não compartilha rede com nenhum deles |
+| Rede do Synapse principal, replicação dos workers, alo-id, PostgreSQL, Redis | o Sygnal não compartilha rede com nenhum deles |
 
-Também falta ([issue #6](https://github.com/kaiomp/chama/issues/6)): tirar do Synapse de produção a liberação `ip_range_whitelist:
+Também falta ([issue #6](https://github.com/kaiomp/alo/issues/6)): tirar do Synapse de produção a liberação `ip_range_whitelist:
 ['10.0.2.0/24']`, que só existe para o ambiente local, e confirmar que o próprio Sygnal recusa
 endereços privados ou de loopback.
 
@@ -398,23 +398,23 @@ segredos e faça backup criptografado (seção 7).
 
 | Segredo | Quem usa | Se vazar |
 |---|---|---|
-| `JWT_SECRET` | o chama-id assina o login e o Synapse confere | **crítico:** qualquer um entra em qualquer conta |
-| `AS_TOKEN` | o chama-id age como usuário pelo application service (redefinição de identidade) | **crítico:** permite agir como qualquer conta `@u…`; o Synapse só o aceita de faixas privadas |
-| `REGISTRATION_SHARED_SECRET` | o chama-id cria o próprio usuário administrador no Synapse | **crítico:** permite criar administradores |
+| `JWT_SECRET` | o alo-id assina o login e o Synapse confere | **crítico:** qualquer um entra em qualquer conta |
+| `AS_TOKEN` | o alo-id age como usuário pelo application service (redefinição de identidade) | **crítico:** permite agir como qualquer conta `@u…`; o Synapse só o aceita de faixas privadas |
+| `REGISTRATION_SHARED_SECRET` | o alo-id cria o próprio usuário administrador no Synapse | **crítico:** permite criar administradores |
 | `POSTGRES_PASSWORD` | Synapse para acessar o PostgreSQL | acesso ao banco, se a rede permitir |
 | `MACAROON_SECRET`, `FORM_SECRET` | Synapse (tokens internos e formulários) | falsificação de tokens internos do Synapse |
 | `WORKER_REPLICATION_SECRET` | comunicação entre o Synapse principal e os workers | um intruso na rede interna se passa por worker |
-| `OTP_PEPPER` | o chama-id guarda os códigos SMS e os PINs das contas só como hash com esse valor | com uma cópia do banco, facilita descobrir códigos pendentes e PINs. Trocar este valor invalida todos os PINs: um aparelho novo só entra depois do "Esqueci meu PIN" (7 dias); os aparelhos já conectados criam um PIN novo com um código SMS |
+| `OTP_PEPPER` | o alo-id guarda os códigos SMS e os PINs das contas só como hash com esse valor | com uma cópia do banco, facilita descobrir códigos pendentes e PINs. Trocar este valor invalida todos os PINs: um aparelho novo só entra depois do "Esqueci meu PIN" (7 dias); os aparelhos já conectados criam um PIN novo com um código SMS |
 | `HS_TOKEN` | Synapse → application service (sem uso real: `url: null`) | baixo |
 | `server/data/push/vapid.pem` | Sygnal assina os Web Push | permite enviar pushes em nome do servidor |
 | `server/data/synapse/signing.key` | Synapse assina eventos para a federação | outro servidor pode se passar por este na federação |
-| Keystore de assinatura do app (`CHAMA_KEYSTORE` e senhas) | builds de release do Android | **crítico:** permite publicar uma atualização falsa do app. Perder o keystore impede atualizar o app nas lojas |
+| Keystore de assinatura do app (`ALO_KEYSTORE` e senhas) | builds de release do Android | **crítico:** permite publicar uma atualização falsa do app. Perder o keystore impede atualizar o app nas lojas |
 
 Regras:
 
 - Nenhum segredo entra no repositório. Chaves `.jks`, `.p12` e `.pem` estão no
   `app/android/.gitignore`.
-- O chama-id nunca escreve tokens no log.
+- O alo-id nunca escreve tokens no log.
 - Os arquivos de configuração renderizados do Synapse carregam segredos; em produção eles não
   podem ficar legíveis por outros usuários (hoje ficam com permissão 0644 dentro de uma pasta
   0700).
@@ -425,16 +425,16 @@ Regras:
 
 ## 12. Lista de tarefas até o lançamento
 
-Tudo isso está na [issue #6](https://github.com/kaiomp/chama/issues/6) (M7) e nos comentários dela.
+Tudo isso está na [issue #6](https://github.com/kaiomp/alo/issues/6) (M7) e nos comentários dela.
 
-**chama-id**
+**alo-id**
 
 - [ ] Adaptador para um provedor real de SMS.
 - [ ] PostgreSQL próprio e limites no Redis, para várias réplicas.
 - [ ] Prazo máximo nas chamadas ao Synapse; pular as chamadas admin quando o último login tem
       menos de 45 dias; revogar tokens admin perdidos.
 - [ ] Limite por IP para tentativas erradas de código.
-- [ ] Descoberta privada de contatos ([issue #7](https://github.com/kaiomp/chama/issues/7)).
+- [ ] Descoberta privada de contatos ([issue #7](https://github.com/kaiomp/alo/issues/7)).
 
 **Synapse e rede**
 
@@ -442,7 +442,7 @@ Tudo isso está na [issue #6](https://github.com/kaiomp/chama/issues/6) (M7) e n
 - [ ] Rota de mídia da federação; limites de requisição e custo de presença ajustados para produção.
 - [ ] Mídia em S3 com CDN; PgBouncer.
 - [ ] Rotação dos logs (Synapse e Docker) para cumprir a promessa dos 7 dias.
-- [ ] Retenção de 30 dias para mensagens e mídia ([issue #12](https://github.com/kaiomp/chama/issues/12)).
+- [ ] Retenção de 30 dias para mensagens e mídia ([issue #12](https://github.com/kaiomp/alo/issues/12)).
 - [ ] Guardar e trocar o token do application service como segredo; confirmar o IP real do
       cliente atrás do proxy.
 - [ ] Permissões fechadas nos arquivos de configuração; lista de chaves permitidas no `init.sh`.

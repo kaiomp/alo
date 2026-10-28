@@ -1,4 +1,4 @@
-import 'package:chama/services/event_mapping.dart';
+import 'package:alo/services/event_mapping.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:matrix/matrix.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -13,7 +13,7 @@ void main() {
       sqfliteFactory: databaseFactoryFfi,
     );
     room = Room(
-      id: '!r:chama.test',
+      id: '!r:alo.test',
       client: Client('event_mapping_test', database: db),
     );
   });
@@ -22,7 +22,7 @@ void main() {
     type: EventTypes.Encrypted,
     content: {'algorithm': 'm.megolm.v1.aes-sha2', 'ciphertext': 'x', 'm.relates_to': ?relatesTo},
     eventId: id,
-    senderId: '@b:chama.test',
+    senderId: '@b:alo.test',
     originServerTs: DateTime(2026),
     room: room,
   );

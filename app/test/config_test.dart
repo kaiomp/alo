@@ -1,4 +1,4 @@
-import 'package:chama/config.dart';
+import 'package:alo/config.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -10,8 +10,8 @@ void main() {
 
   test('release builds refuse a missing or cleartext server URL', () {
     expect(() => baseUrlFor('', release: true, android: true), throwsStateError);
-    expect(() => baseUrlFor('http://chama.example', release: true, android: true), throwsStateError);
+    expect(() => baseUrlFor('http://alo.example', release: true, android: true), throwsStateError);
     expect(() => baseUrlFor('https://', release: true, android: true), throwsStateError);
-    expect(baseUrlFor('https://chama.example', release: true, android: true), Uri.parse('https://chama.example'));
+    expect(baseUrlFor('https://alo.example', release: true, android: true), Uri.parse('https://alo.example'));
   });
 }

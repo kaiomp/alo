@@ -1,7 +1,7 @@
-import 'package:chama/common/notifications.dart';
-import 'package:chama/l10n/app_localizations.dart';
-import 'package:chama/services/chat_service.dart';
-import 'package:chama/services/models.dart' hide Message;
+import 'package:alo/common/notifications.dart';
+import 'package:alo/l10n/app_localizations.dart';
+import 'package:alo/services/chat_service.dart';
+import 'package:alo/services/models.dart' hide Message;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:matrix/encryption.dart';
@@ -16,9 +16,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'fakes.dart';
 
-const me = '@me:chama.test';
-const ana = '@ana:chama.test';
-const roomId = '!r:chama.test';
+const me = '@me:alo.test';
+const ana = '@ana:alo.test';
+const roomId = '!r:alo.test';
 
 /// Encryption with the Megolm sessions a test gives it.
 class _FakeEncryption extends Fake implements Encryption {

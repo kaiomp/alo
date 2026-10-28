@@ -1,5 +1,5 @@
-import 'package:chama/chat_list/chat_filter.dart';
-import 'package:chama/services/models.dart';
+import 'package:alo/chat_list/chat_filter.dart';
+import 'package:alo/services/models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 ChatSummary chat(String name, {bool group = false, int unread = 0, bool fav = false, bool archived = false}) =>

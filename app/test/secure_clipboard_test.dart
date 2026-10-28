@@ -1,4 +1,4 @@
-import 'package:chama/common/secure_clipboard.dart';
+import 'package:alo/common/secure_clipboard.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -16,7 +16,7 @@ void main() {
       return null;
     });
     // Android: MainActivity copies with the sensitive flag.
-    messenger.setMockMethodCallHandler(const MethodChannel('chat.chama.app/clipboard'), (call) async {
+    messenger.setMockMethodCallHandler(const MethodChannel('app.usealo.app/clipboard'), (call) async {
       sensitive.add(call.arguments as String);
       clipboard = call.arguments as String;
       return null;
@@ -41,7 +41,7 @@ void main() {
 
   testWidgets('without the Android channel it falls back to a plain copy', (tester) async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
-      const MethodChannel('chat.chama.app/clipboard'),
+      const MethodChannel('app.usealo.app/clipboard'),
       (_) async => throw MissingPluginException(),
     );
     await copySecret('EsTc key');

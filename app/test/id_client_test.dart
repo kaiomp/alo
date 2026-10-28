@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:chama/auth/id_client.dart';
-import 'package:chama/l10n/app_localizations.dart';
+import 'package:alo/auth/id_client.dart';
+import 'package:alo/l10n/app_localizations.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -31,13 +31,13 @@ void main() {
   test('verifyCode returns the login token', () async {
     final c = client(200, {
       'phone': '5511987654321',
-      'user_id': '@u7k3m9q2x4w8a1b5c:chama.test',
+      'user_id': '@u7k3m9q2x4w8a1b5c:alo.test',
       'login_token': 'jwt',
       'homeserver': 'http://localhost:8080',
       'new_account': true,
     });
     final login = await c.verifyCode('5511987654321', '000000');
-    expect(login.userId, '@u7k3m9q2x4w8a1b5c:chama.test');
+    expect(login.userId, '@u7k3m9q2x4w8a1b5c:alo.test');
     expect(login.loginToken, 'jwt');
     expect(login.newAccount, isTrue);
   });
@@ -48,14 +48,14 @@ void main() {
     const hash = '029c7290f14c4516673508635f0519db95f7daf42057fd0e4ad1de84c5408a66';
     final c = client(200, {
       'registered': [
-        {'hash': hash, 'user_id': '@u7k3m9q2x4w8a1b5c:chama.test'},
+        {'hash': hash, 'user_id': '@u7k3m9q2x4w8a1b5c:alo.test'},
       ],
     }, onRequest: (r) => sent = r);
     final found = await c.lookup(['5511987654321', '5511900000000'], accessToken: 'tok');
     expect(sent.headers['authorization'], 'Bearer tok');
     expect((jsonDecode(sent.body)['hashes'] as List), contains(hash));
     expect(sent.body, isNot(contains('5511987654321'))); // only hashes leave the device
-    expect(found, {'5511987654321': '@u7k3m9q2x4w8a1b5c:chama.test'});
+    expect(found, {'5511987654321': '@u7k3m9q2x4w8a1b5c:alo.test'});
   });
 
   test('typed errors keep code and retry_after', () async {
@@ -94,7 +94,7 @@ void main() {
     final c = client(200, {}, onRequest: (r) => sent = r);
     final keys = {
       'master_key': {
-        'user_id': '@u7k3m9q2x4w8a1b5c:chama.test',
+        'user_id': '@u7k3m9q2x4w8a1b5c:alo.test',
         'usage': ['master'],
         'keys': {'ed25519:abc': 'abc'},
       },

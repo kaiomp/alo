@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:chama/chat/voice/voice_recorder.dart';
-import 'package:chama/chat/voice/waveform.dart';
-import 'package:chama/services/models.dart';
+import 'package:alo/chat/voice/voice_recorder.dart';
+import 'package:alo/chat/voice/waveform.dart';
+import 'package:alo/services/models.dart';
 
 /// 1×1 PNG.
 final testPng = base64Decode(

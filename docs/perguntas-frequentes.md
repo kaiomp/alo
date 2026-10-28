@@ -1,13 +1,13 @@
 # Perguntas frequentes
 
-Respostas diretas sobre o Chama, para quem usa, para quem quer apoiar e para quem só quer
+Respostas diretas sobre o Alô, para quem usa, para quem quer apoiar e para quem só quer
 entender. Quando uma resposta tem um "mas", ele está escrito aqui. Os detalhes técnicos ficam em
 [segurança e privacidade](seguranca-e-privacidade.md) e na
 [arquitetura](design/2026-10-24-architecture.md).
 
 **Nesta página**
 
-- [Sobre o Chama](#sobre-o-chama)
+- [Sobre o Alô](#sobre-o-alô)
 - [Privacidade e segurança](#privacidade-e-segurança)
 - [Conta, número e celular](#conta-número-e-celular)
 - [Aparelhos e plataformas](#aparelhos-e-plataformas)
@@ -16,9 +16,9 @@ entender. Quando uma resposta tem um "mas", ele está escrito aqui. Os detalhes 
 
 ---
 
-## Sobre o Chama
+## Sobre o Alô
 
-### O que é o Chama?
+### O que é o Alô?
 
 Um aplicativo de mensagens gratuito e de código aberto, feito para o Brasil. Você entra com o
 número do celular, encontra quem já está na sua agenda e conversa, sozinho ou em grupo, com
@@ -28,11 +28,11 @@ ponta: só quem participa da conversa consegue ler.
 ### É igual ao WhatsApp?
 
 No uso do dia a dia, é parecido de propósito: lista de conversas, tiques azuis, mensagens de
-voz, grupos, versão para o computador. Quem sabe usar o WhatsApp sabe usar o Chama.
+voz, grupos, versão para o computador. Quem sabe usar o WhatsApp sabe usar o Alô.
 
 As diferenças estão por trás:
 
-| | WhatsApp | Chama |
+| | WhatsApp | Alô |
 |---|---|---|
 | Dono | Uma empresa privada (Meta) | Ninguém em particular: código aberto, pensado para ser operado por instituições públicas ou sem fins lucrativos |
 | Código | Fechado | Aberto (AGPL-3.0), qualquer pessoa pode auditar |
@@ -41,24 +41,24 @@ As diferenças estão por trás:
 | Protocolo | Fechado | Aberto (Matrix). Outros servidores compatíveis podem existir |
 | Criptografia de ponta a ponta | Sim | Sim, em todas as conversas, sem exceção |
 
-O Chama não usa código, marca, ícones, textos nem cores do WhatsApp, e não tem ligação com o
+O Alô não usa código, marca, ícones, textos nem cores do WhatsApp, e não tem ligação com o
 WhatsApp nem com a Meta.
 
 ### Consigo conversar com quem usa WhatsApp?
 
 Não. São redes diferentes, e o WhatsApp não permite que outros aplicativos se conectem a ele.
-Para conversar pelo Chama, a outra pessoa também precisa ter o Chama. O app ajuda nisso: na tela
-de nova conversa, mostra quem da sua agenda já usa o Chama e tem um botão para convidar os
+Para conversar pelo Alô, a outra pessoa também precisa ter o Alô. O app ajuda nisso: na tela
+de nova conversa, mostra quem da sua agenda já usa o Alô e tem um botão para convidar os
 outros.
 
 <p align="center">
-  <img src="imagens/android-nova-conversa-claro.webp" alt="Tela de nova conversa com Contatos no Chama e Convidar para o Chama" width="240"><br>
-  <sub>"Contatos no Chama" e "Convidar para o Chama"</sub>
+  <img src="imagens/android-nova-conversa-claro.webp" alt="Tela de nova conversa com Contatos no Alô e Convidar para o Alô" width="240"><br>
+  <sub>"Contatos no Alô" e "Convidar para o Alô"</sub>
 </p>
 
 ### Já posso usar?
 
-Ainda não. O Chama está em desenvolvimento: o servidor, o app Android e a versão web já
+Ainda não. O Alô está em desenvolvimento: o servidor, o app Android e a versão web já
 funcionam no ambiente de testes, mas ainda não existe um servidor público nem o app nas lojas. O
 lançamento depende da etapa M7 (produção), que inclui o envio de SMS de verdade e os testes de
 carga. Veja o [roadmap](roadmap.md).
@@ -68,7 +68,7 @@ Quem é desenvolvedor já pode rodar tudo no próprio computador, seguindo o
 
 ### Já tem ligação de voz e vídeo? Status? Canais?
 
-Ainda não. Hoje o Chama tem conversas, grupos, fotos, documentos, mensagens de voz, reações,
+Ainda não. Hoje o Alô tem conversas, grupos, fotos, documentos, mensagens de voz, reações,
 respostas, edição e exclusão de mensagens. Status, canais, comunidades, enquetes e mensagens
 temporárias vêm na etapa M5; ligações de voz e vídeo, na M6. As abas "Atualizações",
 "Comunidades" e "Ligações" já aparecem no app com o aviso "em breve".
@@ -97,7 +97,7 @@ versão cifrada.
 ```mermaid
 sequenceDiagram
   participant A as Celular da Ana
-  participant S as Servidor Chama
+  participant S as Servidor Alô
   participant B as Celular do Bruno
   A->>A: cifra "Oi, Bruno!" com as chaves da conversa
   A->>S: envia o conteúdo cifrado
@@ -112,7 +112,7 @@ vê na tela. Isso vale para qualquer mensageiro.
 
 ### Então o que o servidor sabe sobre mim?
 
-Para entregar mensagens, todo servidor precisa saber algumas coisas. O Chama tenta guardar o
+Para entregar mensagens, todo servidor precisa saber algumas coisas. O Alô tenta guardar o
 mínimo.
 
 | O servidor **não** sabe | O servidor sabe |
@@ -124,22 +124,22 @@ mínimo.
 | | Seu endereço IP, apagado depois de 7 dias (regra do projeto) |
 | | Quais números da sua agenda estão sendo conferidos no momento da busca de contatos (veja abaixo) |
 
-Sobre a agenda: para mostrar quem já usa o Chama, o app manda ao servidor um resumo matemático
+Sobre a agenda: para mostrar quem já usa o Alô, o app manda ao servidor um resumo matemático
 (hash) de cada número, e não o número em si. Mas como a quantidade de números de celular
 possíveis é pequena, quem opera o servidor conseguiria descobrir os números a partir desses
-resumos. O Chama não guarda nem registra esses resumos, mas isso é uma promessa do operador, não
+resumos. O Alô não guarda nem registra esses resumos, mas isso é uma promessa do operador, não
 uma garantia técnica. Antes de pedir acesso, o app explica que só envia os números em forma codificada (hash) e que
 você pode negar. Sem o acesso, dá para iniciar conversas digitando o número. Um método de busca mais privado está planejado
-antes do lançamento ([#7](https://github.com/kaiomp/chama/issues/7)).
+antes do lançamento ([#7](https://github.com/kaiomp/alo/issues/7)).
 
 ### Quem administra o servidor pode ler minhas conversas?
 
 Não, pelo mesmo motivo da pergunta sobre o governo: as chaves ficam só nos aparelhos. Essa é a
-promessa central do Chama e precisa continuar verdadeira em todas as etapas. O operador pode
+promessa central do Alô e precisa continuar verdadeira em todas as etapas. O operador pode
 moderar conteúdo público (como os canais, quando existirem) e agir sobre denúncias, mas não lê
 conversas privadas.
 
-O que o operador **pode** fazer, e por isso o Chama se protege:
+O que o operador **pode** fazer, e por isso o Alô se protege:
 
 - **Tentar entrar na sua conta com o seu número.** Quem controla o SMS (o operador, ou um
   golpista que clonou seu chip) consegue fazer login, mas um aparelho novo não recebe nenhuma
@@ -153,7 +153,7 @@ O que o operador **pode** fazer, e por isso o Chama se protege:
 
 Mais proteções chegam na etapa M4: PIN da conta, lista de aparelhos conectados, aviso de "novo
 aparelho" aos contatos e um alerta dentro da conversa para mensagens vindas de um aparelho não
-confirmado ([#11](https://github.com/kaiomp/chama/issues/11)). Detalhes em
+confirmado ([#11](https://github.com/kaiomp/alo/issues/11)). Detalhes em
 [segurança e privacidade](seguranca-e-privacidade.md).
 
 ### O servidor guarda minhas mensagens para sempre?
@@ -163,7 +163,7 @@ mídias (cifradas) só até serem entregues, por no máximo 30 dias. O históric
 Menos dado guardado é menos dado para vazar, ser apreendido ou ser decifrado no futuro.
 
 Esse limite ainda não está ligado: ele faz parte da etapa M5
-([#12](https://github.com/kaiomp/chama/issues/12)). Hoje, no ambiente de desenvolvimento, o
+([#12](https://github.com/kaiomp/alo/issues/12)). Hoje, no ambiente de desenvolvimento, o
 servidor guarda as mensagens cifradas sem prazo.
 
 ### Tem algoritmo escolhendo o que eu vejo?
@@ -177,21 +177,21 @@ busca será só por nome exato ou número.
 Sim. Todo o código do servidor e do app está sob a licença AGPL-3.0, que obriga quem modificar e
 oferecer o serviço a publicar as mudanças. A criptografia não foi inventada pelo projeto: vem do
 padrão Matrix e da biblioteca vodozemac, que já passou por auditoria independente. Estão nos
-planos auditorias independentes do próprio Chama, builds do Android que qualquer pessoa possa
+planos auditorias independentes do próprio Alô, builds do Android que qualquer pessoa possa
 reproduzir e relatórios de transparência do operador.
 
 ---
 
 ## Conta, número e celular
 
-### Por que o Chama usa número de telefone?
+### Por que o Alô usa número de telefone?
 
 Porque é assim que os brasileiros já se encontram: todo mundo tem a agenda do celular cheia de
 números e sabe entrar num app com um código por SMS. Sem senha para esquecer, sem nome de
 usuário para inventar.
 
-Mas o número **não é** a sua identidade dentro do Chama. Cada conta tem um identificador
-aleatório (algo como `@u7k3m5q2x4w6a2b5c:chama.chat`), e o número serve só para entrar e para seus
+Mas o número **não é** a sua identidade dentro do Alô. Cada conta tem um identificador
+aleatório (algo como `@u7k3m5q2x4w6a2b5c:usealo.app`), e o número serve só para entrar e para seus
 contatos acharem você. Isso tem duas vantagens:
 
 - Seu número não fica gravado nos grupos e conversas.
@@ -201,7 +201,7 @@ contatos acharem você. Isso tem duas vantagens:
 ### E se eu trocar de número, ou a operadora der meu número antigo para outra pessoa?
 
 As operadoras brasileiras repassam números cancelados para novos clientes depois de alguns
-meses (a Anatel define uma quarentena mínima). No Chama:
+meses (a Anatel define uma quarentena mínima). No Alô:
 
 - Se o número entrar de novo em até 45 dias desde o último uso, é a mesma conta (e o aparelho
   novo ainda precisa ser confirmado com a chave de recuperação).
@@ -224,7 +224,7 @@ conta.
 
 | Situação | O que acontece |
 |---|---|
-| **Você tem a chave** | Recupere o chip com a operadora, instale o Chama no celular novo, entre com o número e o código do SMS e digite a chave. Suas conversas antigas voltam a ser lidas. |
+| **Você tem a chave** | Recupere o chip com a operadora, instale o Alô no celular novo, entre com o número e o código do SMS e digite a chave. Suas conversas antigas voltam a ser lidas. |
 | **Você não tem a chave** | Você entra com o número e o SMS e escolhe "Não tenho a chave". A conta continua (mesmos contatos e grupos), mas as mensagens antigas ficam ilegíveis no celular novo, os outros aparelhos da conta são desconectados e seus contatos veem "O código de segurança mudou". |
 
 Ninguém, nem o operador do servidor, consegue recuperar a chave para você: é justamente isso
@@ -238,12 +238,12 @@ Dois cuidados:
   aparelhos chega na etapa M4.
 - **Com o limite de 30 dias no servidor** (planejado para a M5), um celular novo vai receber só
   as mensagens dos últimos 30 dias. Um backup cifrado controlado por você, para restaurar o
-  histórico completo, será desenhado à parte ([#12](https://github.com/kaiomp/chama/issues/12)).
+  histórico completo, será desenhado à parte ([#12](https://github.com/kaiomp/alo/issues/12)).
 
 ### Onde guardo a chave de recuperação?
 
 Num lugar seguro e fora do celular: um gerenciador de senhas, um papel guardado em casa, um cofre.
-Não mande a chave para ninguém e não a guarde em fotos ou conversas. Ninguém do Chama vai pedir
+Não mande a chave para ninguém e não a guarde em fotos ou conversas. Ninguém do Alô vai pedir
 sua chave.
 
 ### Meu número aparece para todo mundo?
@@ -254,7 +254,7 @@ escolheu no perfil.
 
 ### Preciso dar acesso à minha agenda?
 
-Não. O acesso serve só para mostrar quem da sua agenda já usa o Chama, com os nomes que você
+Não. O acesso serve só para mostrar quem da sua agenda já usa o Alô, com os nomes que você
 salvou. Sem ele, você inicia conversas digitando o número. Antes de o Android pedir a permissão,
 o app explica o que é enviado ao servidor.
 
@@ -296,7 +296,7 @@ Google ou o ntfy não veem o texto, nem quem mandou.
 
 Você está com a versão F-Droid, que não usa os serviços do Google. Para receber notificações,
 ela precisa de um app que entregue notificações de forma aberta (padrão UnifiedPush), como o
-ntfy. Sem ele, o Chama funciona normalmente, mas você só vê mensagens novas com o app aberto. Em
+ntfy. Sem ele, o Alô funciona normalmente, mas você só vê mensagens novas com o app aberto. Em
 Configurações → Notificações o app mostra se as notificações estão ativas.
 
 <p align="center">
@@ -308,16 +308,16 @@ Configurações → Notificações o app mostra se as notificações estão ativ
 
 ## Quem mantém e quem paga
 
-### Quem faz o Chama?
+### Quem faz o Alô?
 
-O Chama é um projeto de código aberto, feito para ser operado por uma instituição pública ou sem
+O Alô é um projeto de código aberto, feito para ser operado por uma instituição pública ou sem
 fins lucrativos. Qualquer pessoa pode ler o código, apontar problemas e contribuir. Para começar,
 veja o [guia de desenvolvimento](desenvolvimento.md). Instituições e financiadores que queiram
 apoiar ou operar um servidor encontram o caminho em [Como apoiar](../README.md#como-apoiar).
 
 ### Quem paga os servidores?
 
-**Isso ainda não está definido.** O Chama ainda não tem um operador em produção. O modelo
+**Isso ainda não está definido.** O Alô ainda não tem um operador em produção. O modelo
 pensado é este:
 
 - **Sem anúncios e sem venda de dados**, nunca. O custo é de infraestrutura, e quem opera é uma
@@ -333,13 +333,13 @@ pensado é este:
 Veja os números e as perguntas em aberto no [roadmap](roadmap.md) e na
 [arquitetura](design/2026-10-24-architecture.md).
 
-### Se uma instituição pública operar o Chama, ela não vira "dona" das conversas?
+### Se uma instituição pública operar o Alô, ela não vira "dona" das conversas?
 
 Não das conversas: elas são criptografadas e o operador não lê. O operador controla a entrada no
 servidor (pode bloquear alguém) e a moderação de conteúdo público. Para que nenhuma instituição
 tenha esse poder sobre o país inteiro, a proposta é a federação: vários servidores de
 instituições independentes, conectados entre si, seguindo um regulamento comum
-([#13](https://github.com/kaiomp/chama/issues/13)).
+([#13](https://github.com/kaiomp/alo/issues/13)).
 
 ### Como funcionaria essa federação para quem usa?
 
@@ -347,7 +347,7 @@ De forma invisível. O app escolhe o servidor pelo **DDD** do seu número; você
 como hoje. Conversas entre pessoas de regiões diferentes funcionam como qualquer outra. Se um
 servidor falhar, for bloqueado ou agir mal, isso afeta só a região dele. É uma proposta, ainda com
 perguntas em aberto (como uma busca de contatos compartilhada entre servidores e a mudança de
-DDD). O padrão Matrix já permite isso, e as contas do Chama já foram desenhadas para não depender
+DDD). O padrão Matrix já permite isso, e as contas do Alô já foram desenhadas para não depender
 de um servidor específico.
 
 ---
@@ -356,33 +356,33 @@ de um servidor específico.
 
 ### Funciona sem internet?
 
-Não, ainda não. Como o WhatsApp, o Chama precisa de internet (dados móveis ou Wi-Fi). Mensagens
+Não, ainda não. Como o WhatsApp, o Alô precisa de internet (dados móveis ou Wi-Fi). Mensagens
 enviadas sem conexão ficam com um reloginho enquanto o app tenta enviar (até 30 segundos); depois aparece um aviso
 vermelho e basta tocar para tentar de novo. Sem conexão, o app mostra "Conectando…".
 
 Um "modo sem internet", para celulares próximos trocarem mensagens por Bluetooth ou Wi-Fi Direct
 em protestos, apagões ou bloqueios, está na lista de pesquisa para depois do lançamento
-([#14](https://github.com/kaiomp/chama/issues/14)). Seria um complemento: uma rede só entre
+([#14](https://github.com/kaiomp/alo/issues/14)). Seria um complemento: uma rede só entre
 celulares, sem servidor, não funciona bem como base para milhões de pessoas (celulares
 desligados, bateria, atraso na entrega).
 
-### E se a Justiça mandar bloquear o Chama, como já fez com o WhatsApp?
+### E se a Justiça mandar bloquear o Alô, como já fez com o WhatsApp?
 
-O WhatsApp foi bloqueado no país inteiro em 2015 e 2016, e o X em 2024. O Chama não tem uma
+O WhatsApp foi bloqueado no país inteiro em 2015 e 2016, e o X em 2024. O Alô não tem uma
 solução pronta para isso hoje. Duas ideias do projeto reduzem o risco:
 
-- **Federação** ([#13](https://github.com/kaiomp/chama/issues/13)): com vários servidores de
+- **Federação** ([#13](https://github.com/kaiomp/alo/issues/13)): com vários servidores de
   instituições diferentes, uma ordem contra um operador não derruba a rede toda.
-- **Modo sem internet** ([#14](https://github.com/kaiomp/chama/issues/14)): celulares próximos
+- **Modo sem internet** ([#14](https://github.com/kaiomp/alo/issues/14)): celulares próximos
   continuariam conversando mesmo sem acesso à internet.
 
 ---
 
 ## Não achou sua pergunta?
 
-- O que é o Chama e em que pé está: [README do projeto](../README.md) e [roadmap](roadmap.md).
+- O que é o Alô e em que pé está: [README do projeto](../README.md) e [roadmap](roadmap.md).
 - Segurança em detalhe: [segurança e privacidade](seguranca-e-privacidade.md).
 - Como tudo funciona por dentro: [arquitetura](design/2026-10-24-architecture.md).
 - Rodar e contribuir: [desenvolvimento](desenvolvimento.md); operar um servidor:
-  [operação](operacao.md); serviço de entrada: [API do chama-id](chama-id-api.md).
+  [operação](operacao.md); serviço de entrada: [API do alo-id](alo-id-api.md).
 - Todos os documentos: [índice da documentação](README.md).

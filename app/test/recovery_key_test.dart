@@ -1,17 +1,17 @@
 import 'dart:convert';
 
-import 'package:chama/auth/encryption_screen.dart';
-import 'package:chama/auth/id_client.dart';
-import 'package:chama/common/deps.dart';
-import 'package:chama/common/notifications.dart';
-import 'package:chama/contacts/address_book.dart';
-import 'package:chama/contacts/contacts_service.dart';
-import 'package:chama/common/theme.dart';
-import 'package:chama/l10n/app_localizations.dart';
-import 'package:chama/services/chama_client.dart';
-import 'package:chama/services/chat_service.dart';
-import 'package:chama/services/delivery.dart';
-import 'package:chama/services/push.dart';
+import 'package:alo/auth/encryption_screen.dart';
+import 'package:alo/auth/id_client.dart';
+import 'package:alo/common/deps.dart';
+import 'package:alo/common/notifications.dart';
+import 'package:alo/contacts/address_book.dart';
+import 'package:alo/contacts/contacts_service.dart';
+import 'package:alo/common/theme.dart';
+import 'package:alo/l10n/app_localizations.dart';
+import 'package:alo/services/alo_client.dart';
+import 'package:alo/services/chat_service.dart';
+import 'package:alo/services/delivery.dart';
+import 'package:alo/services/push.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -102,7 +102,7 @@ Widget _app(ChatService service, Widget home) => Deps(
   pickFile: ({required bool image}) async => null,
   shareText: (_) async {},
   child: MaterialApp(
-    theme: chamaTheme(Brightness.light),
+    theme: aloTheme(Brightness.light),
     locale: const Locale('pt'),
     supportedLocales: L10n.supportedLocales,
     localizationsDelegates: L10n.localizationsDelegates,
@@ -114,13 +114,13 @@ final _base = Uri.parse('http://localhost:8080');
 late SharedPreferences _prefs;
 
 Future<ChatService> _service(http.Client server, {IdClient? id}) async {
-  SharedPreferences.setMockInitialValues({'chama.phone': '5511987654321'});
+  SharedPreferences.setMockInitialValues({'alo.phone': '5511987654321'});
   final prefs = _prefs = await SharedPreferences.getInstance();
   final db = await MatrixSdkDatabase.init(
     'recovery_key_test',
     database: await databaseFactoryFfi.openDatabase(':memory:'),
     sqfliteFactory: databaseFactoryFfi,
   );
-  final client = ChamaClient('recovery_key_test', database: db, httpClient: server);
+  final client = AloClient('recovery_key_test', database: db, httpClient: server);
   return ChatService(client, DeliveryTracker(client, prefs), id ?? IdClient(_base), prefs, homeserver: _base);
 }

@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:chama/common/notifications.dart';
-import 'package:chama/l10n/app_localizations.dart';
-import 'package:chama/services/models.dart' hide Message;
+import 'package:alo/common/notifications.dart';
+import 'package:alo/l10n/app_localizations.dart';
+import 'package:alo/services/models.dart' hide Message;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -21,7 +21,7 @@ class _Captured extends Notifications {
   Future<void> cancelAll() async => cancelledAll++;
 }
 
-const roomId = '!r:chama.test';
+const roomId = '!r:alo.test';
 const secret = '0123456789abcdef0123456789abcdef';
 
 NotificationResponse reply(String text, {String payload = '$secret|$roomId'}) => NotificationResponse(
@@ -86,12 +86,12 @@ void main() {
   });
 
   test('the notification names the sender, keyed by an opaque per-sender key', () {
-    final ana = notificationMessage(from('@ana:chama.test', 'Ana'), l).person!;
-    final otherAna = notificationMessage(from('@ana2:chama.test', 'Ana'), l).person!;
+    final ana = notificationMessage(from('@ana:alo.test', 'Ana'), l).person!;
+    final otherAna = notificationMessage(from('@ana2:alo.test', 'Ana'), l).person!;
     expect(ana.name, 'Ana');
-    expect(ana.key, notificationMessage(from('@ana:chama.test', 'Ana Paula'), l).person!.key);
+    expect(ana.key, notificationMessage(from('@ana:alo.test', 'Ana Paula'), l).person!.key);
     expect(ana.key, isNot(otherAna.key));
-    expect(ana.key, isNot(anyOf(contains('Ana'), contains('@'), contains('chama.test'))));
+    expect(ana.key, isNot(anyOf(contains('Ana'), contains('@'), contains('alo.test'))));
   });
 
   group('a reply typed in a notification', () {

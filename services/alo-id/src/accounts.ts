@@ -55,7 +55,7 @@ export class Accounts {
     if (o.keep) return { ...this.current(phone)!, created: false };
     const ms = activity?.lastActiveMs ?? null;
     // Activity = newest of: current devices, user-level last_seen (Synapse keeps IP logs 7 days), and the
-    // PREVIOUS sign-in through chama-id (logout deletes devices). Known gap: logged out, then away 8-45 days,
+    // PREVIOUS sign-in through alo-id (logout deletes devices). Known gap: logged out, then away 8-45 days,
     // with the last sign-in over 45 days ago → fresh account, unless the account has a PIN (`keep`).
     const lastActive = Math.max(ms ?? Infinity, row.last_signin_at * 1000);
     if (ms === null || lastActive > (now - this.o.inactiveDays * 86400) * 1000) {

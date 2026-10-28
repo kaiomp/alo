@@ -1,12 +1,12 @@
 import 'dart:ui' as ui;
 
-import 'package:chama/chat/chat_screen.dart';
-import 'package:chama/chat_list/chat_tile.dart';
-import 'package:chama/chat_list/home_screen.dart';
-import 'package:chama/common/deps.dart';
-import 'package:chama/config.dart';
-import 'package:chama/main.dart' as app;
-import 'package:chama/services/models.dart';
+import 'package:alo/chat/chat_screen.dart';
+import 'package:alo/chat_list/chat_tile.dart';
+import 'package:alo/chat_list/home_screen.dart';
+import 'package:alo/common/deps.dart';
+import 'package:alo/config.dart';
+import 'package:alo/main.dart' as app;
+import 'package:alo/services/models.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,7 +17,7 @@ import 'wait.dart';
 
 /// Screenshot name prefix, `<platform>-<size>-<theme>` (e.g. web-phone-dark).
 /// Set by scripts/screenshots.sh.
-const prefix = String.fromEnvironment('CHAMA_SHOT', defaultValue: 'local-phone-light');
+const prefix = String.fromEnvironment('ALO_SHOT', defaultValue: 'local-phone-light');
 
 /// Walks the app for design review: signs in a fresh number, chats with the
 /// test peer (tools/peer), makes a group, and takes a screenshot of each
@@ -109,8 +109,8 @@ Future<void> _walk(WidgetTester tester, _Shots t) async {
   await t.choose(find.byKey(const Key('react_❤️')));
   await t.longPress(find.text('oi, entrei'));
   await t.choose(find.widgetWithIcon(ListTile, Icons.reply));
-  await t.send('Que bom que você entrou no Chama 🔥');
-  await t.waitFor(find.text('eco: Que bom que você entrou no Chama 🔥'));
+  await t.send('Que bom que você entrou no Alô 🔥');
+  await t.waitFor(find.text('eco: Que bom que você entrou no Alô 🔥'));
 
   // A photo, a file and a voice note through the composer.
   await t.tap(const Key('attach'));

@@ -4,7 +4,7 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <application
-        android:label="Chama"
+        android:label="Alô"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:networkSecurityConfig="@xml/network_security_config"
@@ -34,9 +34,9 @@
             </intent-filter>
         </activity>
         <!-- Pushes go to the app's engine (MainActivity.runningEngine), not to a
-             second one: ChamaPushService replaces the plugin's own service. -->
+             second one: AloPushService replaces the plugin's own service. -->
         <service android:name="org.unifiedpush.flutter.connector.UnifiedPushService" tools:node="remove" />
-        <service android:name=".ChamaPushService" android:exported="false">
+        <service android:name=".AloPushService" android:exported="false">
             <intent-filter>
                 <action android:name="org.unifiedpush.android.connector.PUSH_EVENT" />
             </intent-filter>

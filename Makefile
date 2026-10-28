@@ -45,21 +45,21 @@ app-e2e-android:
 	cd app && ./scripts/e2e.sh android && ./scripts/e2e.sh android integration_test/contacts_test.dart && \
 	  ./scripts/ntfy-setup.sh && ./scripts/e2e.sh android integration_test/push_test.dart
 
-# Release builds need CHAMA_BASE_URL (https: release builds refuse anything
-# else) and the signing key in CHAMA_KEYSTORE* (app/README.md). pub get first:
+# Release builds need ALO_BASE_URL (https: release builds refuse anything
+# else) and the signing key in ALO_KEYSTORE* (app/README.md). pub get first:
 # a GeneratedPluginRegistrant left by an integration-test run still names the
 # test-only plugin and breaks javac.
-NEED_HTTPS = @case "$(CHAMA_BASE_URL)" in https://?*) ;; *) echo "Set CHAMA_BASE_URL=https://… (make $@ CHAMA_BASE_URL=https://chama.example)"; exit 1 ;; esac
+NEED_HTTPS = @case "$(ALO_BASE_URL)" in https://?*) ;; *) echo "Set ALO_BASE_URL=https://… (make $@ ALO_BASE_URL=https://alo.example)"; exit 1 ;; esac
 
 # APKs of the fdroid flavor (no Google code), one per ABI:
 # app/build/app/outputs/flutter-apk/app-<abi>-fdroid-release.apk
 app-apk:
 	$(NEED_HTTPS)
 	cd app && flutter pub get && flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64,android-x64 \
-	  --dart-define=CHAMA_BASE_URL=$(CHAMA_BASE_URL)
+	  --dart-define=ALO_BASE_URL=$(ALO_BASE_URL)
 
 # Play Store bundle: the play flavor adds FCM through UnifiedPush's embedded
 # distributor. app/build/app/outputs/bundle/playRelease/app-play-release.aab
 app-aab:
 	$(NEED_HTTPS)
-	cd app && flutter pub get && flutter build appbundle --release --flavor play --dart-define=CHAMA_BASE_URL=$(CHAMA_BASE_URL)
+	cd app && flutter pub get && flutter build appbundle --release --flavor play --dart-define=ALO_BASE_URL=$(ALO_BASE_URL)

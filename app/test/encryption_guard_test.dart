@@ -2,13 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:chama/auth/id_client.dart';
-import 'package:chama/services/chama_client.dart';
-import 'package:chama/services/chat_service.dart';
-import 'package:chama/services/chat_session.dart';
-import 'package:chama/services/delivery.dart';
-import 'package:chama/services/event_mapping.dart';
-import 'package:chama/services/models.dart';
+import 'package:alo/auth/id_client.dart';
+import 'package:alo/services/alo_client.dart';
+import 'package:alo/services/chat_service.dart';
+import 'package:alo/services/chat_session.dart';
+import 'package:alo/services/delivery.dart';
+import 'package:alo/services/event_mapping.dart';
+import 'package:alo/services/models.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -23,8 +23,8 @@ import 'package:matrix/src/models/timeline_chunk.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-const me = '@me:chama.test';
-const bob = '@bob:chama.test';
+const me = '@me:alo.test';
+const bob = '@bob:alo.test';
 
 /// A room whose timeline is the one the test gives it.
 class _FixedRoom extends Room {
@@ -80,7 +80,7 @@ class _FakeOlm extends Fake implements OlmManager {
   int? get maxNumberOfOneTimeKeys => 100;
 }
 
-class _TestClient extends ChamaClient {
+class _TestClient extends AloClient {
   _TestClient(super.clientName, {required super.database, super.httpClient});
 
   Encryption? fake;
@@ -137,7 +137,7 @@ void main() {
           200,
         );
       }
-      if (req.url.path.contains('/join')) return http.Response(jsonEncode({'room_id': '!x:chama.test'}), 200);
+      if (req.url.path.contains('/join')) return http.Response(jsonEncode({'room_id': '!x:alo.test'}), 200);
       return http.Response(jsonEncode({'event_id': r'$e'}), 200);
     });
     final db = await MatrixSdkDatabase.init(
@@ -181,14 +181,14 @@ void main() {
   }
 
   test('only invites to encrypted chats are joined', () async {
-    room('!plain:chama.test', membership: Membership.invite, encrypted: false);
-    room('!e2e:chama.test', membership: Membership.invite, encrypted: true);
+    room('!plain:alo.test', membership: Membership.invite, encrypted: false);
+    room('!e2e:alo.test', membership: Membership.invite, encrypted: true);
     await sync();
-    expect(requests.where((r) => r.contains('/join')), [contains('!e2e:chama.test')]);
+    expect(requests.where((r) => r.contains('/join')), [contains('!e2e:alo.test')]);
   });
 
   test('a joined chat without encryption gets it switched on when I may, and is marked until then', () async {
-    room('!plain:chama.test', membership: Membership.join, encrypted: false);
+    room('!plain:alo.test', membership: Membership.join, encrypted: false);
     await sync();
     await sync(); // once per run, not on every sync
     expect(requests.where((r) => r.contains('m.room.encryption')), hasLength(1));
@@ -196,7 +196,7 @@ void main() {
   });
 
   test('a joined chat without encryption I may not change stays marked and is left alone', () async {
-    final r = room('!plain:chama.test', membership: Membership.join, encrypted: false);
+    final r = room('!plain:alo.test', membership: Membership.join, encrypted: false);
     r.setState(
       state(r, EventTypes.RoomPowerLevels, {
         'users': {bob: 100},
@@ -209,7 +209,7 @@ void main() {
   });
 
   test('nothing is sent into a chat without encryption', () async {
-    final plain = ChatSession(service, room('!plain:chama.test', membership: Membership.join, encrypted: false));
+    final plain = ChatSession(service, room('!plain:alo.test', membership: Membership.join, encrypted: false));
     expect(plain.encrypted, isFalse);
     await expectLater(plain.sendText('oi'), throwsStateError);
     await expectLater(plain.sendFile(const PickedFile(name: 'a.txt', bytes: [1])), throwsStateError);
@@ -219,17 +219,17 @@ void main() {
     );
     // An encrypted room with the client's encryption off would go out in
     // clear too (the SDK falls back to plaintext).
-    final off = ChatSession(service, room('!e2e:chama.test', membership: Membership.join, encrypted: true));
+    final off = ChatSession(service, room('!e2e:alo.test', membership: Membership.join, encrypted: true));
     expect(off.encrypted, isFalse);
     await expectLater(off.sendText('oi'), throwsStateError);
     // Nor from a notification's reply field.
-    await expectLater(service.sendQuickReply('!plain:chama.test', 'oi'), throwsStateError);
-    await expectLater(service.sendQuickReply('!unknown:chama.test', 'oi'), throwsA(anything));
+    await expectLater(service.sendQuickReply('!plain:alo.test', 'oi'), throwsStateError);
+    await expectLater(service.sendQuickReply('!unknown:alo.test', 'oi'), throwsA(anything));
     expect(requests.where((r) => r.contains('/send/')), isEmpty);
   });
 
   test('typing waits for device lists that are still loading', () async {
-    final r = room('!e2e:chama.test', membership: Membership.join, encrypted: true);
+    final r = room('!e2e:alo.test', membership: Membership.join, encrypted: true);
     // Bob is invited (the /members answer above). What the sync loop leaves while /keys/query is in flight: an empty,
     // outdated list. The SDK would build the room key without Bob.
     client.userDeviceKeys[bob] = DeviceKeysList(bob, client);
@@ -254,7 +254,7 @@ void main() {
     test('on a slow key query shows and stores the message at once, waits, then goes out once it answers', () async {
       final answer = Completer<void>();
       keysAnswer = answer.future;
-      final r = room('!e2e:chama.test', membership: Membership.join, encrypted: true);
+      final r = room('!e2e:alo.test', membership: Membership.join, encrypted: true);
       var done = false;
       final sending = ChatSession(service, r).sendText('oi').whenComplete(() => done = true);
       await Future<void>.delayed(const Duration(milliseconds: 100));
@@ -279,7 +279,7 @@ void main() {
 
     test('after a failed key query asks again, and makes the room key only once it answers', () async {
       keysFailures = 2; // e.g. a 502 from the edge, a dropped mobile connection
-      final r = room('!e2e:chama.test', membership: Membership.join, encrypted: true);
+      final r = room('!e2e:alo.test', membership: Membership.join, encrypted: true);
       await ChatSession(service, r).sendText('oi');
       expect(requests.where((r) => r.endsWith('/keys/query')), hasLength(3));
       expect(requests.indexOf('encrypt'), greaterThan(requests.indexOf('keys answered')));
@@ -288,8 +288,8 @@ void main() {
 
     test('a reply from a notification waits for device lists too', () async {
       keysAnswer = Future<void>.delayed(const Duration(milliseconds: 100));
-      room('!e2e:chama.test', membership: Membership.join, encrypted: true);
-      await service.sendQuickReply('!e2e:chama.test', 'já vou');
+      room('!e2e:alo.test', membership: Membership.join, encrypted: true);
+      await service.sendQuickReply('!e2e:alo.test', 'já vou');
       expect(requests, contains('keys answered'));
       expect(requests.indexOf('encrypt'), greaterThan(requests.indexOf('keys answered')));
       expect(sends(), hasLength(1));
@@ -297,14 +297,14 @@ void main() {
 
     test('makes the room key only after device lists that answer in time', () async {
       keysAnswer = Future<void>.delayed(const Duration(milliseconds: 100));
-      final r = room('!e2e:chama.test', membership: Membership.join, encrypted: true);
+      final r = room('!e2e:alo.test', membership: Membership.join, encrypted: true);
       await ChatSession(service, r).sendText('oi');
       expect(requests.indexOf('encrypt'), greaterThan(requests.indexOf('keys answered')));
       expect(sends(), hasLength(1));
     });
 
     test('again (retry) waits for device lists too, and is refused in a chat without encryption', () async {
-      final r = _FixedRoom(id: '!e2e:chama.test', client: client);
+      final r = _FixedRoom(id: '!e2e:alo.test', client: client);
       client.rooms.add(r);
       r.setState(state(r, EventTypes.RoomMember, {'membership': 'invite'}, stateKey: bob));
       r.events = [
@@ -335,7 +335,7 @@ void main() {
   });
 
   test('signing out drops the chat list and cached avatars', () async {
-    room('!e2e:chama.test', membership: Membership.join, encrypted: true);
+    room('!e2e:alo.test', membership: Membership.join, encrypted: true);
     await sync();
     expect(service.chats.value, hasLength(1));
     client.onLoginStateChanged.add(LoginState.loggedOut);
@@ -344,7 +344,7 @@ void main() {
   });
 
   test('read receipts skip messages this device cannot decrypt', () {
-    final r = room('!e2e:chama.test', membership: Membership.join, encrypted: true);
+    final r = room('!e2e:alo.test', membership: Membership.join, encrypted: true);
     Event msg(String id, String type) =>
         Event(type: type, content: const {}, eventId: id, senderId: bob, originServerTs: DateTime(2026), room: r);
     // Newest first, as the timeline keeps them.
@@ -359,7 +359,7 @@ void main() {
       eventId: r'$r',
       senderId: bob,
       originServerTs: DateTime(2026),
-      room: room('!e2e:chama.test', membership: Membership.join, encrypted: true),
+      room: room('!e2e:alo.test', membership: Membership.join, encrypted: true),
     );
     const relates = {'rel_type': RelationshipTypes.reaction, 'event_id': r'$m', 'key': 'placeholder'};
 
@@ -384,7 +384,7 @@ void main() {
   });
 
   test('a security code notice sits among the messages by time', () async {
-    final r = _FixedRoom(id: '!dm:chama.test', client: client);
+    final r = _FixedRoom(id: '!dm:alo.test', client: client);
     client.rooms.add(r);
     r.setState(state(r, EventTypes.RoomMember, {'membership': 'join'}, stateKey: bob));
     Event msg(String id, DateTime at) => Event(

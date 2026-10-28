@@ -212,7 +212,7 @@
   "leaveGroup": "Sair do grupo",
   "leaveQuestion": "Sair do grupo?",
   "startChat": "Conversar",
-  "notOnChama": "Este número não usa o {app}.",
+  "notOnAlo": "Este número não usa o {app}.",
   "download": "Baixar",
   "downloadFailed": "Não foi possível baixar.",
   "errForbidden": "Este número não está mais ligado a esta conta. Saia e entre de novo.",
@@ -247,7 +247,7 @@
   "communitiesSoonBody": "Reúna grupos do mesmo assunto em um só lugar, como os da escola ou do bairro.",
   "callsSoonTitle": "Ligações chegam em breve",
   "callsSoonBody": "Ligações de voz e vídeo com a mesma criptografia das mensagens.",
-  "chamaForWeb": "{app} para web",
+  "aloForWeb": "{app} para web",
   "emoji": "Emoji",
   "attach": "Anexar",
   "deleteBodyEveryone": "A mensagem será apagada para todos nesta conversa.",
@@ -407,8 +407,8 @@
   "sendVoice": "Enviar mensagem de voz",
   "cancelRecording": "Cancelar gravação",
   "searchContacts": "Pesquisar nome ou número",
-  "contactsOnChama": "Contatos no {app}",
-  "inviteToChama": "Convidar para o {app}",
+  "contactsOnAlo": "Contatos no {app}",
+  "inviteToAlo": "Convidar para o {app}",
   "invite": "Convidar",
   "inviteText": "Vamos conversar no {app}? É gratuito e tem criptografia de ponta a ponta. Baixe em {url}",
   "@inviteText": {
@@ -743,7 +743,7 @@
   "hideLikes": "Esconder número de curtidas",
   "hideSeenBy": "Não mostrar \"visto por\" nos Momentos",
   "greyMode": "Modo cinza",
-  "greyModeBody": "Tela em cinza: o celular chama menos.",
+  "greyModeBody": "Tela em cinza: o celular alo menos.",
   "pauseTitle": "Hora de uma pausa",
   "pauseBody": "Você chegou ao seu limite de hoje ({minutes} min). Que tal uma volta?",
   "@pauseBody": {
@@ -782,7 +782,7 @@
   "topicsTitle": "Temas",
   "chooseAlgorithm": "Escolha seu algoritmo",
   "algorithmOpen": "O código do algoritmo é aberto. Ele busca conversas e conexões reais, não o seu tempo de tela.",
-  "algorithmsChama": "Do {app}",
+  "algorithmsAlo": "Do {app}",
   "communityFeeds": "Feitos pela comunidade",
   "communityBy": "por @{handle} · {count} pessoas usam",
   "@communityBy": {
@@ -958,7 +958,7 @@
       }
     }
   },
-  "@notOnChama": {
+  "@notOnAlo": {
     "placeholders": {
       "app": {
         "type": "String"
@@ -979,7 +979,7 @@
       }
     }
   },
-  "@chamaForWeb": {
+  "@aloForWeb": {
     "placeholders": {
       "app": {
         "type": "String"
@@ -1007,14 +1007,14 @@
       }
     }
   },
-  "@contactsOnChama": {
+  "@contactsOnAlo": {
     "placeholders": {
       "app": {
         "type": "String"
       }
     }
   },
-  "@inviteToChama": {
+  "@inviteToAlo": {
     "placeholders": {
       "app": {
         "type": "String"
@@ -1063,7 +1063,7 @@
       }
     }
   },
-  "@algorithmsChama": {
+  "@algorithmsAlo": {
     "placeholders": {
       "app": {
         "type": "String"

@@ -7,12 +7,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// To-device event a recipient sends back when messages reach its device
 /// (spec section 6, "Ticks ✓✓ delivered").
-const deliveredEventType = 'chat.chama.delivered';
+const deliveredEventType = 'app.usealo.delivered';
 
 /// Above this many members a group sends and shows no grey ✓✓ (spec §6, ticks).
 const deliveryMaxMembers = 32;
 
-/// Sends and receives `chat.chama.delivered`.
+/// Sends and receives `app.usealo.delivered`.
 ///
 /// Outgoing: every message from someone else that arrives by sync and
 /// decrypts is acked to the sender's devices, batched per sender and room
@@ -33,7 +33,7 @@ class DeliveryTracker {
     _subs.add(_client.onToDeviceEvent.stream.where((e) => e.type == deliveredEventType).listen(_onDelivered));
   }
 
-  static const _prefsKey = 'chama.delivered';
+  static const _prefsKey = 'alo.delivered';
   final Client _client;
   final SharedPreferences _prefs;
   final _subs = <StreamSubscription>[];

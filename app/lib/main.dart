@@ -6,7 +6,7 @@ import 'common/deps.dart';
 
 /// Passed by MainActivity.runningEngine when a push starts the app while it
 /// is not running: handle the push, show no screen.
-const backgroundStartArg = '--chama-background';
+const backgroundStartArg = '--alo-background';
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();

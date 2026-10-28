@@ -151,7 +151,7 @@ class EmptyState extends StatelessWidget {
                 height: 120,
                 decoration: BoxDecoration(color: colors.tint, shape: BoxShape.circle),
                 alignment: Alignment.center,
-                child: icon == null ? const ChamaMark(size: 56) : Icon(icon, size: 56, color: colors.accent),
+                child: icon == null ? const AloMark(size: 56) : Icon(icon, size: 56, color: colors.accent),
               ),
               const SizedBox(height: 20),
               Text(title, textAlign: TextAlign.center, style: theme.textTheme.titleLarge?.copyWith(fontSize: 18)),

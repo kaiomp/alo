@@ -61,12 +61,12 @@ class Notifications {
   /// Sends a reply typed in a notification. Set by the app before [init].
   Future<void> Function(String roomId, String text)? onReply;
 
-  static const _secretKey = 'chama.notifications.secret';
+  static const _secretKey = 'alo.notifications.secret';
 
   /// Marks the notifications this app posts, in their payload. MainActivity
   /// is exported (it is the launcher) and the plugin acts on any intent with
   /// its action and extras, so without it another app on the phone could
-  /// make Chama send a reply. Random per install, kept in app-private storage.
+  /// make Alô send a reply. Random per install, kept in app-private storage.
   @visibleForTesting
   String? secret;
 

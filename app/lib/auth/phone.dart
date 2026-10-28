@@ -1,4 +1,4 @@
-/// Phone number helpers. The server (chama-id) is the final judge of what is
+/// Phone number helpers. The server (alo-id) is the final judge of what is
 /// valid; this only catches obvious typos and builds E.164 digits.
 library;
 

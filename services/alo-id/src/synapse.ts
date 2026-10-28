@@ -39,9 +39,9 @@ export class HttpSynapseAdmin implements SynapseAdmin {
 
   private async register(): Promise<string> {
     const url = `${this.o.baseUrl}/_synapse/admin/v1/register`;
-    // Limit: linear probe of chama-admin, chama-admin-2, ...; only grows when a token is lost.
+    // Limit: linear probe of alo-admin, alo-admin-2, ...; only grows when a token is lost.
     for (let n = 1; n <= 100; n++) {
-      const username = n === 1 ? 'chama-admin' : `chama-admin-${n}`;
+      const username = n === 1 ? 'alo-admin' : `alo-admin-${n}`;
       const nr = await this.o.fetch(url);
       if (!nr.ok) throw new Error(`synapse register nonce: HTTP ${nr.status}`);
       const { nonce } = await nr.json() as { nonce: string };
@@ -59,7 +59,7 @@ export class HttpSynapseAdmin implements SynapseAdmin {
       }
       if (b.errcode !== 'M_USER_IN_USE') throw new Error(`synapse register ${username}: HTTP ${r.status} ${b.errcode ?? ''}`);
     }
-    throw new Error('synapse register: no free chama-admin name');
+    throw new Error('synapse register: no free alo-admin name');
   }
 
   private token(): Promise<string> {

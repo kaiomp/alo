@@ -1,6 +1,6 @@
-# Roadmap do Chama
+# Roadmap do Alô
 
-O Chama é construído em sete etapas, chamadas de M1 a M7 (M de *milestone*, marco). Cada etapa
+O Alô é construído em sete etapas, chamadas de M1 a M7 (M de *milestone*, marco). Cada etapa
 tem um critério claro de "pronto", conferido por um teste automático. As três primeiras já
 estão concluídas: o servidor, o app Android e a versão web funcionam no ambiente de
 desenvolvimento. O lançamento ao público vem com a M7.
@@ -32,12 +32,12 @@ Legenda: verde = concluída, roxo = próxima, cinza = planejada.
 | Etapa | Situação | Pronto quando | Issue |
 |---|---|---|---|
 | M1 · Fundação | ✅ Concluída | `make up` sobe o servidor e um script faz dois usuários de teste entrarem com o código `000000` e trocarem uma mensagem criptografada. | — |
-| M2 · Núcleo do app | ✅ Concluída | Teste integrado no Chrome e no emulador Android: o usuário do app conversa com um usuário de teste, vê os tiques ficarem azuis, envia foto e mensagem de voz. | [#1](https://github.com/kaiomp/chama/issues/1) |
-| M3 · Lançamento Android | ✅ Concluída | Teste no emulador: o usuário Android conversa com um usuário web nos dois sentidos, e uma mensagem chega como notificação com o app em segundo plano. | [#2](https://github.com/kaiomp/chama/issues/2) |
-| M4 · Aparelhos e segurança da conta | 🔨 Próxima | A versão web, conectada lendo o QR code com o emulador, consegue ler o histórico anterior. | [#3](https://github.com/kaiomp/chama/issues/3), [#11](https://github.com/kaiomp/chama/issues/11) |
-| M5 · Extras | ⏳ Planejada | Cada recurso tem um teste de ponta a ponta. | [#4](https://github.com/kaiomp/chama/issues/4) |
-| M6 · Ligações | ⏳ Planejada | Dois clientes fazem uma ligação no ambiente local. | [#5](https://github.com/kaiomp/chama/issues/5) |
-| M7 · Produção | ⏳ Planejada | Um teste de carga atinge as metas de escala (abaixo). | [#6](https://github.com/kaiomp/chama/issues/6) |
+| M2 · Núcleo do app | ✅ Concluída | Teste integrado no Chrome e no emulador Android: o usuário do app conversa com um usuário de teste, vê os tiques ficarem azuis, envia foto e mensagem de voz. | [#1](https://github.com/kaiomp/alo/issues/1) |
+| M3 · Lançamento Android | ✅ Concluída | Teste no emulador: o usuário Android conversa com um usuário web nos dois sentidos, e uma mensagem chega como notificação com o app em segundo plano. | [#2](https://github.com/kaiomp/alo/issues/2) |
+| M4 · Aparelhos e segurança da conta | 🔨 Próxima | A versão web, conectada lendo o QR code com o emulador, consegue ler o histórico anterior. | [#3](https://github.com/kaiomp/alo/issues/3), [#11](https://github.com/kaiomp/alo/issues/11) |
+| M5 · Extras | ⏳ Planejada | Cada recurso tem um teste de ponta a ponta. | [#4](https://github.com/kaiomp/alo/issues/4) |
+| M6 · Ligações | ⏳ Planejada | Dois clientes fazem uma ligação no ambiente local. | [#5](https://github.com/kaiomp/alo/issues/5) |
+| M7 · Produção | ⏳ Planejada | Um teste de carga atinge as metas de escala (abaixo). | [#6](https://github.com/kaiomp/alo/issues/6) |
 
 ## Etapas concluídas
 
@@ -52,7 +52,7 @@ A base do servidor, que sobe inteira com um único comando (`make up`).
 - **PostgreSQL** (banco de dados), **Redis** (comunicação entre os workers) e **Caddy** (proxy
   reverso, que encaminha cada pedido ao serviço certo e bloqueia a API de administração de
   fora).
-- **chama-id**, o serviço de entrada pelo celular: código de 6 dígitos por SMS, contas com
+- **alo-id**, o serviço de entrada pelo celular: código de 6 dígitos por SMS, contas com
   identificador aleatório (o número não faz parte do ID), troca automática de conta quando um
   número reciclado pela operadora entra de novo depois de 45 dias sem uso, limites contra
   abuso por número e por IP.
@@ -60,9 +60,9 @@ A base do servidor, que sobe inteira com um único comando (`make up`).
   trocam uma mensagem criptografada, e o teste confere que o banco do servidor guarda só texto
   cifrado.
 
-### M2 · Núcleo do app ✅ · [#1](https://github.com/kaiomp/chama/issues/1)
+### M2 · Núcleo do app ✅ · [#1](https://github.com/kaiomp/alo/issues/1)
 
-O app Chama em Flutter, um único código para Android e web.
+O app Alô em Flutter, um único código para Android e web.
 
 - Entrada por número e SMS, com a chave de recuperação criada no aparelho e a confirmação de um
   aparelho novo com essa chave. Quem perdeu a chave pode redefinir a identidade: as mensagens
@@ -82,14 +82,14 @@ O app Chama em Flutter, um único código para Android e web.
 </p>
 
 Pendências pequenas, que não impedem o uso, estão em
-[#9](https://github.com/kaiomp/chama/issues/9).
+[#9](https://github.com/kaiomp/alo/issues/9).
 
-### M3 · Lançamento Android ✅ · [#2](https://github.com/kaiomp/chama/issues/2)
+### M3 · Lançamento Android ✅ · [#2](https://github.com/kaiomp/alo/issues/2)
 
 O que faltava para o app Android ser usável no dia a dia.
 
 - **Contatos:** o app lê a agenda (pedindo permissão e explicando o motivo antes), mostra quem
-  já usa o Chama com o nome salvo e oferece convite para quem não usa. Só resumos (hashes) dos
+  já usa o Alô com o nome salvo e oferece convite para quem não usa. Só resumos (hashes) dos
   números saem do celular, cada número no máximo uma vez por dia.
 - **Notificações:** o servidor manda só identificadores para o **Sygnal** (gateway de push),
   que entrega uma notificação cifrada ao app de notificações do usuário (ntfy, via UnifiedPush)
@@ -100,39 +100,39 @@ O que faltava para o app Android ser usável no dia a dia.
   do repositório, e conexão só por HTTPS.
 
 <p align="center">
-  <img src="imagens/android-nova-conversa-claro.webp" alt="Nova conversa com contatos no Chama e convites" width="220">
+  <img src="imagens/android-nova-conversa-claro.webp" alt="Nova conversa com contatos no Alô e convites" width="220">
   &nbsp;&nbsp;
   <img src="imagens/android-configuracoes-claro.webp" alt="Configurações com notificações ativadas" width="220"><br>
-  <sub>Contatos no Chama e convites · Configurações com as notificações ativadas</sub>
+  <sub>Contatos no Alô e convites · Configurações com as notificações ativadas</sub>
 </p>
 
-Pendências pequenas estão em [#10](https://github.com/kaiomp/chama/issues/10).
+Pendências pequenas estão em [#10](https://github.com/kaiomp/alo/issues/10).
 
 ## Próxima etapa
 
-### M4 · Aparelhos e segurança da conta 🔨 · [#3](https://github.com/kaiomp/chama/issues/3)
+### M4 · Aparelhos e segurança da conta 🔨 · [#3](https://github.com/kaiomp/alo/issues/3)
 
-Usar o Chama em mais de um aparelho e proteger a conta contra quem tenta se passar pelo dono.
+Usar o Alô em mais de um aparelho e proteger a conta contra quem tenta se passar pelo dono.
 
 - **Conectar a versão web por QR code**, como os "Aparelhos conectados" do WhatsApp. O
   navegador mostra um QR code, o celular lê, e o computador recebe as chaves para ler o
-  histórico. O chama-id só vê dados cifrados nesse processo, que expira em 2 minutos.
+  histórico. O alo-id só vê dados cifrados nesse processo, que expira em 2 minutos.
 - **Lista de aparelhos** conectados, com a opção de remover qualquer um.
 - **PIN da conta** (confirmação em duas etapas). Além de proteger a redefinição de
   identidade, impede que o número seja cadastrado de novo por 7 dias.
 - **Aviso de "novo aparelho"** para os contatos.
 - **Aviso na conversa** sobre mensagens vindas de um aparelho não verificado ou sem
-  criptografia ([#11](https://github.com/kaiomp/chama/issues/11)). As notificações já escondem
+  criptografia ([#11](https://github.com/kaiomp/alo/issues/11)). As notificações já escondem
   nome e texto nesses casos; a conversa ainda não marca essas mensagens. Isso fecha o caminho do
   golpe "troquei de número, me manda um PIX" feito com um chip clonado.
 
 ## Etapas planejadas
 
-### M5 · Extras ⏳ · [#4](https://github.com/kaiomp/chama/issues/4)
+### M5 · Extras ⏳ · [#4](https://github.com/kaiomp/alo/issues/4)
 
 Os recursos que completam a experiência do WhatsApp:
 
-| Recurso | Como fica no Chama |
+| Recurso | Como fica no Alô |
 |---|---|
 | Status | Fotos e textos que somem em 24 horas, vistos só pelos contatos. |
 | Canais | Salas públicas em que só os administradores publicam, sem ranking de recomendação. |
@@ -144,7 +144,7 @@ Os recursos que completam a experiência do WhatsApp:
 | Privacidade | Controles de privacidade, como quem vê o seu "online" e o "visto por último". |
 | Recado | O texto curto do perfil (o "recado" ou "sobre"). |
 
-**Retenção mínima no servidor** ([#12](https://github.com/kaiomp/chama/issues/12)). Decisão já
+**Retenção mínima no servidor** ([#12](https://github.com/kaiomp/alo/issues/12)). Decisão já
 tomada: como no WhatsApp, o servidor vai guardar as mensagens e mídias cifradas só até serem
 entregues, por no máximo 30 dias. O histórico fica nos celulares. Menos dado guardado é menos
 dado para vazar, ser apreendido ou decifrado no futuro, e a conta de armazenamento fica menor.
@@ -152,25 +152,25 @@ Aparelhos novos e a versão web passam a ver só os últimos 30 dias, e um backu
 controlado pelo próprio usuário será desenhado à parte. Hoje esse limite ainda não está ligado
 no servidor.
 
-### M6 · Ligações ⏳ · [#5](https://github.com/kaiomp/chama/issues/5)
+### M6 · Ligações ⏳ · [#5](https://github.com/kaiomp/alo/issues/5)
 
 Ligações de voz e vídeo, individuais e em grupo, com a mesma criptografia das mensagens. Usa o
 padrão MatrixRTC com o servidor de mídia LiveKit e um servidor TURN (Coturn) para atravessar
 redes que bloqueiam conexões diretas.
 
-### M7 · Produção ⏳ · [#6](https://github.com/kaiomp/chama/issues/6)
+### M7 · Produção ⏳ · [#6](https://github.com/kaiomp/alo/issues/6)
 
-Tudo o que é preciso para abrir o Chama ao público, com escala para milhões de pessoas desde o
+Tudo o que é preciso para abrir o Alô ao público, com escala para milhões de pessoas desde o
 primeiro dia.
 
 - **SMS de verdade:** um adaptador para um provedor real (por exemplo Zenvia, Infobip, Twilio
   ou chamada rápida), trocável sem mudar o app. Milhões de códigos de entrada custam dinheiro,
   então o provedor mais barato precisa poder ser escolhido.
-- **Infraestrutura:** chama-id em PostgreSQL com limites no Redis e várias cópias; mídia em
+- **Infraestrutura:** alo-id em PostgreSQL com limites no Redis e várias cópias; mídia em
   armazenamento compatível com S3 atrás de uma CDN (que só vê dados cifrados); PgBouncer e
   réplicas do banco.
 - **Monitoramento, guia de implantação e teste de carga.**
-- **Busca de contatos mais privada** ([#7](https://github.com/kaiomp/chama/issues/7)). Os
+- **Busca de contatos mais privada** ([#7](https://github.com/kaiomp/alo/issues/7)). Os
   resumos (hashes) dos números não têm "sal", e como existem poucos números de celular
   possíveis, dá para reverter os resumos. Hoje a busca já exige login e tem limites por conta;
   antes do lançamento, o plano é avaliar um esquema de descoberta de contatos privada.
@@ -186,21 +186,21 @@ primeiro dia.
 
 Limite conhecido: uma única instalação do Synapse já foi comprovada com centenas de milhares de
 usuários ativos, não com dezenas de milhões. Para ir além, a ideia é dividir os usuários entre
-vários servidores Chama que se federam (veja abaixo).
+vários servidores Alô que se federam (veja abaixo).
 
 ## Trabalho contínuo
 
 | Issue | O que é |
 |---|---|
-| [#8](https://github.com/kaiomp/chama/issues/8) | Inventário de recursos e telas do WhatsApp, ligado às etapas M2 a M7. Só comportamento e experiência de uso; nunca código, marca, ícones ou textos. |
-| [#9](https://github.com/kaiomp/chama/issues/9) | Pendências pequenas da M2 (acabamento, testes, limites). |
-| [#10](https://github.com/kaiomp/chama/issues/10) | Pendências pequenas da M3. |
+| [#8](https://github.com/kaiomp/alo/issues/8) | Inventário de recursos e telas do WhatsApp, ligado às etapas M2 a M7. Só comportamento e experiência de uso; nunca código, marca, ícones ou textos. |
+| [#9](https://github.com/kaiomp/alo/issues/9) | Pendências pequenas da M2 (acabamento, testes, limites). |
+| [#10](https://github.com/kaiomp/alo/issues/10) | Pendências pequenas da M3. |
 
 ## Depois do lançamento
 
-### Federação invisível por DDD · [#13](https://github.com/kaiomp/chama/issues/13)
+### Federação invisível por DDD · [#13](https://github.com/kaiomp/alo/issues/13)
 
-Proposta para que o Chama **não tenha um dono único**. Vários servidores regionais, cada um
+Proposta para que o Alô **não tenha um dono único**. Vários servidores regionais, cada um
 operado por uma instituição brasileira independente (universidades e institutos federais,
 governos estaduais, ONGs, cooperativas), todos seguindo um mesmo regulamento (retenção,
 moderação, relatórios de transparência, segurança mínima).
@@ -235,7 +235,7 @@ flowchart TB
 
 Detalhes na [arquitetura](design/2026-10-24-architecture.md), na seção sobre o modelo de federação.
 
-### Modo sem internet · [#14](https://github.com/kaiomp/chama/issues/14)
+### Modo sem internet · [#14](https://github.com/kaiomp/alo/issues/14)
 
 A Justiça brasileira já bloqueou o WhatsApp no país inteiro (2015 e 2016) e o X (2024). Um modo
 "sem internet" permitiria que celulares próximos continuassem trocando mensagens por Bluetooth

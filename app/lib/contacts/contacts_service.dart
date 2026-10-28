@@ -8,7 +8,7 @@ import '../services/chat_service.dart';
 import 'address_book.dart';
 import 'contact_sync.dart';
 
-/// The address book as the app shows it: who is on Chama, who to invite, and
+/// The address book as the app shows it: who is on Alô, who to invite, and
 /// the saved names that replace display names everywhere (spec §4, Privacy).
 class ContactsService extends ChangeNotifier {
   ContactsService(this._chat, this._book, SharedPreferences prefs) {
@@ -42,7 +42,7 @@ class ContactsService extends ChangeNotifier {
   }
 
   ContactsAccess access = ContactsAccess.notGranted;
-  List<ChamaContact> onChama = const [];
+  List<AloContact> onAlo = const [];
   List<InviteContact> invite = const [];
 
   /// Reads the permission without asking and syncs when it is granted. Safe
@@ -74,16 +74,16 @@ class ContactsService extends ChangeNotifier {
       // A number that now answers for another account shows that account's
       // own profile name, with the number under it.
       final shown = [
-        for (final c in r.onChama)
+        for (final c in r.onAlo)
           c.moved
-              ? ChamaContact(name: await _chat.profileName(c.userId), phone: c.phone, userId: c.userId, moved: true)
+              ? AloContact(name: await _chat.profileName(c.userId), phone: c.phone, userId: c.userId, moved: true)
               : c,
       ]..sort((a, b) => foldText(a.name).compareTo(foldText(b.name)));
       if (signOuts != _signOuts) return;
       for (final m in r.moved) {
         _chat.numberMoved(m.userId, m.name);
       }
-      onChama = shown;
+      onAlo = shown;
       invite = r.invite;
       _chat.contactNames = {
         for (final c in shown)
@@ -102,7 +102,7 @@ class ContactsService extends ChangeNotifier {
     if (_chat.loggedIn.value) return;
     _signOuts++;
     unawaited(_sync.clear());
-    onChama = const [];
+    onAlo = const [];
     invite = const [];
     _chat.contactNames = const {};
     notifyListeners();

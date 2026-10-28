@@ -1,15 +1,15 @@
-import 'package:chama/chat/message_bubble.dart';
-import 'package:chama/l10n/app_localizations.dart';
-import 'package:chama/services/models.dart';
-import 'package:chama/services/security_code.dart';
+import 'package:alo/chat/message_bubble.dart';
+import 'package:alo/l10n/app_localizations.dart';
+import 'package:alo/services/models.dart';
+import 'package:alo/services/security_code.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:matrix/matrix.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-const me = '@me:chama.test';
-const bob = '@bob:chama.test';
+const me = '@me:alo.test';
+const bob = '@bob:alo.test';
 
 void main() {
   late Client client;
@@ -65,48 +65,48 @@ void main() {
   }
 
   test('the first key seen is trusted; a new one adds a notice to every shared chat', () {
-    room('!dm:chama.test', {bob: 'join'});
-    room('!group:chama.test', {bob: 'join'});
-    room('!old:chama.test', {bob: 'leave'});
+    room('!dm:alo.test', {bob: 'join'});
+    room('!group:alo.test', {bob: 'join'});
+    room('!old:alo.test', {bob: 'leave'});
     masterKey(bob, 'KEY1');
     watch.check();
-    expect(watch.noticesIn('!dm:chama.test'), isEmpty);
+    expect(watch.noticesIn('!dm:alo.test'), isEmpty);
 
     masterKey(bob, 'KEY2');
     watch.check();
     watch.check(); // seen once, noted once
-    expect(watch.noticesIn('!dm:chama.test').map((n) => n.userId), [bob]);
-    expect(watch.noticesIn('!group:chama.test').map((n) => n.userId), [bob]);
-    expect(watch.noticesIn('!old:chama.test'), isEmpty);
+    expect(watch.noticesIn('!dm:alo.test').map((n) => n.userId), [bob]);
+    expect(watch.noticesIn('!group:alo.test').map((n) => n.userId), [bob]);
+    expect(watch.noticesIn('!old:alo.test'), isEmpty);
     expect(watch.revision.value, 1);
   });
 
   test('pins and notices survive a restart and go on sign-out', () async {
-    room('!dm:chama.test', {bob: 'join'});
+    room('!dm:alo.test', {bob: 'join'});
     masterKey(bob, 'KEY1');
     watch.check();
     masterKey(bob, 'KEY2');
     watch.check();
 
     final restarted = SecurityCodeWatch(client, prefs);
-    expect(restarted.noticesIn('!dm:chama.test'), hasLength(1));
+    expect(restarted.noticesIn('!dm:alo.test'), hasLength(1));
     restarted.check(); // KEY2 is pinned: no second notice
-    expect(restarted.noticesIn('!dm:chama.test'), hasLength(1));
+    expect(restarted.noticesIn('!dm:alo.test'), hasLength(1));
 
     await restarted.clear();
     await restarted.dispose();
-    expect(SecurityCodeWatch(client, prefs).noticesIn('!dm:chama.test'), isEmpty);
+    expect(SecurityCodeWatch(client, prefs).noticesIn('!dm:alo.test'), isEmpty);
   });
 
   test('my own key and a list still loading add nothing', () {
-    room('!dm:chama.test', {bob: 'join', me: 'join'});
+    room('!dm:alo.test', {bob: 'join', me: 'join'});
     masterKey(me, 'MINE1');
     masterKey(bob, 'KEY1');
     watch.check();
     masterKey(me, 'MINE2');
     client.userDeviceKeys[bob] = DeviceKeysList(bob, client); // empty while /keys/query runs
     watch.check();
-    expect(watch.noticesIn('!dm:chama.test'), isEmpty);
+    expect(watch.noticesIn('!dm:alo.test'), isEmpty);
   });
 
   test('the notice reads like WhatsApp', () {
@@ -129,17 +129,17 @@ void main() {
   test(
     'a saved number now answering for another account adds a line to every chat with the old one (final review 6)',
     () async {
-      room('!dm:chama.test', {bob: 'join'});
-      room('!group:chama.test', {bob: 'join'});
-      room('!old:chama.test', {bob: 'leave'});
+      room('!dm:alo.test', {bob: 'join'});
+      room('!group:alo.test', {bob: 'join'});
+      room('!old:alo.test', {bob: 'leave'});
       watch.noteNumberMoved(bob, 'Mãe');
-      expect(watch.noticesIn('!dm:chama.test').map((n) => (n.userId, n.name)), [(bob, 'Mãe')]);
-      expect(watch.noticesIn('!group:chama.test'), hasLength(1));
-      expect(watch.noticesIn('!old:chama.test'), isEmpty);
+      expect(watch.noticesIn('!dm:alo.test').map((n) => (n.userId, n.name)), [(bob, 'Mãe')]);
+      expect(watch.noticesIn('!group:alo.test'), hasLength(1));
+      expect(watch.noticesIn('!old:alo.test'), isEmpty);
       expect(watch.revision.value, 1);
 
       final restarted = SecurityCodeWatch(client, prefs);
-      expect(restarted.noticesIn('!dm:chama.test').single.name, 'Mãe');
+      expect(restarted.noticesIn('!dm:alo.test').single.name, 'Mãe');
       await restarted.dispose();
 
       final m = Message(

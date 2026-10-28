@@ -1,25 +1,25 @@
-# API do chama-id
+# API do alo-id
 
-O chama-id é o serviço de entrada do Chama ([arquitetura, seção 4](design/2026-10-24-architecture.md#4-identidade-e-entrada)): ele confirma o número de
+O alo-id é o serviço de entrada do Alô ([arquitetura, seção 4](design/2026-10-24-architecture.md#4-identidade-e-entrada)): ele confirma o número de
 telefone por código SMS e libera o login no servidor Matrix. Também responde quais contatos da
 agenda têm conta, guarda o PIN da conta (confirmação em duas etapas) e cuida da redefinição de
 identidade de criptografia. E é o ponto de encontro da vinculação do app web por QR code.
 
-Os clientes chegam ao chama-id pelo proxy, no caminho `/id/v1`. Todos os corpos são JSON. Todo
+Os clientes chegam ao alo-id pelo proxy, no caminho `/id/v1`. Todos os corpos são JSON. Todo
 erro tem o formato `{"error": "<código>"}`, às vezes com campos extras.
 
 > **Termos usados aqui**
 >
 > - **E.164**: o formato internacional de número de telefone. Nesta API, sempre só os dígitos,
 >   sem `+`: `5511987654321`.
-> - **JWT**: um token assinado e de vida curta. O chama-id o entrega e o Synapse o aceita como
+> - **JWT**: um token assinado e de vida curta. O alo-id o entrega e o Synapse o aceita como
 >   prova de login.
 > - **Token de acesso Matrix**: o token que o Synapse devolve no login. Ele identifica o aparelho
 >   nas chamadas seguintes.
 > - **Chaves de cross-signing**: o trio de chaves públicas (mestra, de autoassinatura e de
 >   assinatura de usuários) que prova quais aparelhos pertencem à pessoa.
 > - **Caixa selada**: um dado cifrado para a chave pública de quem vai abri-lo. Só o dono da
->   chave privada correspondente consegue abrir; quem só repassa a caixa (aqui, o chama-id) não
+>   chave privada correspondente consegue abrir; quem só repassa a caixa (aqui, o alo-id) não
 >   consegue lê-la nem forjá-la.
 > - **PIN da conta**: 6 dígitos que a pessoa escolhe no app. Quando existe, o código SMS sozinho
 >   não basta para entrar num aparelho novo (veja [PIN da conta](#pin-da-conta-confirmação-em-duas-etapas)).
@@ -52,12 +52,12 @@ erro tem o formato `{"error": "<código>"}`, às vezes com campos extras.
 sequenceDiagram
     autonumber
     participant App
-    participant ID as chama-id
+    participant ID as alo-id
     participant SMS as Provedor de SMS
     participant S as Synapse
     App->>ID: POST /id/v1/otp/request {"phone"}
     ID->>ID: normaliza para E.164, aplica limites,<br/>guarda o hash do código (vale 300 s)
-    ID->>SMS: "Seu código Chama: 123456"
+    ID->>SMS: "Seu código Alô: 123456"
     ID-->>App: {"phone", "retry_after": 60}
     App->>ID: POST /id/v1/otp/verify {"phone", "code"}
     ID->>ID: confere o código e encontra ou cria a conta
@@ -66,7 +66,7 @@ sequenceDiagram
     S-->>App: access_token, device_id
 ```
 
-Em desenvolvimento o "provedor de SMS" só imprime o código no log do chama-id (veja
+Em desenvolvimento o "provedor de SMS" só imprime o código no log do alo-id (veja
 [Limites](#limites)).
 
 ### `GET /id/v1/health`
@@ -93,7 +93,7 @@ Confere o código e depois encontra ou cria a conta do telefone.
   ```json
   {
     "phone": "5511987654321",
-    "user_id": "@u7k3m5q2x4w6a2b5c:chama.test",
+    "user_id": "@u7k3m5q2x4w6a2b5c:alo.test",
     "homeserver": "http://localhost:8080",
     "new_account": true,
     "login_token": "<JWT>"
@@ -120,7 +120,7 @@ Confere o código e depois encontra ou cria a conta do telefone.
   ```
 
   `pin_token` vale 300 s e vai, junto com o PIN, para `POST /id/v1/pin/login`. A audiência dele é
-  `chama-pin`, então o Synapse o recusa como login Matrix. `reset_at` é o horário Unix em que
+  `alo-pin`, então o Synapse o recusa como login Matrix. `reset_at` é o horário Unix em que
   termina uma espera de "Esqueci meu PIN" em andamento, ou `null`. Uma conta com PIN nunca é
   aposentada por inatividade. Veja [PIN da conta](#pin-da-conta-confirmação-em-duas-etapas).
 
@@ -131,7 +131,7 @@ Descobre quais contatos têm conta.
 - Requisição: `{"hashes": ["<hash>", ...]}`, no máximo 1000 hashes.
 - Como calcular cada hash: o SHA-256 em hexadecimal minúsculo dos dígitos E.164, sem `+`.
   Exemplo: para `+55 11 98765-4321`, calcule o hash do texto `5511987654321`.
-- Resposta: `{"registered": [{"hash": "<hash>", "user_id": "@u...:chama.test"}]}`. Só aparecem
+- Resposta: `{"registered": [{"hash": "<hash>", "user_id": "@u...:alo.test"}]}`. Só aparecem
   os hashes que têm conta. Um hash repetido aparece uma vez.
 - Erros: `invalid_token` 401, `bad_request` 400 (não é uma lista, tem mais de 1000 itens, ou um
   item não tem exatamente 64 caracteres hexadecimais minúsculos), `rate_limited` 429 (com
@@ -170,7 +170,7 @@ dele.
   `keys` é o corpo do `POST /_matrix/client/v3/keys/device_signing/upload` do Matrix: as chaves
   de autoassinatura (`self_signing_key`) e de assinatura de usuários (`user_signing_key`) vêm
   assinadas pela nova chave mestra. O objeto precisa ter exatamente essas três chaves. Cada
-  chave tem `user_id` igual ao de quem chama, um `usage` com exatamente o próprio tipo, e só os
+  chave tem `user_id` igual ao de quem alo, um `usage` com exatamente o próprio tipo, e só os
   campos `user_id`, `usage`, `keys` e `signatures`. Assim nenhuma chave privada pode ser
   enviada. O corpo da requisição tem limite de 8 KiB.
   `pin` só é exigido quando a conta tem PIN.
@@ -187,13 +187,13 @@ Fluxo:
 
 1. O cliente entra (request + verify + login Matrix) e recebe um token de acesso.
 2. O cliente pede um segundo código (`otp/request`) e a pessoa o digita.
-3. O cliente cria novas chaves de cross-signing e chama `reset-identity` com o token de acesso,
-   o código e as chaves públicas. O chama-id confere, nesta ordem: o token, se a conta do token
+3. O cliente cria novas chaves de cross-signing e alo `reset-identity` com o token de acesso,
+   o código e as chaves públicas. O alo-id confere, nesta ordem: o token, se a conta do token
    é a conta atual do telefone, o formato de `keys`, se a conta tem uma chave mestra de
    cross-signing e, quando a conta tem PIN, o PIN. Só depois disso o código é conferido e gasto.
-4. O chama-id desconecta todos os outros aparelhos da conta (os tokens de acesso deles param de
+4. O alo-id desconecta todos os outros aparelhos da conta (os tokens de acesso deles param de
    funcionar).
-5. O chama-id envia as chaves em nome da pessoa pelo seu application service Matrix (um
+5. O alo-id envia as chaves em nome da pessoa pelo seu application service Matrix (um
    application service é uma integração registrada no Synapse; o Synapse não pede
    autenticação interativa a ele). Os contatos então veem o aviso "O código de segurança de Ana mudou" (com o nome de quem redefiniu).
 
@@ -201,7 +201,7 @@ Fluxo:
 sequenceDiagram
     autonumber
     participant App as App no celular novo
-    participant ID as chama-id
+    participant ID as alo-id
     participant S as Synapse
     Note over App: já entrou (request + verify + login)<br/>e tem um token de acesso
     App->>ID: POST /id/v1/otp/request {"phone"}
@@ -214,7 +214,7 @@ sequenceDiagram
     ID->>S: keys/query: a conta já tem chave mestra?
     alt sem chave mestra
         ID-->>App: 409 no_identity (código não gasto)
-        Note over App: o app cria a identidade sozinho,<br/>sem precisar do chama-id
+        Note over App: o app cria a identidade sozinho,<br/>sem precisar do alo-id
     else a conta tem PIN e "pin" falta ou está errado
         ID-->>App: 403 pin_required ou 400 invalid_pin (código não gasto)
     else com chave mestra (e o PIN certo, se houver)
@@ -233,7 +233,7 @@ sozinho: o primeiro envio de chaves de cross-signing não exige autenticação i
 
 ## PIN da conta (confirmação em duas etapas)
 
-Um PIN de 6 dígitos que a pessoa cria no app. O chama-id guarda só um hash argon2id do PIN (com
+Um PIN de 6 dígitos que a pessoa cria no app. O alo-id guarda só um hash argon2id do PIN (com
 um sal aleatório por conta e o *pepper* do servidor, o segredo `OTP_PEPPER`); o PIN em si nunca
 é guardado nem vai para o log. O PIN pertence à conta, não ao número: se um número reciclado
 ganhar uma conta nova, ela começa sem o PIN do dono anterior.
@@ -254,7 +254,7 @@ Quando a conta tem PIN:
 sequenceDiagram
     autonumber
     participant App
-    participant ID as chama-id
+    participant ID as alo-id
     participant S as Synapse
     App->>ID: POST /id/v1/otp/verify {"phone", "code"}
     ID->>ID: confere o código, a conta tem PIN
@@ -292,7 +292,7 @@ certo zera a contagem.
 ### "Esqueci meu PIN": espera de 7 dias
 
 Quem esqueceu o PIN e não tem mais nenhum aparelho conectado pede a redefinição no passo do PIN.
-O chama-id não libera a entrada na hora: ele marca uma data 7 dias à frente. Durante a espera,
+O alo-id não libera a entrada na hora: ele marca uma data 7 dias à frente. Durante a espera,
 os aparelhos já conectados da conta veem o pedido (`pin/status`) e podem cancelá-lo
 (`pin/cancel-reset`). Se o pedido foi de um golpista, o dono cancela e o PIN continua valendo.
 
@@ -300,7 +300,7 @@ os aparelhos já conectados da conta veem o pedido (`pin/status`) e podem cancel
 sequenceDiagram
     autonumber
     participant N as App no aparelho novo
-    participant ID as chama-id
+    participant ID as alo-id
     participant D as Aparelho já conectado
     N->>ID: POST /id/v1/otp/verify {"phone", "code"}
     ID-->>N: {"pin_required": true, "pin_token", "reset_at": null}
@@ -342,7 +342,7 @@ As rotas que mudam a conta (`pin/set`, `pin/remove`, `pin/check`, `pin/cancel-re
 
 - um token de acesso de um **aparelho real**: um token sem aparelho recebe `forbidden` 403. O
   "entrar como usuário" da API admin do Synapse cria tokens assim, e apagar aparelhos não os
-  encerra. O chama-id nunca cria um. `reset-identity` também recusa esses tokens;
+  encerra. O alo-id nunca cria um. `reset-identity` também recusa esses tokens;
 - um token **conferido na hora** com o Synapse, sem o cache de 60 s da busca de contatos, para
   que um token desconectado agora há pouco falhe na mesma hora;
 - no máximo 20 mudanças por conta por hora (contadas por conta, não por IP, por causa do CGNAT).
@@ -417,8 +417,8 @@ Cancela uma espera de "Esqueci meu PIN" (não faz nada se não houver).
 ### `POST /id/v1/devices/remove`
 
 A tela "Aparelhos conectados" do app. Para apagar um aparelho, o Matrix pede autenticação
-interativa (senha), que uma conta do Chama não tem (arquitetura,
-[seção 4](design/2026-10-24-architecture.md#4-identidade-e-entrada)). Por isso o chama-id
+interativa (senha), que uma conta do Alô não tem (arquitetura,
+[seção 4](design/2026-10-24-architecture.md#4-identidade-e-entrada)). Por isso o alo-id
 apaga os aparelhos pela API admin do Synapse, depois de uma prova. Os tokens de acesso dos
 aparelhos apagados param de funcionar na hora.
 
@@ -426,15 +426,15 @@ aparelhos apagados param de funcionar na hora.
   "Sair de todos os outros aparelhos", `{"all_others": true, "code": "123456"}`. A prova é a de
   [Provas nos aparelhos conectados](#provas-nos-aparelhos-conectados): `pin` quando a conta tem
   PIN, ou `code` (um código SMS novo, pedido com `otp/request`). A lista tem de 1 a 100 IDs de
-  texto, cada um com 1 a 255 caracteres, e o aparelho de quem chama não pode estar nela (para
+  texto, cada um com 1 a 255 caracteres, e o aparelho de quem alo não pode estar nela (para
   sair dele, o app faz o logout Matrix normal). Mande só uma das duas formas: com
-  `all_others: true` e `device_ids` juntos, o chama-id não adivinha qual a pessoa quis e
+  `all_others: true` e `device_ids` juntos, o alo-id não adivinha qual a pessoa quis e
   responde `bad_request` 400, sem gastar a prova.
 - Resposta: `{"removed": 1}`: quantos aparelhos existiam na conta e foram apagados. Um ID que a
   conta não tem é ignorado.
 - O formato da lista é conferido **antes** da prova, então uma lista errada não gasta o código
   SMS nem conta como tentativa de PIN.
-- O chama-id também tira do cache de 60 s da busca de contatos todos os tokens da conta, para
+- O alo-id também tira do cache de 60 s da busca de contatos todos os tokens da conta, para
   que um aparelho apagado não continue buscando contatos até o cache expirar. A
   redefinição de identidade, que também desconecta os outros aparelhos, faz o mesmo.
 
@@ -442,7 +442,7 @@ aparelhos apagados param de funcionar na hora.
 sequenceDiagram
     autonumber
     participant App as App (aparelho conectado)
-    participant ID as chama-id
+    participant ID as alo-id
     participant S as Synapse
     App->>ID: POST /id/v1/devices/remove<br/>Bearer token + {"device_ids" ou "all_others", "pin" ou "code"}
     ID->>S: whoami com o token (sem cache)
@@ -450,7 +450,7 @@ sequenceDiagram
     ID->>ID: token sem aparelho? → 403 forbidden<br/>lista válida e sem o próprio aparelho?
     ID->>ID: confere a prova (PIN ou código SMS)
     ID->>S: API admin: lista os aparelhos da conta
-    ID->>S: API admin: delete_devices (os pedidos,<br/>ou todos menos o de quem chama)
+    ID->>S: API admin: delete_devices (os pedidos,<br/>ou todos menos o de quem alo)
     ID->>ID: tira os tokens da conta do cache
     ID-->>App: {"removed": n}
 ```
@@ -465,17 +465,17 @@ sequenceDiagram
 
 ## Vinculação do app web por QR code
 
-O "Aparelhos conectados" do WhatsApp, no Chama ([arquitetura, seção 5](design/2026-10-24-architecture.md#5-criptografia-aparelhos-e-vinculação)).
-A web abre um ponto de encontro no chama-id e o celular, já conectado, entrega por ele um login
-para a web. O chama-id só guarda e repassa duas **caixas seladas** por vínculo, cada uma postada
+O "Aparelhos conectados" do WhatsApp, no Alô ([arquitetura, seção 5](design/2026-10-24-architecture.md#5-criptografia-aparelhos-e-vinculação)).
+A web abre um ponto de encontro no alo-id e o celular, já conectado, entrega por ele um login
+para a web. O alo-id só guarda e repassa duas **caixas seladas** por vínculo, cada uma postada
 uma vez:
 
 - a **oferta** do celular, cifrada para a chave da web: um token de login Matrix de uso único;
 - a **resposta** da web, cifrada para a chave do celular: as chaves do novo aparelho.
 
 A web gera um par de chaves curve25519 temporário e mostra um QR code com o ID do vínculo e a
-chave pública: `chama-link:1:<id>:<chave pública, base64 sem "=">`. Essa chave só existe na tela
-(nunca chega ao chama-id), então uma caixa que abre na web veio de alguém que viu a tela. Uma
+chave pública: `alo-link:1:<id>:<chave pública, base64 sem "=">`. Essa chave só existe na tela
+(nunca chega ao alo-id), então uma caixa que abre na web veio de alguém que viu a tela. Uma
 caixa é a saída da cifra de chave pública do vodozemac (a mesma do backup de chaves do Matrix):
 `{"ciphertext": "…", "mac": "…", "ephemeral": "…"}`, três textos base64, com no máximo 4096
 caracteres somados.
@@ -484,13 +484,13 @@ caracteres somados.
 sequenceDiagram
     autonumber
     participant W as App web
-    participant ID as chama-id
+    participant ID as alo-id
     participant P as Celular (já conectado)
     participant S as Synapse
     W->>W: gera um par de chaves curve25519 temporário
     W->>ID: POST /id/v1/link {}
     ID-->>W: {"id", "expires_in": 120}
-    W->>W: mostra o QR code (chama-link:1:id:chave pública)
+    W->>W: mostra o QR code (alo-link:1:id:chave pública)
     loop a cada ~2 s, até a oferta chegar (no máximo 200 consultas)
         W->>ID: POST /id/v1/link/poll {"id"}
         ID-->>W: {"offer": null, "answer": null}
@@ -520,7 +520,7 @@ sequenceDiagram
     Note over W: a web passa a ler o histórico
 ```
 
-O chama-id nunca vê o conteúdo de uma caixa: ele confere só o formato (três textos base64 e o
+O alo-id nunca vê o conteúdo de uma caixa: ele confere só o formato (três textos base64 e o
 tamanho). A segurança do vínculo vem da chave que está só no QR code e da assinatura que o
 celular dá ao aparelho web no fim. Um aparelho só recebe chaves de mensagens depois de assinado
 pelo celular ([arquitetura, seção 5](design/2026-10-24-architecture.md#5-criptografia-aparelhos-e-vinculação)).
@@ -542,7 +542,7 @@ Regras do ponto de encontro:
 
 ### `POST /id/v1/link`
 
-Abre um ponto de encontro. Quem chama é a página web que vai mostrar o QR code.
+Abre um ponto de encontro. Quem alo é a página web que vai mostrar o QR code.
 
 - Requisição: `{}`. Resposta: `{"id": "<22 caracteres base64url>", "expires_in": 120}`.
 - Erros: `rate_limited` 429 (60 por IP por hora, com `retry_after`).
@@ -584,7 +584,7 @@ celular conseguem abrir.
 
 ## Limites
 
-| Limite | Valor | Modo de desenvolvimento (`CHAMA_DEV=1`) |
+| Limite | Valor | Modo de desenvolvimento (`ALO_DEV=1`) |
 |---|---|---|
 | Validade do código | 300 s | igual |
 | Tentativas erradas por código | 5 | igual |
@@ -594,7 +594,7 @@ celular conseguem abrir.
 | Buscas por conta | 30 por hora | ×100 |
 | Hashes buscados por conta | 10.000 em 24 h (janela fixa a partir da primeira busca) | ×100 |
 | Tokens de acesso inválidos na busca, por IP | 100 por hora (tokens válidos não contam) | ×100 |
-| Chamadas de reset-identity por IP | 10 por hora | ×100 |
+| Alodas de reset-identity por IP | 10 por hora | ×100 |
 | Mudanças na conta (`pin/set`, `remove`, `check`, `cancel-reset`, `devices/remove`, `link/offer`, `link/answer`) por conta | 20 por hora | ×100 |
 | Vínculos abertos (`link`) por IP | 60 por hora | ×100 |
 | Consultas por vínculo (`link/poll`) | 200 | igual |
@@ -611,7 +611,7 @@ celular conseguem abrir.
 - No modo de desenvolvimento, o código `000000` é aceito para qualquer telefone que tenha pedido
   um código.
 
-## Privacidade da busca de contatos ([issue #7](https://github.com/kaiomp/chama/issues/7))
+## Privacidade da busca de contatos ([issue #7](https://github.com/kaiomp/alo/issues/7))
 
 Decisão para a etapa M3: manter hashes SHA-256 simples e limitar quantos números uma conta pode testar.
 
@@ -619,13 +619,13 @@ Decisão para a etapa M3: manter hashes SHA-256 simples e limitar quantos númer
   de um mesmo endereço IP (CGNAT, o compartilhamento de um IP público entre muitos clientes),
   então um limite por IP bloquearia usuários comuns. Toda busca exige um token de acesso, e
   toda conta exige um telefone confirmado por SMS. Só os tokens de acesso inválidos têm limite
-  por IP (100 por hora), porque cada um custa ao chama-id uma chamada ao Synapse; passado esse
-  limite, os tokens desse IP que o chama-id não viu nos últimos 60 s são recusados até a janela
+  por IP (100 por hora), porque cada um custa ao alo-id uma chamada ao Synapse; passado esse
+  limite, os tokens desse IP que o alo-id não viu nos últimos 60 s são recusados até a janela
   passar.
 - Cada conta pode fazer 30 buscas por hora e enviar 10.000 hashes em 24 horas. A primeira
   sincronização de uma agenda grande cabe nisso; depois, o app confere cada número no máximo
   uma vez por dia.
-- O chama-id não guarda nem registra em log os hashes que um cliente envia. Ele guarda só uma
+- O alo-id não guarda nem registra em log os hashes que um cliente envia. Ele guarda só uma
   contagem por conta (`lookup_quota`).
 
 Risco residual, aceito por enquanto:
@@ -635,18 +635,18 @@ Risco residual, aceito por enquanto:
   ver quais números estão na agenda de alguém enquanto a busca é processada. "Não guardado" é
   uma promessa do operador, não uma propriedade do protocolo.
 - Um atacante com muitas contas confirmadas por SMS pode testar 10.000 números por conta por
-  dia para descobrir quem usa o Chama. Listar todos os celulares brasileiros levaria centenas de
+  dia para descobrir quem usa o Alô. Listar todos os celulares brasileiros levaria centenas de
   milhares de contas-dia (cada conta precisa do próprio chip).
 - Um esquema de descoberta privada de contatos (por exemplo um enclave seguro ou interseção
   privada de conjuntos) elimina os dois riscos. É criptografia nova no servidor e continua em
-  aberto na [issue #7](https://github.com/kaiomp/chama/issues/7) (M7).
+  aberto na [issue #7](https://github.com/kaiomp/alo/issues/7) (M7).
 
 ## Outros erros
 
 - `bad_request` 400: o corpo não é um objeto JSON, um campo tem o tipo errado, ou o corpo é
   grande demais.
 - `not_found` 404: rota desconhecida.
-- `internal` 500: qualquer outro problema (a causa fica no log do chama-id).
+- `internal` 500: qualquer outro problema (a causa fica no log do alo-id).
 
 ## Tabela de códigos de erro
 

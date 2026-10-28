@@ -1,5 +1,5 @@
 // M4 account safety against the real stack (spec §4, §5): a one-time login token without
-// user-interactive auth, the link rendezvous, device removal through chama-id, and the account PIN.
+// user-interactive auth, the link rendezvous, device removal through alo-id, and the account PIN.
 // Needs the dev stack (make up). Run by server/scripts/check.sh.
 import { randomInt } from 'node:crypto';
 
@@ -37,7 +37,7 @@ try {
   expect(typeof t.login_token === 'string' && t.expires_in_ms === 120_000, `get_token without UIA: expires in ${t.expires_in_ms} ms`);
   const again = await call('POST', '/_matrix/client/v1/login/get_token', {}, d1.access_token);
   expect(again.status === 429, `a second token within a minute is refused: ${again.status}`);
-  const d2 = await ok('POST', '/_matrix/client/v3/login', { type: 'm.login.token', token: t.login_token, initial_device_display_name: 'Chama Web' });
+  const d2 = await ok('POST', '/_matrix/client/v3/login', { type: 'm.login.token', token: t.login_token, initial_device_display_name: 'Alô Web' });
   expect(d2.user_id === v.user_id && d2.device_id !== d1.device_id, `m.login.token signs in a new device ${d2.device_id}`);
   const reuse = await call('POST', '/_matrix/client/v3/login', { type: 'm.login.token', token: t.login_token });
   expect(reuse.status === 403, `the login token is single use: ${reuse.status}`);

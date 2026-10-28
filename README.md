@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="docs/imagens/logo.svg" alt="Ícone do Chama" width="96" height="96">
+  <img src="docs/imagens/logo.svg" alt="Ícone do Alô" width="96" height="96">
 </p>
 
-<h1 align="center">Chama</h1>
+<h1 align="center">Alô</h1>
 
 <p align="center">
   Mensageiro livre, aberto e com criptografia de ponta a ponta, feito para o Brasil.<br>
@@ -11,9 +11,9 @@
 
 ---
 
-## O que é o Chama
+## O que é o Alô
 
-O Chama é um aplicativo de mensagens com a cara e o jeito do WhatsApp: você entra com o seu
+O Alô é um aplicativo de mensagens com a cara e o jeito do WhatsApp: você entra com o seu
 número de celular, encontra quem já está na sua agenda e conversa, sozinho ou em grupo, com
 texto, fotos, documentos e mensagens de voz.
 
@@ -29,12 +29,12 @@ A diferença está em quem manda nele:
   feed, ranking nem recomendação de conteúdo.
 - **Feito para ser operado por uma instituição pública ou sem fins lucrativos**, sem que ela
   consiga ler mensagens, escolher o que as pessoas veem ou censurar em silêncio.
-- **Protocolo aberto.** O Chama usa o [Matrix](https://matrix.org), o mesmo padrão dos
+- **Protocolo aberto.** O Alô usa o [Matrix](https://matrix.org), o mesmo padrão dos
   mensageiros oficiais do governo da França (Tchap) e das Forças Armadas da Alemanha
   (BwMessenger). No futuro, universidades, estados e ONGs poderão rodar servidores compatíveis
   entre si (federação).
 
-> **Situação atual:** o Chama está em desenvolvimento e ainda não foi lançado ao público.
+> **Situação atual:** o Alô está em desenvolvimento e ainda não foi lançado ao público.
 > O servidor, o app Android e a versão web já funcionam no ambiente local de desenvolvimento.
 > Veja o [status por etapa](#status) e o [roadmap](docs/roadmap.md).
 
@@ -51,8 +51,8 @@ A diferença está em quem manda nele:
       <sub>Resposta citada, foto, PDF e voz, tudo criptografado, com tiques azuis de leitura</sub>
     </td>
     <td align="center" width="25%">
-      <img src="docs/imagens/android-nova-conversa-claro.webp" alt="Tela de nova conversa com contatos no Chama e convites" width="200"><br>
-      <sub>Contatos da agenda que já usam o Chama, e convite para quem ainda não usa</sub>
+      <img src="docs/imagens/android-nova-conversa-claro.webp" alt="Tela de nova conversa com contatos no Alô e convites" width="200"><br>
+      <sub>Contatos da agenda que já usam o Alô, e convite para quem ainda não usa</sub>
     </td>
     <td align="center" width="25%">
       <img src="docs/imagens/android-lista-de-conversas-escuro.webp" alt="Lista de conversas no tema escuro" width="200"><br>
@@ -83,7 +83,7 @@ O que já funciona hoje (etapas M1 a M3):
 | **Presença** | "digitando…", "online" e "visto por último". |
 | **Organização** | Busca, filtros (Todas, Não lidas, Favoritas, Grupos), fixar, arquivar, silenciar e marcar como lida ou não lida. |
 | **Grupos** | Criar grupo, adicionar e remover participantes, tornar administrador, sair do grupo. |
-| **Contatos** | O app lê a agenda (com a sua permissão), mostra quem já usa o Chama com o nome que você salvou e permite convidar quem ainda não usa. Só resumos criptográficos (hashes) dos números saem do celular. |
+| **Contatos** | O app lê a agenda (com a sua permissão), mostra quem já usa o Alô com o nome que você salvou e permite convidar quem ainda não usa. Só resumos criptográficos (hashes) dos números saem do celular. |
 | **Notificações** | Notificações com nome e texto da mensagem, abertura direta da conversa e resposta pela própria notificação. O servidor envia apenas identificadores, nunca o conteúdo. |
 | **Bloqueio** | Bloquear e desbloquear um contato. |
 | **Aparência** | Português do Brasil (e inglês), tema claro, escuro ou o padrão do sistema. |
@@ -110,7 +110,7 @@ O que já funciona hoje (etapas M1 a M3):
   </tr>
 </table>
 
-O que vem depois: abrir o Chama no computador lendo um QR code, lista de aparelhos
+O que vem depois: abrir o Alô no computador lendo um QR code, lista de aparelhos
 conectados e PIN da conta (M4); status, canais, comunidades, enquetes e mensagens
 temporárias (M5); ligações de voz e vídeo (M6); lançamento em produção (M7).
 
@@ -118,13 +118,13 @@ temporárias (M5); ligações de voz e vídeo (M6); lançamento em produção (M
 
 | Etapa | O que entrega | Situação |
 |---|---|---|
-| **M1** · Fundação | Servidor completo (Synapse com workers, PostgreSQL, Redis, Caddy, chama-id) que sobe com um comando; dois usuários de teste trocam uma mensagem criptografada. | ✅ Concluída |
-| **M2** · Núcleo do app | App Flutter para Android e web: entrada por SMS, chave de recuperação, conversas, grupos, mídia, voz, tiques, busca, temas. ([#1](https://github.com/kaiomp/chama/issues/1)) | ✅ Concluída |
-| **M3** · Lançamento Android | Sincronização de contatos, notificações push (Sygnal + UnifiedPush, FCM na versão Play), builds de release para F-Droid e Play. ([#2](https://github.com/kaiomp/chama/issues/2)) | ✅ Concluída |
-| **M4** · Aparelhos e segurança da conta | Conectar a versão web por QR code, lista e remoção de aparelhos, PIN da conta, aviso de "novo aparelho" aos contatos. ([#3](https://github.com/kaiomp/chama/issues/3), [#11](https://github.com/kaiomp/chama/issues/11)) | 🔨 Próxima |
-| **M5** · Extras | Status, canais, comunidades, enquetes, localização, mensagens temporárias, mensagens favoritas (com estrela), listas de transmissão, privacidade, recado do perfil, retenção mínima no servidor. ([#4](https://github.com/kaiomp/chama/issues/4), [#12](https://github.com/kaiomp/chama/issues/12)) | ⏳ Planejada |
-| **M6** · Ligações | Ligações de voz e vídeo, individuais e em grupo (LiveKit + MatrixRTC). ([#5](https://github.com/kaiomp/chama/issues/5)) | ⏳ Planejada |
-| **M7** · Produção | Provedor real de SMS, guia de implantação, monitoramento, teste de carga para milhões de usuários. ([#6](https://github.com/kaiomp/chama/issues/6), [#7](https://github.com/kaiomp/chama/issues/7)) | ⏳ Planejada |
+| **M1** · Fundação | Servidor completo (Synapse com workers, PostgreSQL, Redis, Caddy, alo-id) que sobe com um comando; dois usuários de teste trocam uma mensagem criptografada. | ✅ Concluída |
+| **M2** · Núcleo do app | App Flutter para Android e web: entrada por SMS, chave de recuperação, conversas, grupos, mídia, voz, tiques, busca, temas. ([#1](https://github.com/kaiomp/alo/issues/1)) | ✅ Concluída |
+| **M3** · Lançamento Android | Sincronização de contatos, notificações push (Sygnal + UnifiedPush, FCM na versão Play), builds de release para F-Droid e Play. ([#2](https://github.com/kaiomp/alo/issues/2)) | ✅ Concluída |
+| **M4** · Aparelhos e segurança da conta | Conectar a versão web por QR code, lista e remoção de aparelhos, PIN da conta, aviso de "novo aparelho" aos contatos. ([#3](https://github.com/kaiomp/alo/issues/3), [#11](https://github.com/kaiomp/alo/issues/11)) | 🔨 Próxima |
+| **M5** · Extras | Status, canais, comunidades, enquetes, localização, mensagens temporárias, mensagens favoritas (com estrela), listas de transmissão, privacidade, recado do perfil, retenção mínima no servidor. ([#4](https://github.com/kaiomp/alo/issues/4), [#12](https://github.com/kaiomp/alo/issues/12)) | ⏳ Planejada |
+| **M6** · Ligações | Ligações de voz e vídeo, individuais e em grupo (LiveKit + MatrixRTC). ([#5](https://github.com/kaiomp/alo/issues/5)) | ⏳ Planejada |
+| **M7** · Produção | Provedor real de SMS, guia de implantação, monitoramento, teste de carga para milhões de usuários. ([#6](https://github.com/kaiomp/alo/issues/6), [#7](https://github.com/kaiomp/alo/issues/7)) | ⏳ Planejada |
 
 Detalhes de cada etapa, pendências e ideias para depois (federação por DDD, modo sem
 internet) estão no [roadmap](docs/roadmap.md).
@@ -133,22 +133,22 @@ internet) estão no [roadmap](docs/roadmap.md).
 
 O app cifra cada mensagem no aparelho e a envia por HTTPS ao servidor. Na frente do servidor
 fica o **Caddy** (proxy reverso, o "porteiro" que encaminha cada pedido ao serviço certo). O
-**Synapse** é o servidor Matrix: guarda e entrega as mensagens cifradas. O **chama-id** é um
-serviço pequeno, escrito para o Chama, que cuida da entrada por número de celular e da busca
+**Synapse** é o servidor Matrix: guarda e entrega as mensagens cifradas. O **alo-id** é um
+serviço pequeno, escrito para o Alô, que cuida da entrada por número de celular e da busca
 de contatos. As notificações saem pelo **Sygnal**, que só repassa identificadores; o próprio
 celular busca e decifra a mensagem.
 
 ```mermaid
 flowchart LR
   subgraph aparelho["Aparelho do usuário"]
-    app["App Chama<br/>Android · Web"]
+    app["App Alô<br/>Android · Web"]
     dist["App de notificações<br/>ntfy ou FCM"]
   end
 
-  subgraph servidor["Servidor Chama"]
+  subgraph servidor["Servidor Alô"]
     caddy["Caddy<br/>proxy reverso"]
     synapse["Synapse<br/>servidor Matrix<br/>workers: sync, media, pusher"]
-    id["chama-id<br/>entrada por SMS<br/>busca de contatos"]
+    id["alo-id<br/>entrada por SMS<br/>busca de contatos"]
     pg[("PostgreSQL")]
     redis[("Redis")]
     sqlite[("SQLite")]
@@ -173,7 +173,7 @@ privacidade estão em [segurança e privacidade](docs/seguranca-e-privacidade.md
 
 ## Começo rápido
 
-Para quem quer rodar o Chama no próprio computador. Detalhes, solução de problemas e o
+Para quem quer rodar o Alô no próprio computador. Detalhes, solução de problemas e o
 caminho completo do app estão no [guia de desenvolvimento](docs/desenvolvimento.md).
 
 **Pré-requisitos do servidor:** Docker, Node 26, pnpm, openssl e curl.
@@ -198,8 +198,8 @@ make app-web       # no Chrome; a primeira vez compila a criptografia para a web
 
 Entre com qualquer celular brasileiro, por exemplo `11 91234-5678`, e o código `000000`.
 
-> O código `000000` só funciona no servidor de desenvolvimento (`CHAMA_DEV=1`), que por isso
-> só aceita conexões do próprio computador. O chama-id se recusa a ligar esse modo fora de
+> O código `000000` só funciona no servidor de desenvolvimento (`ALO_DEV=1`), que por isso
+> só aceita conexões do próprio computador. O alo-id se recusa a ligar esse modo fora de
 > domínios `.test` ou `.localhost`.
 
 **Testes:**
@@ -224,35 +224,35 @@ uma vez por emulador.
 | [Segurança e privacidade](docs/seguranca-e-privacidade.md) | Parceiros, auditores, desenvolvedores | O que o servidor vê e o que não vê, ameaças e defesas |
 | [Arquitetura](docs/design/2026-10-24-architecture.md) | Desenvolvedores, avaliadores técnicos | Decisões de projeto, componentes, escala, federação |
 | [Desenvolvimento](docs/desenvolvimento.md) | Desenvolvedores | Preparar o ambiente, rodar, testar, contribuir |
-| [App Chama](app/README.md) | Desenvolvedores do app | App Flutter: rodar, testar, mapa do código, builds de release |
-| [API do chama-id](docs/chama-id-api.md) | Desenvolvedores | Rotas de entrada por SMS, busca de contatos e redefinição de identidade |
+| [App Alô](app/README.md) | Desenvolvedores do app | App Flutter: rodar, testar, mapa do código, builds de release |
+| [API do alo-id](docs/alo-id-api.md) | Desenvolvedores | Rotas de entrada por SMS, busca de contatos e redefinição de identidade |
 | [Operação](docs/operacao.md) | Quem vai operar um servidor | Configuração, segredos, push, manutenção |
 
 ## Como apoiar
 
-O Chama procura instituições que queiram operar um servidor (universidades, órgãos públicos,
+O Alô procura instituições que queiram operar um servidor (universidades, órgãos públicos,
 organizações sem fins lucrativos), financiadores e pessoas que queiram contribuir.
 
 - **Instituições e financiadores:** abram uma
-  [issue no GitHub](https://github.com/kaiomp/chama/issues/new) contando quem são e como
+  [issue no GitHub](https://github.com/kaiomp/alo/issues/new) contando quem são e como
   querem ajudar. A conversa continua por lá ou por um contato combinado na própria issue.
-- **Desenvolvedores:** vejam as [issues abertas](https://github.com/kaiomp/chama/issues) e o
+- **Desenvolvedores:** vejam as [issues abertas](https://github.com/kaiomp/alo/issues) e o
   [guia de desenvolvimento](docs/desenvolvimento.md).
 - **Todo mundo:** reportar erros e sugerir melhorias também pelas
-  [issues](https://github.com/kaiomp/chama/issues).
+  [issues](https://github.com/kaiomp/alo/issues).
 
 ## Licença
 
 GNU Affero General Public License v3.0 (AGPL-3.0-only). Veja [LICENSE](LICENSE).
 
-O Chama copia padrões de interação conhecidos pelos brasileiros, mas não usa código, marca,
+O Alô copia padrões de interação conhecidos pelos brasileiros, mas não usa código, marca,
 ícones, textos nem cores do WhatsApp. Não é afiliado ao WhatsApp nem à Meta.
 
 ---
 
 ## In English
 
-Chama is a free, open-source (AGPL-3.0) messenger for Brazil with the look and feel of
+Alô is a free, open-source (AGPL-3.0) messenger for Brazil with the look and feel of
 WhatsApp: sign in with a phone number and an SMS code, find your contacts, and chat one to one
 or in groups with text, photos, files and voice notes. Every chat is end-to-end encrypted by
 default, so not even the server operator can read messages, and there is no feed, ranking or

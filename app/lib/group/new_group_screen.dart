@@ -43,7 +43,7 @@ class _NewGroupScreenState extends State<NewGroupScreen> {
   Widget build(BuildContext context) {
     final l = L10n.of(context);
     final names = {
-      for (final c in Deps.of(context).contacts.onChama)
+      for (final c in Deps.of(context).contacts.onAlo)
         if (c.name.trim().isNotEmpty) c.userId: c.name,
     };
     return Scaffold(

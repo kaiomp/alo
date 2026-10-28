@@ -1,6 +1,6 @@
 // Recycled numbers over HTTP against the real Synapse (spec §4, issue #3). server/scripts/check.sh
-// pipes this file to node inside the chama-id container, so imports are relative to its /app/services/chama-id.
-// A second chama-id on 127.0.0.1:8099, sharing the real database, counts every account as inactive
+// pipes this file to node inside the alo-id container, so imports are relative to its /app/services/alo-id.
+// A second alo-id on 127.0.0.1:8099, sharing the real database, counts every account as inactive
 // (inactiveDays 0), as if 45 days had passed. Plain JavaScript: node reads it from stdin.
 import { randomInt } from 'node:crypto';
 import { openDb } from './src/db.ts';

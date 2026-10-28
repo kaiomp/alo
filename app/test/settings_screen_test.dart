@@ -1,11 +1,11 @@
-import 'package:chama/common/deps.dart';
-import 'package:chama/common/notifications.dart';
-import 'package:chama/common/theme.dart';
-import 'package:chama/contacts/address_book.dart';
-import 'package:chama/contacts/contacts_service.dart';
-import 'package:chama/l10n/app_localizations.dart';
-import 'package:chama/profile/settings_screen.dart';
-import 'package:chama/services/push.dart';
+import 'package:alo/common/deps.dart';
+import 'package:alo/common/notifications.dart';
+import 'package:alo/common/theme.dart';
+import 'package:alo/contacts/address_book.dart';
+import 'package:alo/contacts/contacts_service.dart';
+import 'package:alo/l10n/app_localizations.dart';
+import 'package:alo/profile/settings_screen.dart';
+import 'package:alo/services/push.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -39,7 +39,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     final chat = (await tester.runAsync(() => testService(prefs)))!;
-    chat.client.setUserId('@me:chama.test');
+    chat.client.setUserId('@me:alo.test');
     final notifications = _Notifications();
     final push = _Push(chat, prefs);
     await tester.pumpWidget(
@@ -53,7 +53,7 @@ void main() {
         pickFile: ({required bool image}) async => null,
         shareText: (_) async {},
         child: MaterialApp(
-          theme: chamaTheme(Brightness.light),
+          theme: aloTheme(Brightness.light),
           locale: const Locale('pt'),
           supportedLocales: L10n.supportedLocales,
           localizationsDelegates: L10n.localizationsDelegates,

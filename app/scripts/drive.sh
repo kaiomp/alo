@@ -5,7 +5,7 @@
 # WEB_SIZE=<w>x<h>[@<pixel ratio>] sets the browser size (default 1280x900).
 # Android: ANDROID_SERIAL picks the emulator (default: the first one);
 # E2E_CONTACTS="Name=number,..." saves contacts in its address book for the run.
-# CHAMA_AVD=<name> picks the emulator (default: the first AVD). CHROME=<path>
+# ALO_AVD=<name> picks the emulator (default: the first AVD). CHROME=<path>
 # points at the Chrome binary (default: the macOS app path).
 #   scripts/drive.sh chrome  integration_test/boot_test.dart
 #   scripts/drive.sh android integration_test/boot_test.dart
@@ -35,7 +35,7 @@ case $TARGET in
     ./scripts/build-vodozemac-web.sh
     CHROME_VERSION=$("$CHROME" --version | awk '{print $3}')
     DRIVER=$(npx --yes @puppeteer/browsers@3.2.6 install "chromedriver@$CHROME_VERSION" \
-      --path "$HOME/.cache/chama-chromedriver" | awk '{print $2}')
+      --path "$HOME/.cache/alo-chromedriver" | awk '{print $2}')
     "$DRIVER" --port=4444 >/dev/null 2>&1 &
     PIDS+=($!)
     sleep 1
@@ -48,9 +48,9 @@ case $TARGET in
     ;;
   android)
     if ! adb devices | grep -q '^emulator-'; then
-      AVD=${CHAMA_AVD:-$(emulator -list-avds | head -1)}
+      AVD=${ALO_AVD:-$(emulator -list-avds | head -1)}
       emulator -list-avds | grep -qxF "$AVD" ||
-        { echo "No AVD '${AVD}'. Create one in Android Studio or set CHAMA_AVD (emulator -list-avds)."; exit 1; }
+        { echo "No AVD '${AVD}'. Create one in Android Studio or set ALO_AVD (emulator -list-avds)."; exit 1; }
       EMU_LOG=$(mktemp)
       emulator -avd "$AVD" -no-snapshot -no-audio -no-boot-anim >"$EMU_LOG" 2>&1 &
       EMU=$!
@@ -64,11 +64,11 @@ case $TARGET in
         { echo "Emulator did not boot in 5 minutes:"; tail -20 "$EMU_LOG"; exit 1; }
     fi
     DEVICE=${ANDROID_SERIAL:-$(adb devices | awk '/^emulator-/{print $1; exit}')}
-    adb -s "$DEVICE" uninstall chat.chama.app >/dev/null 2>&1 || true # fresh app data every run
+    adb -s "$DEVICE" uninstall app.usealo.app >/dev/null 2>&1 || true # fresh app data every run
     # Grant contacts and notifications as soon as flutter installs the app, so
     # no system dialog covers the test.
-    (until adb -s "$DEVICE" shell pm path chat.chama.app >/dev/null 2>&1; do sleep 1; done
-      for p in READ_CONTACTS POST_NOTIFICATIONS; do adb -s "$DEVICE" shell pm grant chat.chama.app android.permission.$p; done) &
+    (until adb -s "$DEVICE" shell pm path app.usealo.app >/dev/null 2>&1; do sleep 1; done
+      for p in READ_CONTACTS POST_NOTIFICATIONS; do adb -s "$DEVICE" shell pm grant app.usealo.app android.permission.$p; done) &
     PIDS+=($!)
     if [ -n "${E2E_CONTACTS:-}" ]; then
       IFS=, read -ra PAIRS <<<"$E2E_CONTACTS"
@@ -95,12 +95,12 @@ case $TARGET in
             for _ in $(seq 90); do
               adb -s "$DEVICE" shell dumpsys notification | awk -v since="$since" '
                 /mArchive=/ { exit }
-                /NotificationRecord\(/ { ours = /pkg=chat\.chama\.app / }
+                /NotificationRecord\(/ { ours = /pkg=chat\.alo\.app / }
                 ours && /mUpdateTimeMs=/ { split($0, a, "="); if (a[2] + 0 >= since) { found = 1; exit } }
                 END { exit !found }' && break
               sleep 1
             done
-            adb -s "$DEVICE" shell am start -n chat.chama.app/.MainActivity >/dev/null) &
+            adb -s "$DEVICE" shell am start -n app.usealo.app/.MainActivity >/dev/null) &
           echo $! >>"$BG_PIDS"
         fi
       done

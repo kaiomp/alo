@@ -17,7 +17,7 @@ rand_phone() { printf '55119%04d%04d' $((RANDOM % 10000)) $((RANDOM % 10000)); }
 APP_PHONE=$(rand_phone)
 PEER_PHONE=$(rand_phone)
 PEER_LOG=$(mktemp)
-(cd ../tools/peer && PEER_PHONE=$PEER_PHONE CHAMA_BASE_URL=$BASE exec node peer.ts) >"$PEER_LOG" 2>&1 &
+(cd ../tools/peer && PEER_PHONE=$PEER_PHONE ALO_BASE_URL=$BASE exec node peer.ts) >"$PEER_LOG" 2>&1 &
 PEER=$!
 trap 'kill $PEER 2>/dev/null || true' EXIT
 for _ in $(seq 60); do grep -q 'peer ready' "$PEER_LOG" && break; sleep 1; done
@@ -29,11 +29,11 @@ echo "app +$APP_PHONE  peer +$PEER_PHONE  peer log: $PEER_LOG"
 pretty() { printf '(%s) %s-%s' "${1:2:2}" "${1:4:5}" "${1:9}"; }
 case $TEST in
   *contacts_test.dart | *push_test.dart)
-    export E2E_CONTACTS="Peer Agenda=$(pretty "$PEER_PHONE"),Sem Chama=$(pretty "$(rand_phone)")" ;;
+    export E2E_CONTACTS="Peer Agenda=$(pretty "$PEER_PHONE"),Sem Alô=$(pretty "$(rand_phone)")" ;;
   # Screenshots: the peer under its own name, next to two to invite.
   *screenshots_test.dart)
     export E2E_CONTACTS="${PEER_NAME:-Peer}=$(pretty "$PEER_PHONE"),Carla Mendes=$(pretty "$(rand_phone)"),Diego Rocha=$(pretty "$(rand_phone)")" ;;
 esac
 
 ./scripts/drive.sh "$TARGET" "$TEST" \
-  --dart-define=CHAMA_TEST_PHONE="$APP_PHONE" --dart-define=CHAMA_PEER_PHONE="$PEER_PHONE" "$@"
+  --dart-define=ALO_TEST_PHONE="$APP_PHONE" --dart-define=ALO_PEER_PHONE="$PEER_PHONE" "$@"

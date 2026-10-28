@@ -12,8 +12,8 @@ import 'services/chat_service.dart';
 import 'wellbeing/wellbeing_layer.dart';
 
 /// The app. Expects a [Deps] above it (see `bootstrap` in main.dart).
-class ChamaApp extends StatelessWidget {
-  const ChamaApp({super.key, this.locale});
+class AloApp extends StatelessWidget {
+  const AloApp({super.key, this.locale});
 
   /// Null follows the system; the demo pins Portuguese.
   final Locale? locale;
@@ -22,8 +22,8 @@ class ChamaApp extends StatelessWidget {
   Widget build(BuildContext context) => MaterialApp(
     onGenerateTitle: (context) => L10n.of(context).appName,
     debugShowCheckedModeBanner: false,
-    theme: chamaTheme(Brightness.light),
-    darkTheme: chamaTheme(Brightness.dark),
+    theme: aloTheme(Brightness.light),
+    darkTheme: aloTheme(Brightness.dark),
     locale: locale,
     localizationsDelegates: L10n.localizationsDelegates,
     supportedLocales: L10n.supportedLocales,

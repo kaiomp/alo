@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// Contacts scripts/e2e.sh saves in the emulator's address book: the peer
 /// under this name, and one number without an account.
 const peerContactName = 'Peer Agenda';
-const inviteContactName = 'Sem Chama';
+const inviteContactName = 'Sem Alô';
 
 /// Small helpers in the style of FluffyChat integration_test/utils/fluffy_chat_tester.dart.
 /// No pumpAndSettle: spinners never settle.

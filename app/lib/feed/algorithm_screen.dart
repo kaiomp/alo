@@ -8,7 +8,7 @@ import '../l10n/app_localizations.dart';
 import '../profile/your_data.dart';
 import '../services/social_service.dart';
 
-/// "Escolha seu algoritmo": Chama's own feeds, feeds made by the community,
+/// "Escolha seu algoritmo": Alô's own feeds, feeds made by the community,
 /// and the topics to leave out. The choice applies to "Para você" at once.
 class AlgorithmScreen extends StatelessWidget {
   const AlgorithmScreen({super.key});
@@ -62,7 +62,7 @@ class AlgorithmScreen extends StatelessWidget {
                 ],
               ),
             ),
-            SectionHeader(l.algorithmsChama(l.appName)),
+            SectionHeader(l.algorithmsAlo(l.appName)),
             for (final a in own) _Choice(choice: a, selected: social.algorithm.value == a.id),
             SectionHeader(l.communityFeeds),
             for (final a in community) _Choice(choice: a, selected: social.algorithm.value == a.id),

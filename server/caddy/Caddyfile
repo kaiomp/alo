@@ -41,7 +41,7 @@
 		respond `{"gateway":"http://sygnal:5000/_matrix/push/v1/notify","vapid":"{$VAPID_PUBLIC_KEY}"}` 200
 	}
 	handle @id {
-		reverse_proxy chama-id:8090
+		reverse_proxy alo-id:8090
 	}
 	handle @matrix {
 		reverse_proxy synapse:8008

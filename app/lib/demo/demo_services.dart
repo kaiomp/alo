@@ -14,15 +14,15 @@ class DemoId implements IdClient {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-/// The address book: the demo people, all on Chama.
+/// The address book: the demo people, all on Alô.
 class DemoContacts extends ChangeNotifier implements ContactsService {
   @override
   ContactsAccess access = ContactsAccess.granted;
 
   @override
-  List<ChamaContact> onChama = [
+  List<AloContact> onAlo = [
     for (final (i, p) in [ana, carol, cida, fernanda, juliana, lucas, mae, marcos, pai, pedro, rafael, thiago].indexed)
-      ChamaContact(name: p.name, phone: '55819876500${i.toString().padLeft(2, '0')}', userId: p.id),
+      AloContact(name: p.name, phone: '55819876500${i.toString().padLeft(2, '0')}', userId: p.id),
   ];
 
   @override

@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:chama/chat/voice/voice_recorder.dart';
+import 'package:alo/chat/voice/voice_recorder.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 

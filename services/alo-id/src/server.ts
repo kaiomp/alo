@@ -13,7 +13,7 @@ import { AppError } from './errors.ts';
 import { router, clientIp, rateKey, windowLimiter, ttlCache } from './http.ts';
 
 // Shape check of the client's new public cross-signing keys, done before the SMS code is spent.
-// Only the Matrix fields of a public key are allowed, so chama-id never accepts private keys.
+// Only the Matrix fields of a public key are allowed, so alo-id never accepts private keys.
 // Synapse checks the signatures.
 const USAGES = { master_key: 'master', self_signing_key: 'self_signing', user_signing_key: 'user_signing' } as const;
 const KEY_FIELDS = new Set(['user_id', 'usage', 'keys', 'signatures']);
@@ -41,8 +41,8 @@ const bearer = (req: IncomingMessage) => {
 };
 
 // Audience of the token that carries a sign-in from the SMS code to the PIN step. Synapse accepts
-// only the audience `chama`, so this token can never log in to Matrix.
-const PIN_AUD = 'chama-pin';
+// only the audience `alo`, so this token can never log in to Matrix.
+const PIN_AUD = 'alo-pin';
 
 export function createServer(d: {
   otp: OtpService; directory: Directory; accounts: Accounts; admin: SynapseAdmin; pins: Pins; links: Links;
@@ -109,11 +109,11 @@ export function createServer(d: {
     // `homeserver` is the public URL, for production clients. Dev clients use their own configured
     // base URL instead (the Android emulator reaches the host stack at http://10.0.2.2:8080).
     phone, user_id: account.userId, homeserver: d.publicBaseUrl, new_account: account.created,
-    login_token: signJwt({ sub: account.localpart, iss: 'chama-id', aud: 'chama' }, d.jwtSecret, 120),
+    login_token: signJwt({ sub: account.localpart, iss: 'alo-id', aud: 'alo' }, d.jwtSecret, 120),
   });
   const pinClaims = (token: unknown) => {
     const c = verifyJwt(str(token), d.jwtSecret, now());
-    if (c.aud !== PIN_AUD || c.iss !== 'chama-id' || typeof c.sub !== 'string' || typeof c.phone !== 'string') throw new AppError('invalid_token');
+    if (c.aud !== PIN_AUD || c.iss !== 'alo-id' || typeof c.sub !== 'string' || typeof c.phone !== 'string') throw new AppError('invalid_token');
     return { localpart: c.sub, phone: c.phone };
   };
 
@@ -137,7 +137,7 @@ export function createServer(d: {
       if (pin !== 'set' || account.created) return login(phone, account);
       return {
         phone, pin_required: true, reset_at: d.pins.status(account.localpart).reset_at,
-        pin_token: signJwt({ sub: account.localpart, phone, iss: 'chama-id', aud: PIN_AUD }, d.jwtSecret, 300, now()),
+        pin_token: signJwt({ sub: account.localpart, phone, iss: 'alo-id', aud: PIN_AUD }, d.jwtSecret, 300, now()),
       };
     },
     'POST /id/v1/pin/login': async (b) => {
@@ -179,8 +179,8 @@ export function createServer(d: {
       d.pins.cancelReset((await owner(req)).localpart);
       return {};
     },
-    // "Aparelhos conectados": Matrix asks user-interactive auth to delete a device, which Chama
-    // accounts cannot do (spec §4), so chama-id deletes it through the admin API after proof.
+    // "Aparelhos conectados": Matrix asks user-interactive auth to delete a device, which Alô
+    // accounts cannot do (spec §4), so alo-id deletes it through the admin API after proof.
     'POST /id/v1/devices/remove': async (b, req) => {
       const me = await owner(req);
       // Both forms at once is ambiguous: refuse rather than guess which one was meant.
@@ -248,7 +248,7 @@ if (import.meta.main) {
     if (v === undefined || v === '') { console.error(`missing env ${k}`); process.exit(1); }
     return v;
   };
-  const dev = process.env.CHAMA_DEV === '1';
+  const dev = process.env.ALO_DEV === '1';
   const port = Number(env('PORT', '8090'));
   if (!Number.isInteger(port) || port < 0 || port > 65535) { console.error(`invalid PORT ${process.env.PORT}`); process.exit(1); }
   const secrets = {
@@ -257,11 +257,11 @@ if (import.meta.main) {
   };
   // Dev mode accepts code 000000 for any phone, so it must never run on a real domain.
   if (dev && !/\.(test|localhost)$/.test(secrets.serverName)) {
-    console.error('CHAMA_DEV=1 is only allowed for .test or .localhost server names'); process.exit(1);
+    console.error('ALO_DEV=1 is only allowed for .test or .localhost server names'); process.exit(1);
   }
   // No real SMS provider exists yet; ConsoleSms prints codes, so it is dev only.
-  if (!dev) { console.error('no SMS provider configured (set CHAMA_DEV=1 for development)'); process.exit(1); }
-  const db = openDb(env('DB_PATH', '/data/chama-id.sqlite'));
+  if (!dev) { console.error('no SMS provider configured (set ALO_DEV=1 for development)'); process.exit(1); }
+  const db = openDb(env('DB_PATH', '/data/alo-id.sqlite'));
   const admin = new HttpSynapseAdmin({ baseUrl: secrets.synapseUrl, sharedSecret: secrets.sharedSecret, asToken: secrets.asToken, db });
   const server = createServer({
     otp: new OtpService(db, { pepper: secrets.pepper, dev, sms: new ConsoleSms() }), pins: new Pins(db, { pepper: secrets.pepper }),
@@ -269,5 +269,5 @@ if (import.meta.main) {
     directory: new Directory(db, secrets.serverName), accounts: new Accounts(db, admin, { serverName: secrets.serverName }), admin,
     jwtSecret: secrets.jwtSecret, publicBaseUrl: secrets.publicBaseUrl, dev,
   });
-  server.listen(port, () => console.log(`chama-id listening on :${port}${dev ? ' (dev mode: code 000000 accepted)' : ''}`));
+  server.listen(port, () => console.log(`alo-id listening on :${port}${dev ? ' (dev mode: code 000000 accepted)' : ''}`));
 }

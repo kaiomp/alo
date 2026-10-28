@@ -1,11 +1,11 @@
-import 'package:chama/chat/chat_screen.dart';
-import 'package:chama/chat_list/chat_list_view.dart';
-import 'package:chama/chat_list/chat_tile.dart';
-import 'package:chama/config.dart';
+import 'package:alo/chat/chat_screen.dart';
+import 'package:alo/chat_list/chat_list_view.dart';
+import 'package:alo/chat_list/chat_tile.dart';
+import 'package:alo/config.dart';
 
 import 'dart:io';
 
-import 'package:chama/main.dart' as app;
+import 'package:alo/main.dart' as app;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -16,8 +16,8 @@ import 'fakes.dart';
 import 'steps.dart';
 
 // Set by scripts/e2e.sh: fresh random numbers each run, E.164 digits.
-const appPhone = String.fromEnvironment('CHAMA_TEST_PHONE');
-const peerPhone = String.fromEnvironment('CHAMA_PEER_PHONE');
+const appPhone = String.fromEnvironment('ALO_TEST_PHONE');
+const peerPhone = String.fromEnvironment('ALO_PEER_PHONE');
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();

@@ -4,10 +4,10 @@ WORKDIR /app
 # Node 26 images no longer ship corepack.
 RUN npm install -g pnpm@10.32.1
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-COPY services/chama-id/package.json services/chama-id/
-RUN pnpm install --filter chama-id --prod --frozen-lockfile
-COPY services/chama-id/src services/chama-id/src
-WORKDIR /app/services/chama-id
+COPY services/alo-id/package.json services/alo-id/
+RUN pnpm install --filter alo-id --prod --frozen-lockfile
+COPY services/alo-id/src services/alo-id/src
+WORKDIR /app/services/alo-id
 # A named volume mounted here inherits this ownership.
 RUN mkdir /data && chown node:node /data
 USER node

@@ -1,24 +1,24 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:chama/auth/id_client.dart';
-import 'package:chama/chat/message_bubble.dart';
-import 'package:chama/chat_list/chat_list_view.dart';
-import 'package:chama/chat_list/chat_tile.dart';
-import 'package:chama/common/deps.dart';
-import 'package:chama/common/notifications.dart';
-import 'package:chama/contacts/address_book.dart';
-import 'package:chama/contacts/contacts_service.dart';
-import 'package:chama/common/theme.dart';
-import 'package:chama/group/group_info_screen.dart';
-import 'package:chama/l10n/app_localizations.dart';
-import 'package:chama/services/chama_client.dart';
-import 'package:chama/services/chat_service.dart';
-import 'package:chama/services/chat_session.dart';
-import 'package:chama/services/delivery.dart';
-import 'package:chama/services/models.dart';
-import 'package:chama/services/ticks.dart';
-import 'package:chama/services/push.dart';
+import 'package:alo/auth/id_client.dart';
+import 'package:alo/chat/message_bubble.dart';
+import 'package:alo/chat_list/chat_list_view.dart';
+import 'package:alo/chat_list/chat_tile.dart';
+import 'package:alo/common/deps.dart';
+import 'package:alo/common/notifications.dart';
+import 'package:alo/contacts/address_book.dart';
+import 'package:alo/contacts/contacts_service.dart';
+import 'package:alo/common/theme.dart';
+import 'package:alo/group/group_info_screen.dart';
+import 'package:alo/l10n/app_localizations.dart';
+import 'package:alo/services/alo_client.dart';
+import 'package:alo/services/chat_service.dart';
+import 'package:alo/services/chat_session.dart';
+import 'package:alo/services/delivery.dart';
+import 'package:alo/services/models.dart';
+import 'package:alo/services/ticks.dart';
+import 'package:alo/services/push.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -32,9 +32,9 @@ import 'package:matrix/src/models/timeline_chunk.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-const me = '@me:chama.test';
-const bob = '@bob:chama.test';
-const carol = '@carol:chama.test';
+const me = '@me:alo.test';
+const bob = '@bob:alo.test';
+const carol = '@carol:alo.test';
 final base = Uri.parse('http://localhost:8080');
 
 /// A room whose timeline is the one the test gives it.
@@ -61,7 +61,7 @@ class _FixedRoom extends Room {
 void main() {
   late List<String> requests; // "METHOD path"
   late ChatService service;
-  late ChamaClient client;
+  late AloClient client;
 
   Future<ChatService> newService(http.Client server, {String name = 'chat_logic_test'}) async {
     SharedPreferences.setMockInitialValues({});
@@ -71,7 +71,7 @@ void main() {
       database: await databaseFactoryFfi.openDatabase(':memory:'),
       sqfliteFactory: databaseFactoryFfi,
     );
-    client = ChamaClient(name, database: db, httpClient: server)
+    client = AloClient(name, database: db, httpClient: server)
       ..homeserver = base
       ..accessToken = 'token'
       ..setUserId(me);
@@ -109,7 +109,7 @@ void main() {
   );
 
   _FixedRoom chatWith(String sender) {
-    final r = _FixedRoom(id: '!r:chama.test', client: client);
+    final r = _FixedRoom(id: '!r:alo.test', client: client);
     client.rooms.add(r);
     r.setState(member(r, me, 1));
     r.setState(member(r, bob, 1));
@@ -237,15 +237,15 @@ void main() {
       sqfliteFactory: databaseFactoryFfi,
     );
     await db.storeClient(homeserverUrl: '$base', token: 'token', userId: me, deviceId: 'DEVICE');
-    final offline = ChamaClient(
+    final offline = AloClient(
       'cold_start_test',
       database: db,
       httpClient: MockClient((_) async => throw const SocketException('no network')),
     );
-    await db.storeRoomUpdate('!r:chama.test', JoinedRoomUpdate(), null, offline);
+    await db.storeRoomUpdate('!r:alo.test', JoinedRoomUpdate(), null, offline);
 
     final cold = await ChatService.restore(offline, id: IdClient(base), homeserver: base);
-    expect(cold.chats.value.map((c) => c.id), ['!r:chama.test']);
+    expect(cold.chats.value.map((c) => c.id), ['!r:alo.test']);
     await cold.dispose();
     await offline.dispose(closeDatabase: true);
   });
@@ -346,7 +346,7 @@ Widget _host(ChatService service, Widget child) => Deps(
   pickFile: ({required bool image}) async => null,
   shareText: (_) async {},
   child: MaterialApp(
-    theme: chamaTheme(Brightness.light),
+    theme: aloTheme(Brightness.light),
     locale: const Locale('pt'),
     supportedLocales: L10n.supportedLocales,
     localizationsDelegates: L10n.localizationsDelegates,

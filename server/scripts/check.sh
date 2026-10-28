@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Acceptance checks for the running dev stack. Stops at the first failure.
-# Each run requests a code for a new random phone, because chama-id allows one code
-# request per phone per minute. In dev mode chama-id allows 1000 code requests per IP per hour.
+# Each run requests a code for a new random phone, because alo-id allows one code
+# request per phone per minute. In dev mode alo-id allows 1000 code requests per IP per hour.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -44,12 +44,12 @@ VERIFY=$(curl -fs -XPOST "$BASE/id/v1/otp/verify" -H 'content-type: application/
 TOKEN=$(json login_token <<<"$VERIFY") || fail "otp verify: no login_token"
 MXID=$(json user_id <<<"$VERIFY") || fail "otp verify: no user_id"
 E164=$(json phone <<<"$VERIFY") || fail "otp verify: no phone"
-[[ $MXID =~ ^@u[a-z2-7]{16}:chama\.test$ ]] || fail "user_id not opaque: $MXID"
+[[ $MXID =~ ^@u[a-z2-7]{16}:alo\.test$ ]] || fail "user_id not opaque: $MXID"
 [[ $MXID != *"${E164: -8}"* ]] || fail "user_id contains phone digits: $MXID"
 [[ $(json new_account <<<"$VERIFY") == true ]] || fail "new phone: new_account not true"
 ok "otp verify: opaque user_id $MXID for +$E164"
 
-# Full sign-in: the chama-id JWT logs in to Synapse and yields an access token.
+# Full sign-in: the alo-id JWT logs in to Synapse and yields an access token.
 ACCESS=$(curl -fs -XPOST "$BASE/_matrix/client/v3/login" -H 'content-type: application/json' \
   -d "{\"type\":\"org.matrix.login.jwt\",\"token\":\"$TOKEN\"}" | json access_token) || fail "jwt login"
 AUTH="Authorization: Bearer $ACCESS"
@@ -83,21 +83,21 @@ sleep 1
 [[ $(served_by synapse "$MARK") -eq 0 ]] || fail "media reached the main process"
 ok "media round trip via media1: $MXC -> $out"
 
-# chama-id's own admin client against the real Synapse admin API (internal network only).
+# alo-id's own admin client against the real Synapse admin API (internal network only).
 # After logout the device is gone, but the user-level last_seen still marks the account active.
 curl -fs -XPOST -H "$AUTH" "$BASE/_matrix/client/v3/logout" -d '{}' >/dev/null || fail "logout"
-admin_check() { dc exec -T -e MXID="$MXID" chama-id node --input-type=module -e "
+admin_check() { dc exec -T -e MXID="$MXID" alo-id node --input-type=module -e "
   import { openDb } from './src/db.ts'; import { HttpSynapseAdmin } from './src/synapse.ts';
   const e = process.env;
   const a = new HttpSynapseAdmin({ baseUrl: e.SYNAPSE_INTERNAL_URL, sharedSecret: e.REGISTRATION_SHARED_SECRET, asToken: e.SYNAPSE_AS_TOKEN, db: openDb(e.DB_PATH) });
   const age = Date.now() - (await a.activity(e.MXID)).lastActiveMs;
-  console.log(age >= 0 && age < 600_000, await a.activity('@uzzzzzzzzzzzzzzzz:chama.test'));" | tail -1; }
+  console.log(age >= 0 && age < 600_000, await a.activity('@uzzzzzzzzzzzzzzzz:alo.test'));" | tail -1; }
 # Synapse writes client IPs in batches every few seconds.
 for _ in 1 2 3 4 5 6 7 8 9 10; do out=$(admin_check) || fail "admin client"; [[ $out == 'true null' ]] && break; sleep 2; done
 [[ $out == 'true null' ]] || fail "admin client after logout: want 'true null' (recently active, unknown user), got '$out'"
 ok "admin client: $MXID still recently active after logout, unknown user is null"
 
-# Recycled-number path: chama-id's admin client deactivates an account, and its token stops working.
+# Recycled-number path: alo-id's admin client deactivates an account, and its token stops working.
 PHONE2=119$(printf '%04d%04d' $((RANDOM % 10000)) $((RANDOM % 10000)))
 curl -fs -XPOST "$BASE/id/v1/otp/request" -H 'content-type: application/json' -d "{\"phone\":\"$PHONE2\"}" >/dev/null || fail "otp request for $PHONE2"
 V2=$(curl -fs -XPOST "$BASE/id/v1/otp/verify" -H 'content-type: application/json' -d "{\"phone\":\"$PHONE2\",\"code\":\"000000\"}") || fail "otp verify $PHONE2"
@@ -105,7 +105,7 @@ MXID2=$(json user_id <<<"$V2") || fail "otp verify $PHONE2: no user_id"
 ACCESS2=$(curl -fs -XPOST "$BASE/_matrix/client/v3/login" -H 'content-type: application/json' \
   -d "{\"type\":\"org.matrix.login.jwt\",\"token\":\"$(json login_token <<<"$V2")\"}" | json access_token) || fail "jwt login $MXID2"
 curl -fs -H "Authorization: Bearer $ACCESS2" "$BASE/_matrix/client/v3/account/whoami" >/dev/null || fail "whoami $MXID2 before deactivate"
-dc exec -T -e MXID="$MXID2" chama-id node --input-type=module -e "
+dc exec -T -e MXID="$MXID2" alo-id node --input-type=module -e "
   import { openDb } from './src/db.ts'; import { HttpSynapseAdmin } from './src/synapse.ts';
   const e = process.env;
   await new HttpSynapseAdmin({ baseUrl: e.SYNAPSE_INTERNAL_URL, sharedSecret: e.REGISTRATION_SHARED_SECRET, asToken: e.SYNAPSE_AS_TOKEN, db: openDb(e.DB_PATH) }).deactivate(e.MXID);" \
@@ -120,15 +120,15 @@ BASE=$BASE node ../tools/smoke/identity.ts || fail "identity reset"
 # M4 (spec §4, §5): the login token for linking, the link rendezvous, device removal, the account PIN.
 BASE=$BASE node ../tools/smoke/safety.ts || fail "account safety"
 # Recycled numbers over HTTP against the real Synapse, with a PIN and after a deactivation (issue #3).
-dc exec -T chama-id node --input-type=module - <../tools/smoke/recycled.ts || fail "recycled numbers"
-# No Chama account holds an access token without a device: deleting devices would not end it (issue #3).
+dc exec -T alo-id node --input-type=module - <../tools/smoke/recycled.ts || fail "recycled numbers"
+# No Alô account holds an access token without a device: deleting devices would not end it (issue #3).
 n=$(dc exec -T postgres psql -U synapse -tAc \
   "SELECT count(*) FROM access_tokens WHERE device_id IS NULL AND user_id ~ '^@u[a-z2-7]{16}:'") || fail "token query"
 [[ $n == 0 ]] || fail "$n access tokens without a device"
 ok "no account has an access token without a device"
 
 # The application service token works from the internal network and is refused from a public address.
-out=$(dc exec -T chama-id node -e "
+out=$(dc exec -T alo-id node -e "
   const w = (xff) => fetch(process.env.SYNAPSE_INTERNAL_URL + '/_matrix/client/v3/account/whoami', { headers:
     { authorization: 'Bearer ' + process.env.SYNAPSE_AS_TOKEN, ...(xff ? { 'x-forwarded-for': xff } : {}) } }).then((r) => r.status);
   Promise.all([w(), w('8.8.8.8')]).then((s) => console.log(s.join(' ')));") || fail "app service token check"
@@ -139,7 +139,7 @@ flows=$(curl -fs "$BASE/_matrix/client/v3/login") || fail "login flows"
 [[ $flows != *m.login.password* ]] || fail "login flows offer password: $flows"
 ok "login flows: $flows"
 
-# The real password of a real user must still be refused. chama-id accounts have no
+# The real password of a real user must still be refused. alo-id accounts have no
 # password, so make one by shared-secret registration on the internal network.
 MXUSER=check$RANDOM$RANDOM
 MXPASS=$(dc exec -T -e MXUSER="$MXUSER" synapse python - <<'PY'
@@ -197,7 +197,7 @@ read -r P256DH UA_KEY < <(node -e 'const k = require("crypto").generateKeyPairSy
 WP_AUTH=$(node -e 'console.log(require("crypto").randomBytes(16).toString("base64url"))')
 TOPIC=up$(openssl rand -hex 6)
 curl -fs -XPOST "$BASE/_matrix/client/v3/pushers/set" -H "Authorization: Bearer $TA" -H 'content-type: application/json' -d "{
-  \"kind\":\"http\",\"app_id\":\"chat.chama.app\",\"pushkey\":\"$P256DH\",\"app_display_name\":\"Chama\",
+  \"kind\":\"http\",\"app_id\":\"app.usealo.app\",\"pushkey\":\"$P256DH\",\"app_display_name\":\"Alô\",
   \"device_display_name\":\"check\",\"lang\":\"pt-BR\",\"data\":{\"url\":\"$GATEWAY\",\"format\":\"event_id_only\",
   \"endpoint\":\"$NTFY_EMU/$TOPIC?up=1\",\"auth\":\"$WP_AUTH\",\"events_only\":true}}" >/dev/null || fail "pushers/set"
 ROOM=$(curl -fs -XPOST "$BASE/_matrix/client/v3/createRoom" -H "Authorization: Bearer $TA" -H 'content-type: application/json' \
@@ -243,13 +243,13 @@ n=$(curl -fs "$NTFY/$TOPIC/json?poll=1" | grep -c '"event":"message"')
 [[ $n == 1 ]] || fail "muted chat still pushed: $n messages on $TOPIC"
 ok "push: a muted chat sends no push"
 
-# Sygnal sits on the push network only: Synapse, chama-id, Postgres and Redis are out of its reach.
+# Sygnal sits on the push network only: Synapse, alo-id, Postgres and Redis are out of its reach.
 out=$(dc exec -T sygnal python -c "
 import socket
-for h, p in [('synapse', 8008), ('synapse', 9093), ('chama-id', 8090), ('postgres', 5432), ('redis', 6379)]:
+for h, p in [('synapse', 8008), ('synapse', 9093), ('alo-id', 8090), ('postgres', 5432), ('redis', 6379)]:
     try: socket.create_connection((h, p), 2).close(); print(h, p, 'reachable')
     except OSError: pass") || fail "sygnal reach check"
 [[ -z $out ]] || fail "sygnal reaches internal services: $out"
-ok "sygnal cannot reach synapse, chama-id, postgres or redis"
+ok "sygnal cannot reach synapse, alo-id, postgres or redis"
 
 echo "all checks passed"

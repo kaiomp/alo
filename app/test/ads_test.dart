@@ -1,5 +1,5 @@
-import 'package:chama/feed/ads.dart';
-import 'package:chama/services/social_service.dart';
+import 'package:alo/feed/ads.dart';
+import 'package:alo/services/social_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

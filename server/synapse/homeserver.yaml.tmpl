@@ -51,20 +51,20 @@ media_instance_running_background_jobs: media1
 max_upload_size: 100M
 url_preview_enabled: false
 
-# Spec: no IP logs older than 7 days. chama-id also reads the user-level last_seen from these logs.
+# Spec: no IP logs older than 7 days. alo-id also reads the user-level last_seen from these logs.
 user_ips_max_age: 7d
 
 enable_registration: false
 # Linking a web client by QR code (spec §5): a signed-in device asks for a one-time login token
-# (POST /_matrix/client/v1/login/get_token, at most 1 per minute per user). Chama accounts have no
+# (POST /_matrix/client/v1/login/get_token, at most 1 per minute per user). Alô accounts have no
 # password, so Synapse has no user-interactive auth to offer here; the token only reaches the web
 # encrypted to the key in its QR code, and the new device gets no message keys until it is verified.
 login_via_existing_session:
   enabled: true
   require_ui_auth: false
   token_timeout: 2m
-# chama-id's application service, for identity resets (spec §4).
-app_service_config_files: [/data/appservices/chama-id.yaml]
+# alo-id's application service, for identity resets (spec §4).
+app_service_config_files: [/data/appservices/alo-id.yaml]
 registration_shared_secret: "${REGISTRATION_SHARED_SECRET}"
 macaroon_secret_key: "${MACAROON_SECRET}"
 form_secret: "${FORM_SECRET}"
@@ -75,8 +75,8 @@ jwt_config:
   secret: "${JWT_SECRET}"
   algorithm: HS256
   subject_claim: sub
-  issuer: chama-id
-  audiences: [chama]
+  issuer: alo-id
+  audiences: [alo]
 
 # Push (spec §6): the pusher1 worker sends every push to Sygnal. Pushes carry
 # only event and room IDs; the phone fetches and decrypts the message itself.

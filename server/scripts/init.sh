@@ -11,19 +11,19 @@ DATA=server/data
 ENV=$DATA/.env
 SECRETS="POSTGRES_PASSWORD JWT_SECRET OTP_PEPPER REGISTRATION_SHARED_SECRET MACAROON_SECRET FORM_SECRET WORKER_REPLICATION_SECRET AS_TOKEN HS_TOKEN"
 
-mkdir -p "$DATA"/{synapse/workers,synapse/appservices,media,chama-id,push}
-# Containers write here as their own users (Synapse uid 991, chama-id user node), and a host user
+mkdir -p "$DATA"/{synapse/workers,synapse/appservices,media,alo-id,push}
+# Containers write here as their own users (Synapse uid 991, alo-id user node), and a host user
 # without root cannot chown to them, so these dirs are world-writable. The config files below are
 # world-readable for the same reason. $DATA itself is 700, so other host users cannot reach any of it.
 # Dev only. Files Synapse creates are owned by 991; `make reset` removes them through a container.
 chmod 700 "$DATA"
-chmod 777 "$DATA/synapse" "$DATA/media" "$DATA/chama-id"
+chmod 777 "$DATA/synapse" "$DATA/media" "$DATA/alo-id"
 
 umask 077
 touch "$ENV"
 chmod 600 "$ENV"
 has() { grep -q "^$1=" "$ENV"; }
-has SERVER_NAME || echo "SERVER_NAME=chama.test" >> "$ENV"
+has SERVER_NAME || echo "SERVER_NAME=alo.test" >> "$ENV"
 has PUBLIC_BASEURL || echo "PUBLIC_BASEURL=http://localhost:8080" >> "$ENV"
 for v in $SECRETS; do
   has "$v" || echo "$v=$(openssl rand -hex 32)" >> "$ENV"
@@ -52,7 +52,7 @@ render() { node -e '
   fs.writeFileSync(dst, out);
 ' "$ENV" "$1" "$2"; }
 render server/synapse/homeserver.yaml.tmpl "$DATA/synapse/homeserver.yaml"
-render server/synapse/appservice.yaml.tmpl "$DATA/synapse/appservices/chama-id.yaml"
+render server/synapse/appservice.yaml.tmpl "$DATA/synapse/appservices/alo-id.yaml"
 cp server/synapse/log.yaml "$DATA/synapse/"
 cp server/synapse/workers/*.yaml "$DATA/synapse/workers/"
 chmod 755 "$DATA/synapse/workers" "$DATA/synapse/appservices"

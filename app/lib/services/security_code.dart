@@ -27,8 +27,8 @@ class SecurityCodeWatch {
     _sub = _client.onSync.stream.listen((_) => check());
   }
 
-  static const _pinsKey = 'chama.master_keys';
-  static const _noticesKey = 'chama.security_notices';
+  static const _pinsKey = 'alo.master_keys';
+  static const _noticesKey = 'alo.security_notices';
   final Client _client;
   final SharedPreferences _prefs;
   late final StreamSubscription _sub;

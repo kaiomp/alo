@@ -17,15 +17,15 @@ import { createServer } from '../src/server.ts';
 import { rateKey, windowLimiter, ttlCache } from '../src/http.ts';
 import { connect } from 'node:net';
 
-// Any token `tok-<x>` belongs to `@<x>:chama.test`, on device DEV-<x>; `nodev-<x>` too, without a device.
+// Any token `tok-<x>` belongs to `@<x>:alo.test`, on device DEV-<x>; `nodev-<x>` too, without a device.
 class FakeAdmin implements SynapseAdmin {
   whoamiCalls = 0; uploads: [string, unknown][] = []; logouts: [string, string][] = []; noMasterKey = new Set<string>();
   deleted: [string, string[]][] = []; loggedOut = new Set<string>();
   async whoami(t: string) {
     this.whoamiCalls++;
-    if (t.startsWith('nodev-')) return { userId: `@${t.slice(6)}:chama.test` }; // e.g. an admin "log in as" token
+    if (t.startsWith('nodev-')) return { userId: `@${t.slice(6)}:alo.test` }; // e.g. an admin "log in as" token
     if (!t.startsWith('tok-') || this.loggedOut.has(t)) throw new AppError('invalid_token');
-    return { userId: `@${t.slice(4)}:chama.test`, deviceId: `DEV-${t.slice(4)}` };
+    return { userId: `@${t.slice(4)}:alo.test`, deviceId: `DEV-${t.slice(4)}` };
   }
   async hasMasterKey(_t: string, u: string) { return !this.noMasterKey.has(u); }
   async logoutOtherDevices(u: string, keep: string) { this.logouts.push([u, keep]); return 2; }
@@ -43,7 +43,7 @@ function make(o: { now?: () => number; dev?: boolean } = {}) {
   const codes = new Map<string, string>();
   const server = createServer({
     otp: new OtpService(db, { pepper: 'p', dev: !!o.dev, now: o.now, sms: { async send(p, t) { codes.set(p, t.match(/\d{6}/)![0]); } } }),
-    directory: new Directory(db, 'chama.test'), accounts: new Accounts(db, admin, { serverName: 'chama.test', now: o.now }), admin,
+    directory: new Directory(db, 'alo.test'), accounts: new Accounts(db, admin, { serverName: 'alo.test', now: o.now }), admin,
     pins: new Pins(db, { pepper: 'p', now: o.now }), links: new Links(db, { now: o.now }),
     jwtSecret: 'jwt', publicBaseUrl: 'http://localhost:8080', dev: o.dev, now: o.now,
   });
@@ -84,14 +84,14 @@ test('sign-in returns an opaque user_id and a JWT for its localpart', async () =
   const body = await r2.json();
   assert.equal(r2.status, 200);
   assert.deepEqual(Object.keys(body).sort(), ['homeserver', 'login_token', 'new_account', 'phone', 'user_id']);
-  assert.match(body.user_id, /^@u[a-z2-7]{16}:chama\.test$/);
+  assert.match(body.user_id, /^@u[a-z2-7]{16}:alo\.test$/);
   assert.equal(body.phone, '5511987654321');
   assert.equal(body.new_account, true);
   assert.equal(body.homeserver, 'http://localhost:8080');
   const claims = verifyJwt(body.login_token, 'jwt');
-  assert.equal(`@${claims.sub}:chama.test`, body.user_id);
-  assert.equal(claims.iss, 'chama-id');
-  assert.equal(claims.aud, 'chama');
+  assert.equal(`@${claims.sub}:alo.test`, body.user_id);
+  assert.equal(claims.iss, 'alo-id');
+  assert.equal(claims.aud, 'alo');
   assert.equal(Number(claims.exp) - Number(claims.iat), 120);
 });
 test('signing in again returns the same account with new_account false', async () => {
@@ -271,7 +271,7 @@ test('reset-identity checks the code and that the token belongs to the phone', a
     assert.equal(r.status, 403);
     assert.deepEqual(await r.json(), { error: 'forbidden' });
     assert.deepEqual(m.admin.uploads, []);
-    const bad = [null, [], 'x', { ...keys, master_key: undefined }, bundle('@uother:chama.test'),
+    const bad = [null, [], 'x', { ...keys, master_key: undefined }, bundle('@uother:alo.test'),
       { ...keys, self_signing_key: { ...keys.self_signing_key, usage: ['master'] } }, { ...keys, user_signing_key: { ...keys.user_signing_key, keys: {} } },
       { ...keys, auth: { type: 'm.login.dummy' } }, // exactly the three keys
       { ...keys, master_key: { ...keys.master_key, private_key: 'secret' } }, // only public-key fields
@@ -364,7 +364,7 @@ test('with a PIN, the SMS code gives a pin_token instead of a login; the right P
     assert.equal(v.pin_required, true);
     assert.equal(v.reset_at, null);
     const claims = verifyJwt(v.pin_token, 'jwt', clock);
-    assert.equal(claims.aud, 'chama-pin', 'Synapse accepts only aud chama, so this never logs in to Matrix');
+    assert.equal(claims.aud, 'alo-pin', 'Synapse accepts only aud alo, so this never logs in to Matrix');
     assert.equal(Number(claims.exp) - Number(claims.iat), 300);
     const pinLogin = (body: Record<string, unknown>) => post('/id/v1/pin/login', body, {}, at);
     assert.deepEqual(await json(await pinLogin({ pin_token: v.pin_token })), { status: 403, body: { error: 'pin_required' } });
@@ -376,7 +376,7 @@ test('with a PIN, the SMS code gives a pin_token instead of a login; the right P
     assert.deepEqual(Object.keys(body).sort(), ['homeserver', 'login_token', 'new_account', 'phone', 'user_id']);
     assert.equal(body.user_id, userId);
     assert.equal(body.new_account, false);
-    assert.equal(verifyJwt(body.login_token, 'jwt', clock).aud, 'chama');
+    assert.equal(verifyJwt(body.login_token, 'jwt', clock).aud, 'alo');
     // A Matrix login token is no pin_token.
     assert.equal((await pinLogin({ pin_token: body.login_token, pin: '123456' })).status, 401);
     clock += 301;
@@ -627,7 +627,7 @@ const start = (env: Record<string, string>) => spawnSync(process.execPath, ['src
   env: { PATH: process.env.PATH ?? '', DB_PATH: ':memory:', PORT: '0', ...env },
 });
 const secrets = {
-  JWT_SECRET: 'j', OTP_PEPPER: 'p', SERVER_NAME: 'chama.test', PUBLIC_BASEURL: 'http://localhost:8080',
+  JWT_SECRET: 'j', OTP_PEPPER: 'p', SERVER_NAME: 'alo.test', PUBLIC_BASEURL: 'http://localhost:8080',
   SYNAPSE_INTERNAL_URL: 'http://127.0.0.1:1', REGISTRATION_SHARED_SECRET: 'r', SYNAPSE_AS_TOKEN: 'a',
 };
 // Starts the real server and resolves with its first stdout line, or rejects if it exits first.
@@ -644,24 +644,24 @@ const startsListening = (env: Record<string, string>) => new Promise<string>((re
 test('refuses to start without an SMS provider outside dev mode', () => {
   const r = start(secrets);
   assert.equal(r.status, 1);
-  assert.match(r.stderr, /no SMS provider configured \(set CHAMA_DEV=1 for development\)/);
+  assert.match(r.stderr, /no SMS provider configured \(set ALO_DEV=1 for development\)/);
 });
 test('refuses dev mode unless the server name ends in .test or .localhost', () => {
-  for (const SERVER_NAME of ['chama.chat', 'chama.test.com', 'localhost.chama.chat', 'test']) {
-    const r = start({ ...secrets, CHAMA_DEV: '1', SERVER_NAME });
+  for (const SERVER_NAME of ['usealo.app', 'alo.test.com', 'localhost.usealo.app', 'test']) {
+    const r = start({ ...secrets, ALO_DEV: '1', SERVER_NAME });
     assert.equal(r.status, 1, SERVER_NAME);
-    assert.match(r.stderr, /CHAMA_DEV=1 is only allowed for \.test or \.localhost server names/);
+    assert.match(r.stderr, /ALO_DEV=1 is only allowed for \.test or \.localhost server names/);
   }
 });
 test('starts in dev mode for .test and .localhost server names', async () => {
-  for (const SERVER_NAME of ['chama.test', 'chama.localhost']) {
-    assert.match(await startsListening({ ...secrets, CHAMA_DEV: '1', SERVER_NAME }), /chama-id listening/);
+  for (const SERVER_NAME of ['alo.test', 'alo.localhost']) {
+    assert.match(await startsListening({ ...secrets, ALO_DEV: '1', SERVER_NAME }), /alo-id listening/);
   }
 });
 test('refuses to start when a secret is missing or empty', () => {
   for (const k of Object.keys(secrets)) {
     for (const v of [undefined, '']) {
-      const env: Record<string, string> = { ...secrets, CHAMA_DEV: '1' };
+      const env: Record<string, string> = { ...secrets, ALO_DEV: '1' };
       if (v === undefined) delete env[k]; else env[k] = v;
       const r = start(env);
       assert.equal(r.status, 1, `${k}=${v}`);
@@ -671,7 +671,7 @@ test('refuses to start when a secret is missing or empty', () => {
 });
 test('refuses to start with an invalid PORT', () => {
   for (const PORT of ['abc', '70000', '-1', '80.5']) {
-    const r = start({ ...secrets, CHAMA_DEV: '1', PORT });
+    const r = start({ ...secrets, ALO_DEV: '1', PORT });
     assert.equal(r.status, 1, PORT);
     assert.match(r.stderr, /invalid PORT/);
   }

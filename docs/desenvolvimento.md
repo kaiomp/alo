@@ -5,13 +5,13 @@ emulador Android, executar os testes e gerar builds de release. No fim há as re
 para quem contribui e uma seção de problemas comuns.
 
 <p align="center">
-  <img src="imagens/web-conversa-tela-larga-claro.webp" alt="Chama na web em tela larga: lista de conversas à esquerda e conversa aberta à direita" width="760">
+  <img src="imagens/web-conversa-tela-larga-claro.webp" alt="Alô na web em tela larga: lista de conversas à esquerda e conversa aberta à direita" width="760">
 </p>
 
 > **Resumo em quatro comandos** (depois de instalar os pré-requisitos):
 >
 > ```sh
-> pnpm install     # dependências Node (chama-id, ferramentas de teste)
+> pnpm install     # dependências Node (alo-id, ferramentas de teste)
 > make up          # sobe o servidor local em http://localhost:8080
 > make smoke       # dois usuários entram e trocam uma mensagem criptografada
 > make app-web     # abre o app no Chrome
@@ -47,7 +47,7 @@ Quem só mexe no servidor pode parar na primeira tabela.
 | Ferramenta | Versão | Para quê | Como conferir |
 |---|---|---|---|
 | Docker com o plugin Compose (`docker compose`) | testado com Docker 29.6.2 e Compose 5.3.1 | roda a pilha do servidor | `docker compose version` |
-| Node.js | 26 (arquivo `.nvmrc`) | chama-id, `tools/smoke`, `tools/peer` e os scripts | `node --version` |
+| Node.js | 26 (arquivo `.nvmrc`) | alo-id, `tools/smoke`, `tools/peer` e os scripts | `node --version` |
 | pnpm | 10.32.1 (campo `packageManager` do `package.json`) | instala as dependências do workspace | `pnpm --version` |
 | openssl, curl, git | qualquer versão recente | `server/scripts/init.sh` gera segredos com openssl; `check.sh` usa curl | `openssl version` |
 
@@ -106,26 +106,26 @@ flutter doctor               # confere tudo de uma vez
 ## 2. Mapa do repositório
 
 ```
-chama/
+alo/
 ├── Makefile                    atalhos: make up, make test, make app-web, make app-apk…
 ├── package.json                workspace pnpm (Node 26, pnpm 10.32.1)
 ├── pnpm-workspace.yaml         pacotes do workspace: services/* e tools/*
 ├── server/                     a pilha do servidor em Docker Compose
 │   ├── compose.yaml            todos os serviços, redes e portas
 │   ├── caddy/Caddyfile         proxy reverso: decide qual serviço atende cada caminho
-│   ├── synapse/                modelos de configuração do Synapse, dos workers e do app service do chama-id
+│   ├── synapse/                modelos de configuração do Synapse, dos workers e do app service do alo-id
 │   ├── sygnal/sygnal.yaml      configuração do gateway de push (Web Push)
 │   ├── scripts/init.sh         gera segredos e configuração em server/data (roda a cada make up)
 │   ├── scripts/check.sh        testes de aceitação contra a pilha rodando
-│   └── data/                   gerado: segredos (.env), banco do chama-id, mídia, chaves. Fora do git
+│   └── data/                   gerado: segredos (.env), banco do alo-id, mídia, chaves. Fora do git
 ├── services/
-│   └── chama-id/               serviço de entrada por telefone (código SMS → login Matrix), em TypeScript
+│   └── alo-id/               serviço de entrada por telefone (código SMS → login Matrix), em TypeScript
 │       ├── src/                código: rotas, OTP, contas, diretório de contatos, cliente admin do Synapse
 │       └── test/               testes com node:test
 ├── tools/
 │   ├── smoke/                  teste de fumaça: dois usuários trocam uma mensagem criptografada
 │   └── peer/                   "pessoa de teste" roteirizada que conversa com o app nos testes de ponta a ponta
-├── app/                        o app Chama em Flutter (Android e web)
+├── app/                        o app Alô em Flutter (Android e web)
 │   ├── lib/                    código do app (mapa detalhado em app/README.md)
 │   ├── test/                   testes de unidade e de widget
 │   ├── integration_test/       testes de ponta a ponta contra a pilha local
@@ -137,13 +137,13 @@ chama/
 └── docs/
     ├── design/                 documento de arquitetura
     ├── imagens/                capturas de tela e logo usados na documentação
-    ├── chama-id-api.md         API do chama-id
+    ├── alo-id-api.md         API do alo-id
     ├── desenvolvimento.md      este guia
     └── operacao.md             como operar um servidor em produção
 ```
 
 Outros documentos: [README do app](../app/README.md),
-[API do chama-id](chama-id-api.md), [operação em produção](operacao.md) e a
+[API do alo-id](alo-id-api.md), [operação em produção](operacao.md) e a
 [arquitetura](design/2026-10-24-architecture.md).
 
 ---
@@ -158,7 +158,7 @@ exposta na rede.
 
 ```mermaid
 flowchart TB
-    app["App Chama<br/>(Chrome ou emulador)"]
+    app["App Alô<br/>(Chrome ou emulador)"]
     subgraph maquina["Sua máquina (127.0.0.1)"]
         caddy["Caddy<br/>:8080 API · :8081 ntfy"]
     end
@@ -167,7 +167,7 @@ flowchart TB
         sync1["sync1<br/>worker de sync :8083"]
         media1["media1<br/>worker de mídia :8085"]
         pusher1["pusher1<br/>worker de push"]
-        chamaid["chama-id<br/>:8090"]
+        aloid["alo-id<br/>:8090"]
         pg[("PostgreSQL")]
         redis[("Redis")]
     end
@@ -178,7 +178,7 @@ flowchart TB
     app -- "HTTP :8080" --> caddy
     caddy -- "/_matrix/client/…/sync" --> sync1
     caddy -- "/_matrix/media/…" --> media1
-    caddy -- "/id/…" --> chamaid
+    caddy -- "/id/…" --> aloid
     caddy -- "outros /_matrix/…" --> synapse
     caddy -- ":8081" --> ntfy
     synapse --- pg
@@ -186,7 +186,7 @@ flowchart TB
     sync1 --- redis
     media1 --- redis
     pusher1 --- redis
-    chamaid -- "API admin (rede interna)" --> synapse
+    aloid -- "API admin (rede interna)" --> synapse
     pusher1 -- "notificação" --> sygnal
     sygnal -- "Web Push criptografado" --> ntfy
     ntfy -. "push" .-> app
@@ -202,7 +202,7 @@ flowchart TB
 | `pusher1` | mesma do Synapse | worker que envia notificações ao Sygnal |
 | `sygnal` | `matrixdotorg/sygnal:v0.17.0` | gateway de push: manda Web Push criptografado ao celular |
 | `ntfy` | `binwiederhier/ntfy:v2.28.0` | servidor UnifiedPush para o emulador (só em desenvolvimento) |
-| `chama-id` | construída de `services/chama-id/Dockerfile` (Node 26.12.1) | entrada por telefone e código SMS, busca de contatos, redefinição de identidade |
+| `alo-id` | construída de `services/alo-id/Dockerfile` (Node 26.12.1) | entrada por telefone e código SMS, busca de contatos, redefinição de identidade |
 | `caddy` | `caddy:2.11.7-alpine` | proxy reverso, a única porta de entrada |
 
 Como o Caddy distribui as requisições (`server/caddy/Caddyfile`):
@@ -214,7 +214,7 @@ Como o Caddy distribui as requisições (`server/caddy/Caddyfile`):
 | rotas de sync (`/_matrix/client/v3/sync` e afins) | `sync1:8083` |
 | `/_matrix/media/*` e `/_matrix/client/v1/media/*` | `media1:8085` |
 | `/push/v1/config` | JSON fixo com o endereço do gateway e a chave pública VAPID do Sygnal |
-| `/id/*` | `chama-id:8090` |
+| `/id/*` | `alo-id:8090` |
 | outros `/_matrix/*` | `synapse:8008` |
 | qualquer outro | `404` |
 
@@ -231,7 +231,7 @@ Como o Caddy distribui as requisições (`server/caddy/Caddyfile`):
 
 O que o `init.sh` faz a cada `make up`:
 
-1. Cria `server/data/.env` na primeira vez, com `SERVER_NAME=chama.test`,
+1. Cria `server/data/.env` na primeira vez, com `SERVER_NAME=alo.test`,
    `PUBLIC_BASEURL=http://localhost:8080` e segredos aleatórios (`openssl rand -hex 32`). Um segredo
    que já existe nunca é trocado.
 2. Gera uma vez o par de chaves VAPID do Sygnal (`server/data/push/vapid.pem`) e a chave de
@@ -244,14 +244,14 @@ O que o `init.sh` faz a cada `make up`:
 ### Fatos do ambiente local
 
 - Endereço base: `http://localhost:8080` (no emulador Android: `http://10.0.2.2:8080`).
-- `server_name` é `chama.test`. As contas têm ID opaco, por exemplo `@u7k3m5q2x4w6a2b5c:chama.test`
+- `server_name` é `alo.test`. As contas têm ID opaco, por exemplo `@u7k3m5q2x4w6a2b5c:alo.test`
   (`u` + 16 caracteres aleatórios). O número de telefone nunca aparece no ID.
-- O SMS é simulado: o código de verdade aparece no log do chama-id, e o código fixo `000000` é
-  aceito para qualquer número que tenha pedido um código (`CHAMA_DEV=1`). Para ver o código
+- O SMS é simulado: o código de verdade aparece no log do alo-id, e o código fixo `000000` é
+  aceito para qualquer número que tenha pedido um código (`ALO_DEV=1`). Para ver o código
   sorteado:
 
   ```sh
-  docker compose -f server/compose.yaml --env-file server/data/.env logs chama-id | grep '\[sms\]'
+  docker compose -f server/compose.yaml --env-file server/data/.env logs alo-id | grep '\[sms\]'
   ```
 
 - O modo de desenvolvimento só liga quando o `SERVER_NAME` termina em `.test` ou `.localhost`.
@@ -272,13 +272,13 @@ aleatórios. O que é conferido:
 | Entrada | pedir e confirmar código, ID opaco sem dígitos do telefone, login JWT no Synapse |
 | Contatos | busca por hash sem token dá `401`; com token encontra a conta |
 | Workers | o sync é atendido pelo `sync1` e a mídia pelo `media1`, nunca pelo processo principal |
-| Admin | o cliente admin do chama-id lê a última atividade e desativa uma conta (o token dela para de funcionar) |
+| Admin | o cliente admin do alo-id lê a última atividade e desativa uma conta (o token dela para de funcionar) |
 | Identidade | redefinição de identidade completa (`tools/smoke/identity.ts`) |
 | Conta (M4) | token de login de uso único sem pedir senha (1 por minuto, vale uma vez), ponto de encontro da vinculação, desconectar aparelhos, PIN da conta (`tools/smoke/safety.ts`) |
-| Números reciclados | conta parada é aposentada, conta com PIN nunca é, conta desativada pelo operador dá conta nova (`tools/smoke/recycled.ts`, roda dentro do contêiner do chama-id com um segundo chama-id em `127.0.0.1:8099` que trata toda conta como parada); nenhuma conta tem token de acesso sem aparelho |
+| Números reciclados | conta parada é aposentada, conta com PIN nunca é, conta desativada pelo operador dá conta nova (`tools/smoke/recycled.ts`, roda dentro do contêiner do alo-id com um segundo alo-id em `127.0.0.1:8099` que trata toda conta como parada); nenhuma conta tem token de acesso sem aparelho |
 | Segurança | token do app service recusado vindo de IP público; login por senha e cadastro aberto recusados; `/_synapse/admin` bloqueado |
 | Push | a mensagem chega ao tópico ntfy como Web Push criptografado; decifrado, só tem IDs (sem texto, sem remetente); conversa silenciada não gera push |
-| Isolamento | o Sygnal não alcança Synapse, chama-id, PostgreSQL nem Redis |
+| Isolamento | o Sygnal não alcança Synapse, alo-id, PostgreSQL nem Redis |
 
 ### Teste de fumaça: `make smoke`
 
@@ -300,8 +300,8 @@ Suba a pilha antes (`make up`). O app escolhe o servidor assim (`app/lib/config.
 |---|---|
 | debug na web | `http://localhost:8080` |
 | debug no Android | `http://10.0.2.2:8080` (é assim que o emulador enxerga a sua máquina) |
-| qualquer build com `--dart-define=CHAMA_BASE_URL=…` | o endereço informado |
-| release e profile | **só** `https://…` informado em `CHAMA_BASE_URL`; sem isso o app não abre |
+| qualquer build com `--dart-define=ALO_BASE_URL=…` | o endereço informado |
+| release e profile | **só** `https://…` informado em `ALO_BASE_URL`; sem isso o app não abre |
 
 ### No Chrome
 
@@ -464,7 +464,7 @@ for convidado e responde.
 cd tools/peer && PEER_PHONE=5511900001234 node peer.ts
 ```
 
-Quando aparece `peer ready @u…:chama.test`, procure `11 90000-1234` em **Nova conversa** no app.
+Quando aparece `peer ready @u…:alo.test`, procure `11 90000-1234` em **Nova conversa** no app.
 A pessoa de teste:
 
 - diz `oi, entrei` ao entrar na conversa;
@@ -474,7 +474,7 @@ A pessoa de teste:
 - responde 30 s depois (em vez de 3 s) a um texto que começa com `demora`, para dar tempo de
   fechar o app e receber a resposta como notificação.
 
-Variáveis opcionais: `PEER_NAME` (nome exibido, padrão `Peer`) e `CHAMA_BASE_URL` (padrão
+Variáveis opcionais: `PEER_NAME` (nome exibido, padrão `Peer`) e `ALO_BASE_URL` (padrão
 `http://localhost:8080`).
 
 ### Num celular de verdade
@@ -483,7 +483,7 @@ O celular não enxerga `10.0.2.2`. Pelo cabo USB, redirecione a porta e informe 
 
 ```sh
 adb reverse tcp:8080 tcp:8080
-cd app && flutter run -d <serial do celular> --dart-define=CHAMA_BASE_URL=http://localhost:8080
+cd app && flutter run -d <serial do celular> --dart-define=ALO_BASE_URL=http://localhost:8080
 ```
 
 O build debug só permite HTTP sem criptografia para `localhost` e `10.0.2.2`. Push não funciona
@@ -500,7 +500,7 @@ cd app && ./scripts/ntfy-setup.sh
 ```
 
 O script baixa o ntfy 1.25.2 do F-Droid (conferido por SHA-256, guardado em
-`~/.cache/chama-ntfy/`), instala, dá a permissão de notificação, tira o ntfy da otimização de
+`~/.cache/alo-ntfy/`), instala, dá a permissão de notificação, tira o ntfy da otimização de
 bateria e configura o servidor padrão `http://10.0.2.2:8081`. Rodar de novo não muda nada.
 
 ```mermaid
@@ -529,8 +529,8 @@ O servidor nunca manda o conteúdo da mensagem no push. Sem um distribuidor inst
 
 | Comando | O que roda | Precisa da pilha? |
 |---|---|---|
-| `make test` | todos os testes de unidade: `pnpm -r test` (chama-id) e `flutter test` (app) | não |
-| `pnpm --filter chama-id test` | só os testes do chama-id (81 hoje) | não |
+| `make test` | todos os testes de unidade: `pnpm -r test` (alo-id) e `flutter test` (app) | não |
+| `pnpm --filter alo-id test` | só os testes do alo-id (81 hoje) | não |
 | `make app-test` | testes de unidade e de widget do app (185 hoje) | não |
 | `cd app && flutter analyze` | análise estática do Dart (lints do `analysis_options.yaml`) | não |
 | `./server/scripts/check.sh` | aceitação do servidor | sim |
@@ -590,7 +590,7 @@ cd app && ./scripts/e2e.sh android integration_test/contacts_test.dart
 | `session_test.dart` | tiques até o azul, resposta, reação, edição e exclusão | Chrome e Android |
 | `identity_test.dart` | aparelho novo: redefinir a identidade e destravar com a chave de recuperação; reparo de uma configuração interrompida | Chrome e Android |
 | `app_test.dart` | pela interface: conversa com a pessoa de teste, tiques azuis, foto, arquivo e mensagem de voz | Chrome e Android |
-| `contacts_test.dart` | a pessoa de teste aparece em "Contatos no Chama" com o nome da agenda e abre uma conversa | só Android |
+| `contacts_test.dart` | a pessoa de teste aparece em "Contatos no Alô" com o nome da agenda e abre uma conversa | só Android |
 | `push_test.dart` | uma mensagem chega como notificação com o app em segundo plano | só Android, com ntfy configurado |
 | `screenshots_test.dart` | gera as capturas de tela (seção 6) | Chrome e Android |
 
@@ -598,17 +598,17 @@ cd app && ./scripts/e2e.sh android integration_test/contacts_test.dart
 `./scripts/ntfy-setup.sh` e `push_test.dart`.
 
 Como o teste de push funciona: em certo ponto o teste imprime `E2E_BACKGROUND`. O `drive.sh`
-então aperta Home no emulador, espera uma notificação nova do Chama (até 90 s) e abre o app de
+então aperta Home no emulador, espera uma notificação nova do Alô (até 90 s) e abre o app de
 novo para o teste conferir o resultado.
 
 Nos testes de contatos e de push, o `e2e.sh` grava na agenda do emulador a pessoa de teste com
-o nome `Peer Agenda` e um número sem conta, `Sem Chama`. Os contatos são removidos no fim.
+o nome `Peer Agenda` e um número sem conta, `Sem Alô`. Os contatos são removidos no fim.
 
 Variáveis de ambiente dos scripts de teste:
 
 | Variável | Efeito |
 |---|---|
-| `CHAMA_AVD=<nome>` | qual AVD ligar quando nenhum emulador está ligado (padrão: o primeiro de `emulator -list-avds`) |
+| `ALO_AVD=<nome>` | qual AVD ligar quando nenhum emulador está ligado (padrão: o primeiro de `emulator -list-avds`) |
 | `ANDROID_SERIAL=<serial>` | qual emulador usar quando há mais de um |
 | `CHROME=<caminho>` | onde está o executável do Chrome (padrão: o caminho do macOS) |
 | `WEB_SIZE=<l>x<a>[@<densidade>]` | tamanho da janela do Chrome (padrão `1280x900`) |
@@ -662,8 +662,8 @@ passa `--flavor` (campo `default-flavor` do `pubspec.yaml`).
 ### Comandos
 
 ```sh
-make app-apk CHAMA_BASE_URL=https://chama.example   # APKs fdroid, um por ABI
-make app-aab CHAMA_BASE_URL=https://chama.example   # pacote para a Play Store (flavor play)
+make app-apk ALO_BASE_URL=https://alo.example   # APKs fdroid, um por ABI
+make app-aab ALO_BASE_URL=https://alo.example   # pacote para a Play Store (flavor play)
 ```
 
 | Comando | Saída |
@@ -674,13 +674,13 @@ make app-aab CHAMA_BASE_URL=https://chama.example   # pacote para a Play Store (
 Os dois alvos rodam `flutter pub get` antes. Isso apaga um `GeneratedPluginRegistrant` velho
 deixado por um teste de integração, que quebraria o `javac`.
 
-### `CHAMA_BASE_URL` é obrigatório e precisa ser HTTPS
+### `ALO_BASE_URL` é obrigatório e precisa ser HTTPS
 
-Builds release e profile se recusam a abrir sem um `CHAMA_BASE_URL` `https://`. O Makefile já
+Builds release e profile se recusam a abrir sem um `ALO_BASE_URL` `https://`. O Makefile já
 para antes de compilar:
 
 ```text
-Set CHAMA_BASE_URL=https://… (make app-apk CHAMA_BASE_URL=https://chama.example)
+Set ALO_BASE_URL=https://… (make app-apk ALO_BASE_URL=https://alo.example)
 ```
 
 Por quê: a configuração de segurança de rede do Android (`network_security_config.xml`, só HTTPS)
@@ -693,22 +693,22 @@ A chave de assinatura vem do ambiente, nunca do repositório.
 
 | Variável | Conteúdo |
 |---|---|
-| `CHAMA_KEYSTORE` | caminho de um arquivo `.jks` ou `.p12` **fora** do repositório |
-| `CHAMA_KEYSTORE_PASSWORD` | senha do keystore |
-| `CHAMA_KEY_ALIAS` | alias da chave |
-| `CHAMA_KEY_PASSWORD` | senha da chave |
-| `CHAMA_UNSIGNED=1` | gera o release sem assinatura e ignora as variáveis acima (para uma loja que assina sozinha, como o servidor de build do F-Droid) |
-| `CHAMA_ALLOW_DEBUG_KEY=1` | só para teste local: assina com a chave de debug e o nome da versão ganha o sufixo `-debugkey` |
+| `ALO_KEYSTORE` | caminho de um arquivo `.jks` ou `.p12` **fora** do repositório |
+| `ALO_KEYSTORE_PASSWORD` | senha do keystore |
+| `ALO_KEY_ALIAS` | alias da chave |
+| `ALO_KEY_PASSWORD` | senha da chave |
+| `ALO_UNSIGNED=1` | gera o release sem assinatura e ignora as variáveis acima (para uma loja que assina sozinha, como o servidor de build do F-Droid) |
+| `ALO_ALLOW_DEBUG_KEY=1` | só para teste local: assina com a chave de debug e o nome da versão ganha o sufixo `-debugkey` |
 
 ```mermaid
 flowchart TD
-    A["build release"] --> B{"CHAMA_UNSIGNED=1?"}
+    A["build release"] --> B{"ALO_UNSIGNED=1?"}
     B -- sim --> U["APK sem assinatura<br/>(a loja assina)"]
-    B -- não --> C{"CHAMA_KEYSTORE definido?"}
+    B -- não --> C{"ALO_KEYSTORE definido?"}
     C -- sim --> D{"arquivo existe e as 3 outras<br/>variáveis estão definidas?"}
     D -- sim --> S["assinado com a sua chave"]
     D -- não --> E["erro antes de compilar"]
-    C -- não --> F{"CHAMA_ALLOW_DEBUG_KEY=1?"}
+    C -- não --> F{"ALO_ALLOW_DEBUG_KEY=1?"}
     F -- sim --> G["assinado com a chave de debug<br/>versão termina em -debugkey"]
     F -- não --> E
 ```
@@ -716,10 +716,10 @@ flowchart TD
 Criar uma chave nova (o `keytool` vem com o JDK) e gerar os APKs:
 
 ```sh
-keytool -genkeypair -v -keystore ~/chama-release.jks -keyalg RSA -keysize 4096 -validity 10000 -alias chama
-export CHAMA_KEYSTORE=~/chama-release.jks CHAMA_KEY_ALIAS=chama
-export CHAMA_KEYSTORE_PASSWORD='…' CHAMA_KEY_PASSWORD='…'
-make app-apk CHAMA_BASE_URL=https://chama.example
+keytool -genkeypair -v -keystore ~/alo-release.jks -keyalg RSA -keysize 4096 -validity 10000 -alias alo
+export ALO_KEYSTORE=~/alo-release.jks ALO_KEY_ALIAS=alo
+export ALO_KEYSTORE_PASSWORD='…' ALO_KEY_PASSWORD='…'
+make app-apk ALO_BASE_URL=https://alo.example
 ```
 
 > **Cuidado com a chave de debug.** As lojas recusam builds assinados com ela, e um build
@@ -729,7 +729,7 @@ make app-apk CHAMA_BASE_URL=https://chama.example
 Build sem assinatura para o F-Droid:
 
 ```sh
-cd app && CHAMA_UNSIGNED=1 flutter build apk --release --flavor fdroid --dart-define=CHAMA_BASE_URL=https://chama.example
+cd app && ALO_UNSIGNED=1 flutter build apk --release --flavor fdroid --dart-define=ALO_BASE_URL=https://alo.example
 ```
 
 A saída é `app/build/app/outputs/flutter-apk/app-fdroid-release.apk`. Sem assinatura, ela não
@@ -755,8 +755,8 @@ armeabi-v7a 1, arm64-v8a 2, x86_64 4. Exemplo: o código 2 vira 2002 no APK arm6
 | **Comentários `// Limit:`** | um limite deliberado de escala ou simplicidade leva um comentário `// Limit:` dizendo o teto e o caminho para subir. Exemplo: `// Limit: SQLite + in-process rate limits, single replica only; move to PostgreSQL + Redis (spec §12) in M7.` |
 | **Nenhum segredo no repositório** | segredos do servidor ficam em `server/data/.env` (gerado, fora do git); chaves de assinatura vêm de variáveis de ambiente; `.jks`, `.p12` e `.pem` estão no `app/android/.gitignore` |
 | **Teste para toda mudança de lógica** | cada mudança de comportamento vem com teste. Código sensível (OTP, JWT, limites de tentativa, cotas diárias) precisa de um teste para cada limite |
-| **TypeScript sem build** | o chama-id roda TypeScript direto no Node 26 (remoção de tipos). Use só sintaxe apagável: nada de `enum`, `namespace` ou propriedades de parâmetro, e importe com extensão `.ts` |
-| **Erros do chama-id** | lance `AppError('<código>')` de `src/errors.ts`; o código define o status HTTP |
+| **TypeScript sem build** | o alo-id roda TypeScript direto no Node 26 (remoção de tipos). Use só sintaxe apagável: nada de `enum`, `namespace` ou propriedades de parâmetro, e importe com extensão `.ts` |
+| **Erros do alo-id** | lance `AppError('<código>')` de `src/errors.ts`; o código define o status HTTP |
 | **Inspiração no WhatsApp, sem cópia** | copiamos padrões de interação, nunca código, ícones, textos ou cores exatas |
 | **Documentação em pt-BR** | README, `docs/` e `app/README.md` em português; comentários de código e mensagens de commit em inglês |
 
@@ -800,7 +800,7 @@ lsof -nP -iTCP:4444 -sTCP:LISTEN
 kill <PID>
 ```
 
-O chromedriver é baixado na versão exata do seu Chrome para `~/.cache/chama-chromedriver/`.
+O chromedriver é baixado na versão exata do seu Chrome para `~/.cache/alo-chromedriver/`.
 Depois de atualizar o Chrome, o script baixa um novo sozinho.
 
 ### Emulador demora ou `Emulator did not boot in 5 minutes`
@@ -814,7 +814,7 @@ rodando.
 "$ANDROID_HOME/emulator/emulator" -avd Medium_Phone_API_36.1 &
 ```
 
-Se aparecer `No AVD '…'`, crie um AVD (seção 1) ou informe o nome com `CHAMA_AVD`.
+Se aparecer `No AVD '…'`, crie um AVD (seção 1) ou informe o nome com `ALO_AVD`.
 
 ### Aviso do Kotlin Gradle Plugin (KGP) no build Android
 
@@ -840,7 +840,7 @@ Desligue a VPN durante o desenvolvimento ou use outra faixa localmente.
 ### O app no emulador não chega ao servidor
 
 Confira se a pilha está no ar (`curl http://localhost:8080/id/v1/health` deve responder
-`{"ok":true}`) e se você não passou um `CHAMA_BASE_URL` com `localhost`: no emulador o endereço
+`{"ok":true}`) e se você não passou um `ALO_BASE_URL` com `localhost`: no emulador o endereço
 certo é `10.0.2.2`.
 
 ### O push não chega no emulador

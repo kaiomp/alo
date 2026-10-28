@@ -1,11 +1,11 @@
-# Segurança e privacidade no Chama
+# Segurança e privacidade no Alô
 
-<p align="center"><img src="imagens/logo.svg" width="96" alt="Ícone do Chama: uma linha amarela que desenha os arcos da Pampulha e fecha num balão de conversa, sobre fundo roxo"></p>
+<p align="center"><img src="imagens/logo.svg" width="96" alt="Ícone do Alô: uma linha amarela que desenha os arcos da Pampulha e fecha num balão de conversa, sobre fundo roxo"></p>
 
-Este documento explica, em linguagem simples, **o que o Chama protege, de quem, e onde estão
-os limites**. Foi escrito para quem vai operar, financiar ou apoiar o Chama (instituições,
+Este documento explica, em linguagem simples, **o que o Alô protege, de quem, e onde estão
+os limites**. Foi escrito para quem vai operar, financiar ou apoiar o Alô (instituições,
 órgãos públicos, financiadores) e também para desenvolvedores. Os detalhes técnicos estão na
-[arquitetura](design/2026-10-24-architecture.md) e na [API do chama-id](chama-id-api.md).
+[arquitetura](design/2026-10-24-architecture.md) e na [API do alo-id](alo-id-api.md).
 
 Situação: reflete o código depois da etapa M3 (2026-10-24), mais o PIN da conta da etapa M4.
 Onde algo ainda é plano, o texto diz em qual marco ele entra.
@@ -20,7 +20,7 @@ nos aparelhos de quem conversa; **o operador do servidor não consegue ler**, ma
 
 | Ator | Quem é | O que pode tentar |
 |---|---|---|
-| **Operador** | Quem roda o servidor do Chama (Synapse, chama-id, Sygnal). | Ler mensagens, entrar como alguém, mapear quem fala com quem. |
+| **Operador** | Quem roda o servidor do Alô (Synapse, alo-id, Sygnal). | Ler mensagens, entrar como alguém, mapear quem fala com quem. |
 | **Provedor de SMS e operadora de celular** | Quem entrega o código de entrada. | Ver o número e o código; uma operadora pode transferir o número para outro chip. |
 | **Distribuidor de push** | O ntfy (ou outro app UnifiedPush) ou o Google (FCM) no build da Play Store. | Ver quando chegam notificações para um aparelho. |
 | **Golpista com SIM swap** | Alguém que consegue um chip com o número da vítima. | Entrar na conta da vítima e falar em nome dela (o golpe do "troquei de número, me faz um PIX"). |
@@ -32,14 +32,14 @@ nos aparelhos de quem conversa; **o operador do servidor não consegue ler**, ma
 ```mermaid
 flowchart LR
     subgraph A["Celular de Ana"]
-        a_app["App Chama<br/>chaves privadas<br/>nomes da agenda<br/>histórico"]
+        a_app["App Alô<br/>chaves privadas<br/>nomes da agenda<br/>histórico"]
     end
     subgraph B["Celular de Bruno"]
-        b_app["App Chama<br/>chaves privadas<br/>nomes da agenda<br/>histórico"]
+        b_app["App Alô<br/>chaves privadas<br/>nomes da agenda<br/>histórico"]
     end
     subgraph OP["Servidor do operador"]
         syn["Synapse<br/>mensagens CIFRADAS<br/>+ metadados"]
-        cid["chama-id<br/>telefone → conta<br/>hashes dos números"]
+        cid["alo-id<br/>telefone → conta<br/>hashes dos números"]
         syg["Sygnal<br/>só IDs de sala e evento"]
     end
     subgraph FORA["Terceiros"]
@@ -66,19 +66,19 @@ sempre cifrado e só é decifrado nos aparelhos.
 |---|---|---|
 | Texto das mensagens | **Não** | Cifrado de ponta a ponta (Megolm) no aparelho de quem envia. |
 | Fotos, vídeos, arquivos, mensagens de voz | **Não** (só o tamanho e o horário do envio) | Anexos são cifrados antes do envio; o nome do arquivo e o tipo vão dentro da mensagem cifrada. |
-| Emoji de uma reação | **Não** | O Chama coloca o emoji dentro da parte cifrada. O servidor vê só que alguém reagiu a uma mensagem. |
+| Emoji de uma reação | **Não** | O Alô coloca o emoji dentro da parte cifrada. O servidor vê só que alguém reagiu a uma mensagem. |
 | Nomes salvos na agenda | **Não** | Nunca saem do celular. O mapa número → conta fica no armazenamento seguro do sistema. |
 | Conteúdo das notificações | **Não** | O push leva só os IDs da sala e do evento (`event_id_only`); o celular busca e decifra a mensagem. |
 | Confirmações de entrega (✓✓ cinza) | **Não** o conteúdo; vê que houve uma | Vão como mensagem cifrada (Olm) direto entre aparelhos. |
 | Chaves privadas e chave de recuperação | **Não** | Criadas no aparelho; só as chaves públicas vão para o servidor. |
-| Número de telefone de cada conta | **Sim** | O chama-id guarda `telefone → conta` para a entrada e para a busca de contatos. |
+| Número de telefone de cada conta | **Sim** | O alo-id guarda `telefone → conta` para a entrada e para a busca de contatos. |
 | Quem conversa com quem, e em quais grupos | **Sim** | A participação nas salas é estado do Matrix, sem criptografia. |
 | Quando cada mensagem foi enviada, e de qual conta | **Sim** | O servidor precisa disso para ordenar e entregar. |
 | Nome e foto do perfil, nome e foto dos grupos | **Sim** | São campos de perfil e de estado da sala no Matrix, sem criptografia de ponta a ponta. |
 | Qual mensagem responde ou edita qual | **Sim** | A ligação entre mensagens (`m.relates_to`) fica fora da parte cifrada, como exige o Matrix. |
 | Leitura (✓✓ azul), "digitando…", online | **Sim** | São sinais do Matrix que passam pelo servidor. Com as confirmações de leitura desligadas, o recibo vira privado: o servidor ainda vê, os contatos não. |
 | Endereço IP | **Sim**, por até 7 dias | O Synapse apaga os registros de IP depois de 7 dias (`user_ips_max_age: 7d`). |
-| Números da agenda de quem usa a busca de contatos | **Pode descobrir** | Vão como hash SHA-256, que pode ser revertido (ver "Limites conhecidos"). O chama-id não guarda nem registra esses hashes, mas isso é uma promessa do operador, não uma garantia técnica. |
+| Números da agenda de quem usa a busca de contatos | **Pode descobrir** | Vão como hash SHA-256, que pode ser revertido (ver "Limites conhecidos"). O alo-id não guarda nem registra esses hashes, mas isso é uma promessa do operador, não uma garantia técnica. |
 
 ## Proteções
 
@@ -86,7 +86,7 @@ sempre cifrado e só é decifrado nos aparelhos.
 
 Toda sala é criada com criptografia, e o servidor liga a criptografia por padrão. Se o app
 encontrar uma conversa sem criptografia, liga a criptografia quando pode; quando não pode,
-mostra "Esta conversa não é criptografada. O Chama não envia mensagens nela." e não envia nada,
+mostra "Esta conversa não é criptografada. O Alô não envia mensagens nela." e não envia nada,
 nem por resposta rápida na notificação.
 
 <p align="center"><img src="imagens/android-dados-do-grupo-claro.webp" width="240" alt="Dados do grupo com participantes, administrador, aviso de criptografia e a opção Sair do grupo"></p>
@@ -103,10 +103,10 @@ e contra o próprio operador, que controla a entrada e poderia entrar como qualq
 **Vincular a web pelo QR code.** Para conectar o app web, o celular já conectado pede ao Synapse
 um **token de login de uso único** (`POST /_matrix/client/v1/login/get_token`) e o entrega à
 página web cifrado para a chave do QR code (o fluxo completo está na
-[API do chama-id](chama-id-api.md#vinculação-do-app-web-por-qr-code)). Por padrão o Synapse pede uma
+[API do alo-id](alo-id-api.md#vinculação-do-app-web-por-qr-code)). Por padrão o Synapse pede uma
 confirmação extra antes de emitir esse token (a "autenticação interativa", que pede a senha ou
-um login SSO). As contas do Chama não têm senha nem SSO, então essa confirmação nunca poderia
-ser feita, e o servidor do Chama a desliga (`login_via_existing_session.require_ui_auth: false`).
+um login SSO). As contas do Alô não têm senha nem SSO, então essa confirmação nunca poderia
+ser feita, e o servidor do Alô a desliga (`login_via_existing_session.require_ui_auth: false`).
 Por que isso é seguro:
 
 - **Só um aparelho conectado pede o token, e isso tem um custo.** O pedido exige o token de
@@ -118,7 +118,7 @@ Por que isso é seguro:
   assinar a chave dele (veja "Entrar não é ler", abaixo). Por isso, depois de perder um aparelho,
   não basta removê-lo: confira a lista e remova também qualquer aparelho que você não reconhece.
 - **O token só chega à web cifrado.** Ele viaja dentro da caixa selada para a chave pública que
-  está só na tela do computador; o chama-id, que repassa a caixa, não consegue abri-la.
+  está só na tela do computador; o alo-id, que repassa a caixa, não consegue abri-la.
 - **Vale uma vez, por 2 minutos.** O Synapse apaga o token no primeiro uso e o recusa depois de
   2 minutos, o mesmo prazo do ponto de encontro. Cada conta recebe no máximo 1 token por minuto.
 - **Entrar não é ler.** O aparelho web que entra com o token ainda não recebe nenhuma chave de
@@ -162,7 +162,7 @@ entra, e a redefinição de identidade também pede o PIN.
 ### 5. PIN da conta (confirmação em duas etapas)
 
 A pessoa pode criar um PIN de 6 dígitos para a conta. Com o PIN, **o código SMS sozinho não
-entra mais num aparelho novo**: depois do código, o chama-id pede o PIN. Isso fecha o golpe do
+entra mais num aparelho novo**: depois do código, o alo-id pede o PIN. Isso fecha o golpe do
 SIM swap, em que alguém consegue um chip com o número da vítima.
 
 - **Entrada:** o código SMS certo só rende um bilhete de 5 minutos para o passo do PIN, que não
@@ -174,7 +174,7 @@ SIM swap, em que alguém consegue um chip com o número da vítima.
   furam o bloqueio. Com isso, adivinhar um PIN de 6 dígitos (1 milhão de possibilidades) pela
   internet é inviável.
 - **"Esqueci meu PIN":** quem esqueceu o PIN e não tem outro aparelho conectado pede a
-  redefinição, e o chama-id espera **7 dias** antes de deixar entrar só com o SMS. Durante a
+  redefinição, e o alo-id espera **7 dias** antes de deixar entrar só com o SMS. Durante a
   espera, os aparelhos já conectados da conta veem o pedido e podem cancelá-lo. Um golpista que
   pedir a redefinição é barrado pelo dono, que ainda está com o celular. Digitar o PIN certo
   (ao entrar ou no lembrete periódico do app) também cancela o pedido: se o dono provou que sabe
@@ -189,11 +189,11 @@ SIM swap, em que alguém consegue um chip com o número da vítima.
   atual ou um código SMS novo.
 - **Aparelhos conectados:** desconectar outros aparelhos (um por um, ou "Sair de todos os outros
   aparelhos") também só vale de um aparelho conectado da conta e pede o PIN ou um código SMS
-  novo. O chama-id apaga os aparelhos pela API admin do Synapse, e os tokens deles param de
+  novo. O alo-id apaga os aparelhos pela API admin do Synapse, e os tokens deles param de
   funcionar na hora. Um token sem aparelho (o "entrar como usuário" do administrador do Synapse
   cria tokens assim, e apagar aparelhos não os encerra) é recusado por todas as rotas que mudam
   a conta.
-- **Guarda:** o chama-id guarda só um hash argon2id do PIN, com um sal aleatório por conta e um
+- **Guarda:** o alo-id guarda só um hash argon2id do PIN, com um sal aleatório por conta e um
   segredo do servidor (o *pepper*). O PIN nunca vai para o log.
 
 ```mermaid
@@ -214,12 +214,12 @@ Limite: o PIN protege contra quem tem o chip, **não contra o operador**. O oper
 banco e o *pepper*, então poderia tentar todos os PINs fora do ar (cerca de 5 horas num núcleo
 de processador), e de qualquer forma ele já controla a entrada. As telas do app para criar,
 digitar e lembrar o PIN chegam nesta mesma etapa M4; a API está na
-[API do chama-id](chama-id-api.md#pin-da-conta-confirmação-em-duas-etapas).
+[API do alo-id](alo-id-api.md#pin-da-conta-confirmação-em-duas-etapas).
 
 ### 6. Números reciclados
 
 O ID da conta é aleatório (`@u` + 16 caracteres) e não contém o número. Se um número entra e a
-conta ligada a ele está parada há 45 dias, o chama-id desativa a conta antiga e cria uma nova:
+conta ligada a ele está parada há 45 dias, o alo-id desativa a conta antiga e cria uma nova:
 quem recebeu o número da operadora não herda as conversas e os grupos do dono anterior. Se a
 conta antiga já foi desativada de outro jeito (por exemplo pelo operador), o número também
 ganha uma conta nova na próxima entrada. Nos
@@ -242,19 +242,19 @@ sistema. O mapa número → conta da agenda também fica no armazenamento seguro
 ### 9. Pouca retenção no servidor
 
 - Registros de IP: apagados depois de 7 dias (configurado).
-- Hashes enviados na busca de contatos: não são guardados nem registrados; o chama-id guarda só
+- Hashes enviados na busca de contatos: não são guardados nem registrados; o alo-id guarda só
   uma contagem por conta para o limite diário.
 - Códigos SMS: guardados só como hash; valem 5 minutos e são apagados quando usados (um código
   não usado pode ficar no banco por mais de 24 horas).
 - PIN da conta: guardado só como hash argon2id, com sal e *pepper*; apagado quando a pessoa
   remove o PIN ou quando um "Esqueci meu PIN" termina.
 - Mensagens e mídia: **decidido** guardar só até a entrega, no máximo 30 dias, com o histórico
-  vivendo nos celulares ([issue #12](https://github.com/kaiomp/chama/issues/12), M5). **Ainda não
+  vivendo nos celulares ([issue #12](https://github.com/kaiomp/alo/issues/12), M5). **Ainda não
   está configurado:** hoje o servidor guarda as mensagens cifradas sem prazo.
 
 ### 10. Defesas da entrada
 
-- Sem senhas: só o chama-id emite logins, com um bilhete (JWT) que vale 120 segundos.
+- Sem senhas: só o alo-id emite logins, com um bilhete (JWT) que vale 120 segundos.
 - Limites contra tentativa e erro: 5 tentativas por código, 10 erros por número por dia,
   5 códigos por número por dia, 10 pedidos de código por IP por hora.
 - Com o PIN da conta, o código SMS sozinho não entra (seção 5).
@@ -275,12 +275,12 @@ reduz cada risco e o plano.
 | Limite | O que significa | O que já ajuda | Plano |
 |---|---|---|---|
 | **Metadados visíveis** | O operador sabe quem tem conta, quem conversa com quem, em quais grupos e quando. Nomes e fotos de perfil e de grupos não são cifrados. | Registros de IP por 7 dias; retenção curta decidida. | Retenção de 30 dias (M5). Metadados são inerentes ao modelo com servidor; a federação (seção 13 da arquitetura) evita que um único operador veja tudo. |
-| **Hashes de contatos podem ser revertidos** | Há poucos números de celular possíveis, então um hash SHA-256 pode ser revertido testando todos. O operador pode ver quais números estão na agenda de um usuário durante a consulta. Quem tiver muitas contas verificadas pode testar 10.000 números por conta por dia para descobrir quem usa o Chama. | Consultas exigem conta verificada por SMS; 30 consultas por hora e 10.000 hashes por dia por conta; os hashes não são guardados. Listar todos os celulares do Brasil exigiria centenas de milhares de contas-dia, cada uma com seu próprio chip. | Descoberta privada de contatos (por exemplo, enclave seguro ou interseção privada de conjuntos), [issue #7](https://github.com/kaiomp/chama/issues/7), M7. |
-| **SIM swap em conta sem PIN** | Sem o PIN da conta, o chip da vítima basta para entrar. Sem a chave de recuperação o golpista não lê nada, mas pode fazer a redefinição de identidade e passar a falar em nome da vítima dali em diante. Com PIN, quem perdeu todos os aparelhos e pede "Esqueci meu PIN" deixa uma brecha: se ninguém cancelar em 7 dias, o SMS volta a bastar. | Com PIN (seção 5), o código SMS sozinho não entra nem redefine a identidade; o "Esqueci meu PIN" espera 7 dias e os aparelhos conectados podem cancelá-lo. Sem PIN, a redefinição derruba os aparelhos da vítima e mostra "código de segurança mudou" aos contatos; mensagens antigas continuam protegidas. | Telas do PIN no app, com lembrete periódico, [issue #3](https://github.com/kaiomp/chama/issues/3), M4. |
-| **Mensagens de aparelho não verificado aparecem normalmente na conversa** | Um aparelho que entrou só com SMS (SIM swap ou operador) não lê nada, mas pode enviar mensagens. A notificação já esconde nome e texto, mas dentro da conversa a mensagem aparece como as outras. Hoje o dono também não recebe aviso de "aparelho novo". | Notificação genérica "Nova mensagem" para esses casos. | Aviso na conversa ("Enviada por um aparelho não verificado"), [issue #11](https://github.com/kaiomp/chama/issues/11), e avisos de aparelho novo, M4. |
-| **O operador controla a entrada** | Quem roda o chama-id pode emitir logins e, mexendo no próprio servidor, instalar chaves novas numa conta ou incluir um participante falso num grupo. | Esses ataques deixam rastro que o servidor não esconde: "código de segurança mudou" (comparação local) e o aviso de "entrou" no grupo. O operador também pode bloquear usuários. | Avisos de aparelho novo (M4); federação para não depender de um único operador. O PIN não protege contra o operador (seção 5). |
+| **Hashes de contatos podem ser revertidos** | Há poucos números de celular possíveis, então um hash SHA-256 pode ser revertido testando todos. O operador pode ver quais números estão na agenda de um usuário durante a consulta. Quem tiver muitas contas verificadas pode testar 10.000 números por conta por dia para descobrir quem usa o Alô. | Consultas exigem conta verificada por SMS; 30 consultas por hora e 10.000 hashes por dia por conta; os hashes não são guardados. Listar todos os celulares do Brasil exigiria centenas de milhares de contas-dia, cada uma com seu próprio chip. | Descoberta privada de contatos (por exemplo, enclave seguro ou interseção privada de conjuntos), [issue #7](https://github.com/kaiomp/alo/issues/7), M7. |
+| **SIM swap em conta sem PIN** | Sem o PIN da conta, o chip da vítima basta para entrar. Sem a chave de recuperação o golpista não lê nada, mas pode fazer a redefinição de identidade e passar a falar em nome da vítima dali em diante. Com PIN, quem perdeu todos os aparelhos e pede "Esqueci meu PIN" deixa uma brecha: se ninguém cancelar em 7 dias, o SMS volta a bastar. | Com PIN (seção 5), o código SMS sozinho não entra nem redefine a identidade; o "Esqueci meu PIN" espera 7 dias e os aparelhos conectados podem cancelá-lo. Sem PIN, a redefinição derruba os aparelhos da vítima e mostra "código de segurança mudou" aos contatos; mensagens antigas continuam protegidas. | Telas do PIN no app, com lembrete periódico, [issue #3](https://github.com/kaiomp/alo/issues/3), M4. |
+| **Mensagens de aparelho não verificado aparecem normalmente na conversa** | Um aparelho que entrou só com SMS (SIM swap ou operador) não lê nada, mas pode enviar mensagens. A notificação já esconde nome e texto, mas dentro da conversa a mensagem aparece como as outras. Hoje o dono também não recebe aviso de "aparelho novo". | Notificação genérica "Nova mensagem" para esses casos. | Aviso na conversa ("Enviada por um aparelho não verificado"), [issue #11](https://github.com/kaiomp/alo/issues/11), e avisos de aparelho novo, M4. |
+| **O operador controla a entrada** | Quem roda o alo-id pode emitir logins e, mexendo no próprio servidor, instalar chaves novas numa conta ou incluir um participante falso num grupo. | Esses ataques deixam rastro que o servidor não esconde: "código de segurança mudou" (comparação local) e o aviso de "entrou" no grupo. O operador também pode bloquear usuários. | Avisos de aparelho novo (M4); federação para não depender de um único operador. O PIN não protege contra o operador (seção 5). |
 | **Lei de outro país, se hospedado em nuvem dos EUA** | O CLOUD Act (lei dos EUA de 2018) permite que autoridades dos EUA exijam dados de empresas americanas, mesmo guardados fora dos EUA. Num servidor em AWS, Google Cloud ou Azure, inclusive na região de São Paulo, os metadados e as mensagens cifradas podem ser entregues. O conteúdo continua cifrado. | A criptografia de ponta a ponta protege o conteúdo em qualquer hospedagem. | Recomendação para operadores: hospedar em infraestrutura própria ou de provedores sob jurisdição brasileira. |
-| **Retenção ainda não configurada** | Hoje o servidor guarda as mensagens cifradas sem prazo. Se um dia uma chave vazar, mais histórico estaria exposto. | Conteúdo cifrado; registros de IP por 7 dias. | Retenção de 30 dias, [issue #12](https://github.com/kaiomp/chama/issues/12), M5. |
+| **Retenção ainda não configurada** | Hoje o servidor guarda as mensagens cifradas sem prazo. Se um dia uma chave vazar, mais histórico estaria exposto. | Conteúdo cifrado; registros de IP por 7 dias. | Retenção de 30 dias, [issue #12](https://github.com/kaiomp/alo/issues/12), M5. |
 | **Web: dados locais sem cifra própria** | Na web, o app guarda dados e chaves no IndexedDB do navegador, sem a cifra extra que o Android tem (SQLCipher). | A proteção é a do perfil do navegador e do computador. | Vinculação da web pelo QR (M4). Para computadores compartilhados, sair da conta ao terminar. |
 | **Push no build da Play Store passa pelo Google** | O Google não vê o conteúdo (vai cifrado), mas vê quando um aparelho recebe notificações. | Conteúdo cifrado; o build F-Droid não usa nenhum serviço do Google. | — |
 | **Reciclagem de número: caso raro** | Quem saiu da conta e ficou de 8 a 45 dias sem abrir o app, com a última entrada há mais de 45 dias, pode ganhar uma conta nova ao voltar. | A regra protege o caso comum (número repassado pela operadora). Uma conta com PIN nunca é aposentada por inatividade (seção 5). | — |
@@ -297,7 +297,7 @@ reduz cada risco e o plano.
   entrar com o seu número.
 - Se aparecer "O código de segurança de {nome} mudou" e logo depois um pedido de dinheiro,
   confirme por outro meio (ligação, pessoalmente) antes de qualquer PIX.
-- Se você for desconectado do Chama sem ter feito nada, alguém pode ter entrado com o seu
+- Se você for desconectado do Alô sem ter feito nada, alguém pode ter entrado com o seu
   número. Entre de novo e fale com a sua operadora.
 
 **Operadores e instituições parceiras**
@@ -310,11 +310,11 @@ reduz cada risco e o plano.
 
 ## Referências
 
-- [Arquitetura do Chama](design/2026-10-24-architecture.md), principalmente as seções 4
+- [Arquitetura do Alô](design/2026-10-24-architecture.md), principalmente as seções 4
   (identidade), 5 (criptografia), 6 (contatos e push) e 13 (federação).
-- [API do chama-id](chama-id-api.md), inclusive a seção sobre a privacidade da busca de contatos.
+- [API do alo-id](alo-id-api.md), inclusive a seção sobre a privacidade da busca de contatos.
 - [README do app](../app/README.md): contatos, notificações push e builds de release.
-- Issues abertas de segurança: [#3 PIN e vinculação](https://github.com/kaiomp/chama/issues/3),
-  [#7 hashes de contatos](https://github.com/kaiomp/chama/issues/7),
-  [#11 aviso de aparelho não verificado](https://github.com/kaiomp/chama/issues/11),
-  [#12 retenção](https://github.com/kaiomp/chama/issues/12).
+- Issues abertas de segurança: [#3 PIN e vinculação](https://github.com/kaiomp/alo/issues/3),
+  [#7 hashes de contatos](https://github.com/kaiomp/alo/issues/7),
+  [#11 aviso de aparelho não verificado](https://github.com/kaiomp/alo/issues/11),
+  [#12 retenção](https://github.com/kaiomp/alo/issues/12).

@@ -28,8 +28,8 @@ class AppServices with WidgetsBindingObserver {
 
   static Future<AppServices> start({bool background = false}) async {
     if (!kIsWeb) unawaited(getTemporaryDirectory().then(sweepVoiceFiles));
-    final id = IdClient(chamaBaseUrl);
-    final chat = await ChatService.start(homeserver: chamaBaseUrl, id: id, background: background);
+    final id = IdClient(aloBaseUrl);
+    final chat = await ChatService.start(homeserver: aloBaseUrl, id: id, background: background);
     final prefs = await SharedPreferences.getInstance();
     final contacts = ContactsService(chat, onAndroid ? DeviceAddressBook() : NoAddressBook(), prefs);
     await contacts.ready;
@@ -60,7 +60,7 @@ class AppServices with WidgetsBindingObserver {
     newRecorder: newRecorder ?? RecordVoiceRecorder.new,
     pickFile: pickFile ?? _pickWithSystemPicker,
     shareText: (text) => SharePlus.instance.share(ShareParams(text: text)),
-    child: const ChamaApp(),
+    child: const AloApp(),
   );
 
   @override

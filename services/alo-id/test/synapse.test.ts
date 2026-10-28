@@ -10,7 +10,7 @@ import { Accounts } from '../src/accounts.ts';
 const SECRET = 'shared-secret', AS_TOKEN = 'as-token';
 type Device = { device_id: string; last_seen_ts: number | null };
 
-// Mimics the Synapse endpoints chama-id uses, and checks the registration HMAC.
+// Mimics the Synapse endpoints alo-id uses, and checks the registration HMAC.
 async function stub() {
   const s = {
     nonces: new Set<string>(), taken: new Set<string>(), registered: [] as string[],
@@ -34,10 +34,10 @@ async function stub() {
       if (s.taken.has(body.username)) return send(400, { errcode: 'M_USER_IN_USE', error: 'User ID already taken.' });
       s.taken.add(body.username); s.registered.push(body.username);
       const token = `admin-${body.username}`; s.adminTokens.add(token);
-      return send(200, { access_token: token, user_id: `@${body.username}:chama.test`, device_id: 'D' });
+      return send(200, { access_token: token, user_id: `@${body.username}:alo.test`, device_id: 'D' });
     }
     if (p === '/_matrix/client/v3/account/whoami') {
-      return bearer === 'good' ? send(200, { user_id: '@ualice:chama.test', device_id: 'D' })
+      return bearer === 'good' ? send(200, { user_id: '@ualice:alo.test', device_id: 'D' })
         : send(401, { errcode: 'M_UNKNOWN_TOKEN', error: 'Unknown access token' });
     }
     if (p === '/_matrix/client/v3/keys/query' && req.method === 'POST') {
@@ -89,53 +89,53 @@ test('registers an admin with a correct HMAC once, stores and reuses its token',
   const s = await stub();
   try {
     const { db, admin } = setup(s);
-    s.users.set('@ua:chama.test', []);
-    assert.equal(await lastMs(admin, '@ua:chama.test'), 0);
-    assert.equal(await lastMs(admin, '@ua:chama.test'), 0);
-    assert.deepEqual(s.registered, ['chama-admin']);
+    s.users.set('@ua:alo.test', []);
+    assert.equal(await lastMs(admin, '@ua:alo.test'), 0);
+    assert.equal(await lastMs(admin, '@ua:alo.test'), 0);
+    assert.deepEqual(s.registered, ['alo-admin']);
     assert.equal(s.badMacs, 0);
-    assert.deepEqual(storedTokens(db), ['admin-chama-admin']);
+    assert.deepEqual(storedTokens(db), ['admin-alo-admin']);
     // A new instance on the same DB (a restart) reuses the stored token.
-    await new HttpSynapseAdmin({ baseUrl: s.base, sharedSecret: SECRET, asToken: AS_TOKEN, db }).activity('@ua:chama.test');
-    assert.deepEqual(s.registered, ['chama-admin']);
+    await new HttpSynapseAdmin({ baseUrl: s.base, sharedSecret: SECRET, asToken: AS_TOKEN, db }).activity('@ua:alo.test');
+    assert.deepEqual(s.registered, ['alo-admin']);
   } finally { s.close(); }
 });
 test('concurrent first calls register only one admin', async () => {
   const s = await stub();
   try {
     const { admin } = setup(s);
-    s.users.set('@ua:chama.test', []);
-    await Promise.all([admin.activity('@ua:chama.test'), admin.activity('@ua:chama.test'), admin.deactivate('@ua:chama.test')]);
-    assert.deepEqual(s.registered, ['chama-admin']);
+    s.users.set('@ua:alo.test', []);
+    await Promise.all([admin.activity('@ua:alo.test'), admin.activity('@ua:alo.test'), admin.deactivate('@ua:alo.test')]);
+    assert.deepEqual(s.registered, ['alo-admin']);
   } finally { s.close(); }
 });
-test('falls back to chama-admin-2 when chama-admin is taken', async () => {
+test('falls back to alo-admin-2 when alo-admin is taken', async () => {
   const s = await stub();
   try {
     const { db, admin } = setup(s);
-    s.taken.add('chama-admin');
-    await admin.deactivate('@ua:chama.test');
-    assert.deepEqual(s.registered, ['chama-admin-2']);
-    assert.deepEqual(storedTokens(db), ['admin-chama-admin-2']);
+    s.taken.add('alo-admin');
+    await admin.deactivate('@ua:alo.test');
+    assert.deepEqual(s.registered, ['alo-admin-2']);
+    assert.deepEqual(storedTokens(db), ['admin-alo-admin-2']);
   } finally { s.close(); }
 });
 test('a stored token that gets 401 is discarded and a new admin registered', async () => {
   const s = await stub();
   try {
     const { db, admin } = setup(s);
-    s.users.set('@ua:chama.test', []);
-    await admin.activity('@ua:chama.test');
+    s.users.set('@ua:alo.test', []);
+    await admin.activity('@ua:alo.test');
     s.adminTokens.clear(); // e.g. the admin was logged out
-    assert.equal(await lastMs(admin, '@ua:chama.test'), 0);
-    assert.deepEqual(s.registered, ['chama-admin', 'chama-admin-2']);
-    assert.deepEqual(storedTokens(db), ['admin-chama-admin-2']);
+    assert.equal(await lastMs(admin, '@ua:alo.test'), 0);
+    assert.deepEqual(s.registered, ['alo-admin', 'alo-admin-2']);
+    assert.deepEqual(storedTokens(db), ['admin-alo-admin-2']);
   } finally { s.close(); }
 });
 test('wrong shared secret fails instead of looping', async () => {
   const s = await stub();
   try {
     const admin = new HttpSynapseAdmin({ baseUrl: s.base, sharedSecret: 'wrong', asToken: AS_TOKEN, db: openDb(':memory:') });
-    await assert.rejects(admin.deactivate('@ua:chama.test'), /register/);
+    await assert.rejects(admin.deactivate('@ua:alo.test'), /register/);
     assert.equal(s.badMacs, 1);
   } finally { s.close(); }
 });
@@ -143,39 +143,39 @@ test('lastActiveMs is the newest device last_seen_ts; unknown user is null', asy
   const s = await stub();
   try {
     const { admin } = setup(s);
-    s.users.set('@ua:chama.test', [{ device_id: 'A', last_seen_ts: 1000 }, { device_id: 'B', last_seen_ts: 5000 }, { device_id: 'C', last_seen_ts: null }]);
-    assert.equal(await lastMs(admin, '@ua:chama.test'), 5000);
-    s.users.set('@ub:chama.test', [{ device_id: 'C', last_seen_ts: null }]);
-    assert.equal(await lastMs(admin, '@ub:chama.test'), 0);
-    assert.equal(await lastMs(admin, '@nobody:chama.test'), null);
+    s.users.set('@ua:alo.test', [{ device_id: 'A', last_seen_ts: 1000 }, { device_id: 'B', last_seen_ts: 5000 }, { device_id: 'C', last_seen_ts: null }]);
+    assert.equal(await lastMs(admin, '@ua:alo.test'), 5000);
+    s.users.set('@ub:alo.test', [{ device_id: 'C', last_seen_ts: null }]);
+    assert.equal(await lastMs(admin, '@ub:alo.test'), 0);
+    assert.equal(await lastMs(admin, '@nobody:alo.test'), null);
   } finally { s.close(); }
 });
 test('activity says whether the account is deactivated', async () => {
   const s = await stub();
   try {
     const { admin } = setup(s);
-    s.users.set('@ua:chama.test', []);
-    assert.deepEqual(await admin.activity('@ua:chama.test'), { lastActiveMs: 0, deactivated: false });
-    s.dead.add('@ua:chama.test');
-    assert.deepEqual(await admin.activity('@ua:chama.test'), { lastActiveMs: 0, deactivated: true });
+    s.users.set('@ua:alo.test', []);
+    assert.deepEqual(await admin.activity('@ua:alo.test'), { lastActiveMs: 0, deactivated: false });
+    s.dead.add('@ua:alo.test');
+    assert.deepEqual(await admin.activity('@ua:alo.test'), { lastActiveMs: 0, deactivated: true });
   } finally { s.close(); }
 });
 test('deleteDevices deletes only the listed devices the user has', async () => {
   const s = await stub();
   try {
     const { admin } = setup(s);
-    s.users.set('@ua:chama.test', [{ device_id: 'A', last_seen_ts: 1 }, { device_id: 'B', last_seen_ts: 2 }]);
-    assert.equal(await admin.deleteDevices('@ua:chama.test', ['A', 'Z']), 1);
-    assert.deepEqual(s.users.get('@ua:chama.test')!.map((d) => d.device_id), ['B']);
+    s.users.set('@ua:alo.test', [{ device_id: 'A', last_seen_ts: 1 }, { device_id: 'B', last_seen_ts: 2 }]);
+    assert.equal(await admin.deleteDevices('@ua:alo.test', ['A', 'Z']), 1);
+    assert.deepEqual(s.users.get('@ua:alo.test')!.map((d) => d.device_id), ['B']);
   } finally { s.close(); }
 });
 test('deactivate does not erase', async () => {
   const s = await stub();
   try {
     const { admin } = setup(s);
-    s.users.set('@ua:chama.test', []);
-    await admin.deactivate('@ua:chama.test');
-    assert.deepEqual(s.deactivated, [{ user: '@ua:chama.test', body: { erase: false } }]);
+    s.users.set('@ua:alo.test', []);
+    await admin.deactivate('@ua:alo.test');
+    assert.deepEqual(s.deactivated, [{ user: '@ua:alo.test', body: { erase: false } }]);
   } finally { s.close(); }
 });
 test('uploadCrossSigningKeys posts as the user with the application service token', async () => {
@@ -183,9 +183,9 @@ test('uploadCrossSigningKeys posts as the user with the application service toke
   try {
     const { admin } = setup(s);
     const keys = { master_key: { k: 1 }, self_signing_key: { k: 2 }, user_signing_key: { k: 3 } };
-    await admin.uploadCrossSigningKeys('@ua:chama.test', keys);
-    assert.deepEqual(s.uploads, [{ user: '@ua:chama.test', body: keys }]);
-    await assert.rejects(admin.uploadCrossSigningKeys('@ua:chama.test', { ...keys, bad: 1 } as any), (e: any) => e.code === 'invalid_keys' && e.status === 400);
+    await admin.uploadCrossSigningKeys('@ua:alo.test', keys);
+    assert.deepEqual(s.uploads, [{ user: '@ua:alo.test', body: keys }]);
+    await assert.rejects(admin.uploadCrossSigningKeys('@ua:alo.test', { ...keys, bad: 1 } as any), (e: any) => e.code === 'invalid_keys' && e.status === 400);
     assert.deepEqual(s.registered, [], 'needs no admin token');
   } finally { s.close(); }
 });
@@ -193,7 +193,7 @@ test('whoami returns the user id; 401 is invalid_token', async () => {
   const s = await stub();
   try {
     const { admin } = setup(s);
-    assert.deepEqual(await admin.whoami('good'), { userId: '@ualice:chama.test', deviceId: 'D' });
+    assert.deepEqual(await admin.whoami('good'), { userId: '@ualice:alo.test', deviceId: 'D' });
     await assert.rejects(admin.whoami('bad'), (e: any) => e.code === 'invalid_token' && e.status === 401);
     assert.deepEqual(s.registered, [], 'whoami needs no admin token');
   } finally { s.close(); }
@@ -202,13 +202,13 @@ test('lastActiveMs also counts the user-level last_seen_ts, which survives logou
   const s = await stub();
   try {
     const { admin } = setup(s);
-    s.users.set('@ua:chama.test', [{ device_id: 'A', last_seen_ts: 1000 }]);
-    s.userLastSeen.set('@ua:chama.test', 9000);
-    assert.equal(await lastMs(admin, '@ua:chama.test'), 9000);
-    s.users.set('@ua:chama.test', []); // logged out
-    assert.equal(await lastMs(admin, '@ua:chama.test'), 9000);
-    s.userLastSeen.set('@ua:chama.test', null); // user_ips pruned
-    assert.equal(await lastMs(admin, '@ua:chama.test'), 0);
+    s.users.set('@ua:alo.test', [{ device_id: 'A', last_seen_ts: 1000 }]);
+    s.userLastSeen.set('@ua:alo.test', 9000);
+    assert.equal(await lastMs(admin, '@ua:alo.test'), 9000);
+    s.users.set('@ua:alo.test', []); // logged out
+    assert.equal(await lastMs(admin, '@ua:alo.test'), 9000);
+    s.userLastSeen.set('@ua:alo.test', null); // user_ips pruned
+    assert.equal(await lastMs(admin, '@ua:alo.test'), 0);
   } finally { s.close(); }
 });
 test('active 100 days, logged out to switch phones, signs in 2 days later: same account', async () => {
@@ -217,7 +217,7 @@ test('active 100 days, logged out to switch phones, signs in 2 days later: same 
     const DAY = 86400;
     let clock = 1_000_000_000;
     const { db, admin } = setup(s);
-    const accounts = new Accounts(db, admin, { serverName: 'chama.test', now: () => clock });
+    const accounts = new Accounts(db, admin, { serverName: 'alo.test', now: () => clock });
     const a = await accounts.resolve('5511987654321');
     clock += 102 * DAY;
     s.users.set(a.userId, []); // devices gone after logout
@@ -230,10 +230,10 @@ test('hasMasterKey asks keys/query with the user token', async () => {
   const s = await stub();
   try {
     const { admin } = setup(s);
-    assert.equal(await admin.hasMasterKey('good', '@ualice:chama.test'), false);
-    s.masterKeys.add('@ualice:chama.test');
-    assert.equal(await admin.hasMasterKey('good', '@ualice:chama.test'), true);
-    await assert.rejects(admin.hasMasterKey('bad', '@ualice:chama.test'), (e: any) => e.code === 'invalid_token');
+    assert.equal(await admin.hasMasterKey('good', '@ualice:alo.test'), false);
+    s.masterKeys.add('@ualice:alo.test');
+    assert.equal(await admin.hasMasterKey('good', '@ualice:alo.test'), true);
+    await assert.rejects(admin.hasMasterKey('bad', '@ualice:alo.test'), (e: any) => e.code === 'invalid_token');
     assert.deepEqual(s.registered, [], 'needs no admin token');
   } finally { s.close(); }
 });
@@ -241,9 +241,9 @@ test('logoutOtherDevices deletes every device but the kept one', async () => {
   const s = await stub();
   try {
     const { admin } = setup(s);
-    s.users.set('@ua:chama.test', [{ device_id: 'A', last_seen_ts: 1 }, { device_id: 'B', last_seen_ts: 2 }, { device_id: 'C', last_seen_ts: null }]);
-    assert.equal(await admin.logoutOtherDevices('@ua:chama.test', 'B'), 2);
-    assert.deepEqual(s.users.get('@ua:chama.test')!.map((d) => d.device_id), ['B']);
-    assert.equal(await admin.logoutOtherDevices('@ua:chama.test', 'B'), 0, 'nothing left to delete');
+    s.users.set('@ua:alo.test', [{ device_id: 'A', last_seen_ts: 1 }, { device_id: 'B', last_seen_ts: 2 }, { device_id: 'C', last_seen_ts: null }]);
+    assert.equal(await admin.logoutOtherDevices('@ua:alo.test', 'B'), 2);
+    assert.deepEqual(s.users.get('@ua:alo.test')!.map((d) => d.device_id), ['B']);
+    assert.equal(await admin.logoutOtherDevices('@ua:alo.test', 'B'), 0, 'nothing left to delete');
   } finally { s.close(); }
 });

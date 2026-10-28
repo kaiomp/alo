@@ -1,12 +1,12 @@
 import 'dart:convert';
 
-import 'package:chama/auth/id_client.dart';
-import 'package:chama/contacts/contact_sync.dart';
+import 'package:alo/auth/id_client.dart';
+import 'package:alo/contacts/contact_sync.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// A fake chama-id: [accounts] maps E.164 digits to user IDs; every call is
+/// A fake alo-id: [accounts] maps E.164 digits to user IDs; every call is
 /// recorded; [refuseAfter] calls are answered, then rate_limited.
 class FakeLookup {
   FakeLookup(this.accounts, {this.refuseAfter});
@@ -50,7 +50,7 @@ void main() {
   });
 
   test('checks again only after a day, and new numbers right away', () async {
-    final f = FakeLookup({mobile(1): '@u1:chama.test'});
+    final f = FakeLookup({mobile(1): '@u1:alo.test'});
     final book = [
       BookContact('Ana', [mobile(1)]),
       BookContact('Bia', [mobile(2)]),
@@ -77,10 +77,10 @@ void main() {
     final book = [
       for (var i = 0; i < 1500; i++) BookContact('C$i', [mobile(i)]),
     ];
-    final f = FakeLookup({mobile(0): '@u0:chama.test'}, refuseAfter: 1);
+    final f = FakeLookup({mobile(0): '@u0:alo.test'}, refuseAfter: 1);
     final first = await sync(f).run(book);
     expect(f.calls, hasLength(1));
-    expect(first.onChama.single.userId, '@u0:chama.test');
+    expect(first.onAlo.single.userId, '@u0:alo.test');
 
     // Before retry_after (600 s): no call at all.
     clock = clock.add(const Duration(seconds: 599));
@@ -125,8 +125,8 @@ void main() {
     expect(n, 2);
   });
 
-  test('result: contacts on Chama by name, invites only for checked numbers without an account', () async {
-    final f = FakeLookup({mobile(1): '@u1:chama.test', mobile(2): '@u2:chama.test'});
+  test('result: contacts on Alô by name, invites only for checked numbers without an account', () async {
+    final f = FakeLookup({mobile(1): '@u1:alo.test', mobile(2): '@u2:alo.test'});
     final r = await sync(f).run([
       BookContact('Zé', [mobile(1)]),
       BookContact('Ágata', ['+55 11 8000-0000', mobile(2)]), // one of two numbers has an account
@@ -134,39 +134,39 @@ void main() {
       BookContact('Ana trabalho', [mobile(1)]), // same account under a second name
       BookContact('Sem número', ['190']),
     ]);
-    expect(r.onChama.map((c) => c.name), ['Ágata', 'Zé']);
-    expect(r.onChama.first.phone, mobile(2));
+    expect(r.onAlo.map((c) => c.name), ['Ágata', 'Zé']);
+    expect(r.onAlo.first.phone, mobile(2));
     expect(r.invite.map((c) => c.name), ['Bruno']);
   });
 
   test('saved names are available without the address book; removed contacts are forgotten', () async {
-    final f = FakeLookup({mobile(1): '@u1:chama.test', mobile(2): '@u2:chama.test'});
+    final f = FakeLookup({mobile(1): '@u1:alo.test', mobile(2): '@u2:alo.test'});
     await sync(f).run([
       BookContact('Ana', [mobile(1)]),
       BookContact('Bia', [mobile(2)]),
     ]);
-    expect(await sync(f).cachedNames(), {'@u1:chama.test': 'Ana', '@u2:chama.test': 'Bia'});
+    expect(await sync(f).cachedNames(), {'@u1:alo.test': 'Ana', '@u2:alo.test': 'Bia'});
     await sync(f).run([
       BookContact('Ana', [mobile(1)]),
     ]);
-    expect(await sync(f).cachedNames(), {'@u1:chama.test': 'Ana'});
+    expect(await sync(f).cachedNames(), {'@u1:alo.test': 'Ana'});
     await sync(f).clear();
     expect(await sync(f).cachedNames(), isEmpty);
   });
 
   test('a number saved once without a name takes the name it has elsewhere', () async {
-    final f = FakeLookup({mobile(1): '@u1:chama.test'});
+    final f = FakeLookup({mobile(1): '@u1:alo.test'});
     final r = await sync(f).run([
       BookContact('', [mobile(1)]),
       BookContact('Ana', ['+${mobile(1)}']),
     ]);
-    expect([for (final c in r.onChama) c.name], ['Ana']);
-    expect(await sync(f).cachedNames(), {'@u1:chama.test': 'Ana'});
+    expect([for (final c in r.onAlo) c.name], ['Ana']);
+    expect(await sync(f).cachedNames(), {'@u1:alo.test': 'Ana'});
   });
 
   group('a number that now answers for another account (final review 6)', () {
-    const a = '@a:chama.test';
-    const b = '@b:chama.test';
+    const a = '@a:alo.test';
+    const b = '@b:alo.test';
     final book = [
       BookContact('Mãe', [mobile(1)]),
     ];
@@ -180,7 +180,7 @@ void main() {
       clock = clock.add(ContactSync.refreshAfter);
       final r = await sync(f).run(book);
       expect(r.moved, [(userId: a, name: 'Mãe')]);
-      expect([for (final c in r.onChama) (c.userId, c.name, c.phone, c.moved)], [(b, '', mobile(1), true)]);
+      expect([for (final c in r.onAlo) (c.userId, c.name, c.phone, c.moved)], [(b, '', mobile(1), true)]);
       expect(await sync(f).cachedNames(), isEmpty);
 
       clock = clock.add(ContactSync.refreshAfter);
@@ -217,33 +217,33 @@ void main() {
     const secure = FlutterSecureStorage();
 
     test('it goes to secure storage, not to SharedPreferences', () async {
-      final f = FakeLookup({mobile(1): '@u1:chama.test'});
+      final f = FakeLookup({mobile(1): '@u1:alo.test'});
       await sync(f).run([
         BookContact('Ana', [mobile(1)]),
       ]);
-      expect(prefs.getString('chama.contacts.v1'), isNull);
-      expect(await secure.read(key: 'chama.contacts.v1'), contains('@u1:chama.test'));
+      expect(prefs.getString('alo.contacts.v1'), isNull);
+      expect(await secure.read(key: 'alo.contacts.v1'), contains('@u1:alo.test'));
       await sync(f).clear();
-      expect(await secure.read(key: 'chama.contacts.v1'), isNull);
+      expect(await secure.read(key: 'alo.contacts.v1'), isNull);
     });
 
     test('an old plain copy moves over and is deleted; its accounts stay trusted', () async {
       SharedPreferences.setMockInitialValues({
-        'chama.contacts.v1': jsonEncode({
-          mobile(1): {'u': '@a:chama.test', 't': clock.millisecondsSinceEpoch, 'n': 'Mãe'},
+        'alo.contacts.v1': jsonEncode({
+          mobile(1): {'u': '@a:alo.test', 't': clock.millisecondsSinceEpoch, 'n': 'Mãe'},
         }),
       });
       prefs = await SharedPreferences.getInstance();
-      final f = FakeLookup({mobile(1): '@b:chama.test'});
-      expect(await sync(f).cachedNames(), {'@a:chama.test': 'Mãe'});
-      expect(prefs.getString('chama.contacts.v1'), isNull);
-      expect(await secure.read(key: 'chama.contacts.v1'), contains('@a:chama.test'));
+      final f = FakeLookup({mobile(1): '@b:alo.test'});
+      expect(await sync(f).cachedNames(), {'@a:alo.test': 'Mãe'});
+      expect(prefs.getString('alo.contacts.v1'), isNull);
+      expect(await secure.read(key: 'alo.contacts.v1'), contains('@a:alo.test'));
 
       clock = clock.add(ContactSync.refreshAfter);
       final r = await sync(f).run([
         BookContact('Mãe', [mobile(1)]),
       ]);
-      expect(r.moved, [(userId: '@a:chama.test', name: 'Mãe')]);
+      expect(r.moved, [(userId: '@a:alo.test', name: 'Mãe')]);
     });
   });
 }

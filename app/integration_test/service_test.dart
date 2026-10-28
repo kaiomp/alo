@@ -1,6 +1,6 @@
-import 'package:chama/auth/id_client.dart';
-import 'package:chama/config.dart';
-import 'package:chama/services/chat_service.dart';
+import 'package:alo/auth/id_client.dart';
+import 'package:alo/config.dart';
+import 'package:alo/services/chat_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
@@ -11,8 +11,8 @@ void main() {
 
   testWidgets('service: sign in, keys, encrypted 1:1 with the peer, delivered acks', (tester) async {
     expect(appPhone, isNotEmpty, reason: 'run through scripts/e2e.sh');
-    final id = IdClient(chamaBaseUrl);
-    final chat = await ChatService.start(homeserver: chamaBaseUrl, id: id);
+    final id = IdClient(aloBaseUrl);
+    final chat = await ChatService.start(homeserver: aloBaseUrl, id: id);
     expect(chat.client.encryptionEnabled, isFalse); // not signed in yet
 
     await id.requestCode(appPhone);

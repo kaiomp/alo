@@ -1,5 +1,5 @@
-import 'package:chama/common/widgets.dart';
-import 'package:chama/l10n/app_localizations.dart';
+import 'package:alo/common/widgets.dart';
+import 'package:alo/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

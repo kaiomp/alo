@@ -30,7 +30,7 @@ for target in $TARGETS; do
       *) echo "unknown target $target"; exit 2 ;;
     esac
     echo "== $NAME-$theme"
-    WEB_SIZE=$WEB_SIZE ./scripts/e2e.sh "$T" integration_test/screenshots_test.dart --dart-define=CHAMA_SHOT="$NAME-$theme"
+    WEB_SIZE=$WEB_SIZE ./scripts/e2e.sh "$T" integration_test/screenshots_test.dart --dart-define=ALO_SHOT="$NAME-$theme"
   done
 done
 ls "$OUT"

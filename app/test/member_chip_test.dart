@@ -1,6 +1,6 @@
-import 'package:chama/common/theme.dart';
-import 'package:chama/group/new_group_screen.dart';
-import 'package:chama/l10n/app_localizations.dart';
+import 'package:alo/common/theme.dart';
+import 'package:alo/group/new_group_screen.dart';
+import 'package:alo/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -10,14 +10,14 @@ void main() {
     var removed = 0;
     await tester.pumpWidget(
       MaterialApp(
-        theme: chamaTheme(Brightness.light),
+        theme: aloTheme(Brightness.light),
         locale: const Locale('pt'),
         supportedLocales: L10n.supportedLocales,
         localizationsDelegates: L10n.localizationsDelegates,
         home: Scaffold(
           body: Align(
             alignment: Alignment.topLeft,
-            child: MemberChip(seed: '@u:chama.test', digits: '5511987654321', onRemove: () => removed++),
+            child: MemberChip(seed: '@u:alo.test', digits: '5511987654321', onRemove: () => removed++),
           ),
         ),
       ),

@@ -1,15 +1,15 @@
 import 'dart:convert';
 
-import 'package:chama/auth/encryption_screen.dart';
-import 'package:chama/auth/id_client.dart';
-import 'package:chama/auth/sign_in_screen.dart';
-import 'package:chama/common/deps.dart';
-import 'package:chama/common/notifications.dart';
-import 'package:chama/contacts/address_book.dart';
-import 'package:chama/contacts/contacts_service.dart';
-import 'package:chama/l10n/app_localizations.dart';
-import 'package:chama/services/chat_service.dart';
-import 'package:chama/services/push.dart';
+import 'package:alo/auth/encryption_screen.dart';
+import 'package:alo/auth/id_client.dart';
+import 'package:alo/auth/sign_in_screen.dart';
+import 'package:alo/common/deps.dart';
+import 'package:alo/common/notifications.dart';
+import 'package:alo/contacts/address_book.dart';
+import 'package:alo/contacts/contacts_service.dart';
+import 'package:alo/l10n/app_localizations.dart';
+import 'package:alo/services/chat_service.dart';
+import 'package:alo/services/push.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -48,13 +48,13 @@ void main() {
     });
     final service = await testService(prefs, matrix: server);
 
-    const login = IdLogin(phone: '5511987654321', userId: '@u1:chama.test', loginToken: 'jwt', newAccount: false);
+    const login = IdLogin(phone: '5511987654321', userId: '@u1:alo.test', loginToken: 'jwt', newAccount: false);
     await expectLater(service.signIn(login), throwsA(isA<MatrixException>()));
     expect(service.phone, isNull);
   });
 
   testWidgets('the key screen can sign out even when the server refuses', (tester) async {
-    SharedPreferences.setMockInitialValues({'chama.phone': '5511987654321'});
+    SharedPreferences.setMockInitialValues({'alo.phone': '5511987654321'});
     final prefs = await SharedPreferences.getInstance();
     // An expired session: the server refuses everything, logout included.
     final server = MockClient(
@@ -94,7 +94,7 @@ void main() {
   });
 
   testWidgets('"Reenviar SMS" on the key screen counts down like sign-in', (tester) async {
-    SharedPreferences.setMockInitialValues({'chama.phone': '5511987654321'});
+    SharedPreferences.setMockInitialValues({'alo.phone': '5511987654321'});
     final prefs = await SharedPreferences.getInstance();
     var requests = 0;
     final idServer = MockClient((req) async {
@@ -102,7 +102,7 @@ void main() {
       return http.Response(jsonEncode({'phone': '5511987654321', 'retry_after': 60}), 200);
     });
     final service = (await tester.runAsync(
-      () => testService(prefs, matrix: MockClient((_) async => http.Response('{}', 200)), chamaId: idServer),
+      () => testService(prefs, matrix: MockClient((_) async => http.Response('{}', 200)), aloId: idServer),
     ))!;
     await tester.pumpWidget(_keyScreen(tester, service, prefs));
     await tester.pumpAndSettle();
@@ -130,7 +130,7 @@ void main() {
       (req) async => http.Response(jsonEncode({'phone': '5511987654321', 'retry_after': 60}), 200),
     );
     final service = (await tester.runAsync(
-      () => testService(prefs, matrix: MockClient((_) async => http.Response('{}', 200)), chamaId: idServer),
+      () => testService(prefs, matrix: MockClient((_) async => http.Response('{}', 200)), aloId: idServer),
     ))!;
     await tester.pumpWidget(
       Deps(

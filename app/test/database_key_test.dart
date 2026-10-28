@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:chama/services/database_io.dart';
+import 'package:alo/services/database_io.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
@@ -8,8 +8,8 @@ void main() {
   late Directory dir;
   late File db;
   setUp(() {
-    dir = Directory.systemTemp.createTempSync('chama_db_key');
-    db = File(p.join(dir.path, 'chama.sqlite'));
+    dir = Directory.systemTemp.createTempSync('alo_db_key');
+    db = File(p.join(dir.path, 'alo.sqlite'));
   });
   tearDown(() => dir.deleteSync(recursive: true));
 

@@ -1,5 +1,5 @@
-import 'package:chama/common/time_format.dart';
-import 'package:chama/l10n/app_localizations.dart';
+import 'package:alo/common/time_format.dart';
+import 'package:alo/l10n/app_localizations.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';

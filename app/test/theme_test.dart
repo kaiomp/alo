@@ -1,4 +1,4 @@
-import 'package:chama/common/theme.dart';
+import 'package:alo/common/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -12,7 +12,7 @@ void main() {
     testWidgets('filled button text meets WCAG AA in $brightness mode', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          theme: chamaTheme(brightness),
+          theme: aloTheme(brightness),
           home: Scaffold(
             body: FilledButton(onPressed: () {}, child: const Text('Avançar')),
           ),
@@ -27,8 +27,8 @@ void main() {
   }
 
   for (final (name, c, surface) in [
-    ('light', ChatColors.light, chamaTheme(Brightness.light).colorScheme.surface),
-    ('dark', ChatColors.dark, chamaTheme(Brightness.dark).colorScheme.surface),
+    ('light', ChatColors.light, aloTheme(Brightness.light).colorScheme.surface),
+    ('dark', ChatColors.dark, aloTheme(Brightness.dark).colorScheme.surface),
   ]) {
     test('chat colours meet WCAG AA in $name mode', () {
       for (final bubble in [c.mine, c.other]) {
@@ -51,7 +51,7 @@ void main() {
 
   for (final brightness in Brightness.values) {
     test('text and icons on brand fills meet WCAG AA in $brightness mode', () {
-      final theme = chamaTheme(brightness);
+      final theme = aloTheme(brightness);
       final scheme = theme.colorScheme;
       expect(contrast(scheme.onPrimary, scheme.primary), greaterThanOrEqualTo(4.5)); // buttons, send
       final fab = theme.floatingActionButtonTheme;
@@ -66,6 +66,6 @@ void main() {
   });
 
   test('light mode keeps açaí as primary', () {
-    expect(chamaTheme(Brightness.light).colorScheme.primary, Tokens.acai);
+    expect(aloTheme(Brightness.light).colorScheme.primary, Tokens.acai);
   });
 }

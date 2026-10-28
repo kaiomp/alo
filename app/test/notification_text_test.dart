@@ -1,14 +1,14 @@
-import 'package:chama/common/notifications.dart';
-import 'package:chama/l10n/app_localizations.dart';
-import 'package:chama/services/models.dart';
+import 'package:alo/common/notifications.dart';
+import 'package:alo/l10n/app_localizations.dart';
+import 'package:alo/services/models.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 IncomingMessage msg(MessageKind kind, [String body = '']) => IncomingMessage(
-  roomId: '!r:chama.test',
+  roomId: '!r:alo.test',
   eventId: r'$e',
   chatName: 'Família',
-  senderId: '@ana:chama.test',
+  senderId: '@ana:alo.test',
   senderName: 'Ana',
   kind: kind,
   isGroup: true,
@@ -34,10 +34,10 @@ void main() {
   });
 
   test('notification IDs are stable per chat and fit an Android int', () {
-    expect(notificationId('!r:chama.test'), notificationId('!r:chama.test'));
-    expect(notificationId('!r:chama.test'), isNot(notificationId('!s:chama.test')));
-    expect(notificationId('!r:chama.test'), inInclusiveRange(-0x80000000, 0x7fffffff));
+    expect(notificationId('!r:alo.test'), notificationId('!r:alo.test'));
+    expect(notificationId('!r:alo.test'), isNot(notificationId('!s:alo.test')));
+    expect(notificationId('!r:alo.test'), inInclusiveRange(-0x80000000, 0x7fffffff));
     // These two collide in a 31-based string hash ("Aa" and "BB").
-    expect(notificationId('!Aa:chama.test'), isNot(notificationId('!BB:chama.test')));
+    expect(notificationId('!Aa:alo.test'), isNot(notificationId('!BB:alo.test')));
   });
 }

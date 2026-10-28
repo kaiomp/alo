@@ -1,13 +1,13 @@
-import 'package:chama/chat_list/chat_tile.dart';
-import 'package:chama/common/theme.dart';
-import 'package:chama/l10n/app_localizations.dart';
-import 'package:chama/services/models.dart';
-import 'package:chama/services/ticks.dart';
+import 'package:alo/chat_list/chat_tile.dart';
+import 'package:alo/common/theme.dart';
+import 'package:alo/l10n/app_localizations.dart';
+import 'package:alo/services/models.dart';
+import 'package:alo/services/ticks.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Widget host(ChatSummary c) => MaterialApp(
-  theme: chamaTheme(Brightness.light),
+  theme: aloTheme(Brightness.light),
   locale: const Locale('pt'),
   supportedLocales: L10n.supportedLocales,
   localizationsDelegates: L10n.localizationsDelegates,

@@ -26,7 +26,7 @@ Future<DatabaseApi> openDatabase(String name) async {
     path,
     options: OpenDatabaseOptions(version: 1, onConfigure: helper.applyPragmaKey),
   );
-  final media = await Directory(p.join((await getTemporaryDirectory()).path, 'chama_media')).create(recursive: true);
+  final media = await Directory(p.join((await getTemporaryDirectory()).path, 'alo_media')).create(recursive: true);
   return MatrixSdkDatabase.init(
     name,
     database: db,

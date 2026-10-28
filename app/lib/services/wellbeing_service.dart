@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-/// Time in the app and the calm settings. Chama earns nothing from
+/// Time in the app and the calm settings. Alô earns nothing from
 /// attention, so it can be honest about time: no streaks, no badges.
 /// Limit: only the demo implements it today; the real one counts
 /// foreground minutes on the device and never sends them anywhere.

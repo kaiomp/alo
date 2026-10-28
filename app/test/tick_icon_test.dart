@@ -1,7 +1,7 @@
-import 'package:chama/chat/tick_icon.dart';
-import 'package:chama/common/theme.dart';
-import 'package:chama/l10n/app_localizations.dart';
-import 'package:chama/services/ticks.dart';
+import 'package:alo/chat/tick_icon.dart';
+import 'package:alo/common/theme.dart';
+import 'package:alo/l10n/app_localizations.dart';
+import 'package:alo/services/ticks.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -9,7 +9,7 @@ void main() {
   testWidgets('each tick has its icon; only read is blue', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        theme: chamaTheme(Brightness.light),
+        theme: aloTheme(Brightness.light),
         localizationsDelegates: L10n.localizationsDelegates,
         home: Row(children: [for (final t in Tick.values) TickIcon(t)]),
       ),
@@ -27,7 +27,7 @@ void main() {
   testWidgets('screen readers hear the tick in the app language', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        theme: chamaTheme(Brightness.light),
+        theme: aloTheme(Brightness.light),
         locale: const Locale('pt'),
         supportedLocales: L10n.supportedLocales,
         localizationsDelegates: L10n.localizationsDelegates,

@@ -1,8 +1,8 @@
-import 'package:chama/auth/id_client.dart';
-import 'package:chama/config.dart';
-import 'package:chama/services/chat_service.dart';
-import 'package:chama/services/models.dart';
-import 'package:chama/services/ticks.dart';
+import 'package:alo/auth/id_client.dart';
+import 'package:alo/config.dart';
+import 'package:alo/services/chat_service.dart';
+import 'package:alo/services/models.dart';
+import 'package:alo/services/ticks.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:matrix/matrix.dart';
@@ -14,8 +14,8 @@ void main() {
 
   testWidgets('session: ticks to blue, reply, reaction, edit, delete', (tester) async {
     expect(appPhone, isNotEmpty, reason: 'run through scripts/e2e.sh');
-    final id = IdClient(chamaBaseUrl);
-    final chat = await ChatService.start(homeserver: chamaBaseUrl, id: id);
+    final id = IdClient(aloBaseUrl);
+    final chat = await ChatService.start(homeserver: aloBaseUrl, id: id);
     await id.requestCode(appPhone);
     await chat.signIn(await id.verifyCode(appPhone, '000000'));
     await chat.setUpEncryption();

@@ -25,7 +25,7 @@ function setup() {
   let clock = 1_000_000_000;
   const db = openDb(':memory:');
   const admin = new FakeAdmin();
-  const accounts = new Accounts(db, admin, { serverName: 'chama.test', now: () => clock });
+  const accounts = new Accounts(db, admin, { serverName: 'alo.test', now: () => clock });
   return { db, admin, accounts, tick: (s: number) => { clock += s; }, nowMs: () => clock * 1000 };
 }
 const PHONE = '5511987654321';
@@ -34,7 +34,7 @@ test('new phone gets an opaque localpart', async () => {
   const { accounts } = setup();
   const a = await accounts.resolve(PHONE);
   assert.match(a.localpart, /^u[a-z2-7]{16}$/);
-  assert.equal(a.userId, `@${a.localpart}:chama.test`);
+  assert.equal(a.userId, `@${a.localpart}:alo.test`);
   assert.equal(a.created, true);
   assert.ok(!a.userId.includes('987654321'));
   assert.deepEqual(accounts.current(PHONE), { localpart: a.localpart, userId: a.userId });

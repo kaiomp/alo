@@ -1,6 +1,6 @@
-import 'package:chama/chat_list/home_screen.dart';
-import 'package:chama/common/theme.dart';
-import 'package:chama/l10n/app_localizations.dart';
+import 'package:alo/chat_list/home_screen.dart';
+import 'package:alo/common/theme.dart';
+import 'package:alo/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -24,7 +24,7 @@ void main() {
     for (var selected = 0; selected < 4; selected++) {
       await tester.pumpWidget(
         MaterialApp(
-          theme: chamaTheme(Brightness.light),
+          theme: aloTheme(Brightness.light),
           locale: const Locale('pt'),
           supportedLocales: L10n.supportedLocales,
           localizationsDelegates: L10n.localizationsDelegates,

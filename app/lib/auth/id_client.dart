@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../l10n/app_localizations.dart';
 
-/// A typed chama-id error (`{"error": "<code>", ...}`), or `network` when the
+/// A typed alo-id error (`{"error": "<code>", ...}`), or `network` when the
 /// server could not be reached.
 class IdError implements Exception {
   const IdError(this.code, {this.retryAfter});
@@ -40,7 +40,7 @@ class IdLogin {
   final bool newAccount;
 }
 
-/// Client for the chama-id sign-in API (M1 plan, Task 3).
+/// Client for the alo-id sign-in API (M1 plan, Task 3).
 class IdClient {
   IdClient(this.baseUrl, {http.Client? httpClient}) : _http = httpClient ?? http.Client();
 
@@ -110,7 +110,7 @@ class IdClient {
     );
   }
 
-  /// Chama accounts for these phone numbers (E.164 digits), as
+  /// Alô accounts for these phone numbers (E.164 digits), as
   /// `{digits: user_id}`. Numbers without an account are left out. The server
   /// only sees SHA-256 hashes of the digits (spec §6, "Contacts").
   Future<Map<String, String>> lookup(List<String> phoneDigits, {required String accessToken}) async {

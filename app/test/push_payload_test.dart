@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:chama/services/push.dart';
+import 'package:alo/services/push.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -52,8 +52,8 @@ class _SlowDistributor extends DefaultUnifiedPush {
 
 void main() {
   test('a Sygnal Web Push (event_id_only) gives room and event; anything else is ignored', () {
-    final push = utf8.encode(jsonEncode({'room_id': '!r:chama.test', 'event_id': r'$e', 'unread': 2, 'prio': 'high'}));
-    expect(parsePush(push), (roomId: '!r:chama.test', eventId: r'$e'));
+    final push = utf8.encode(jsonEncode({'room_id': '!r:alo.test', 'event_id': r'$e', 'unread': 2, 'prio': 'high'}));
+    expect(parsePush(push), (roomId: '!r:alo.test', eventId: r'$e'));
     expect(parsePush(utf8.encode('{"unread": 0}')), isNull); // badge-only push
     expect(parsePush(utf8.encode('not json')), isNull);
     expect(parsePush([0xff, 0xfe]), isNull);
@@ -95,7 +95,7 @@ void main() {
   });
 
   test('sign-out deletes the server pusher before logging out, even when the logout is refused', () async {
-    SharedPreferences.setMockInitialValues({'chama.push.pushkey': 'PUB'});
+    SharedPreferences.setMockInitialValues({'alo.push.pushkey': 'PUB'});
     FlutterSecureStorage.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     final calls = <String>[];
@@ -120,7 +120,7 @@ void main() {
     expect(body, containsPair('app_id', pushAppId));
     expect(calls.indexWhere((c) => c.startsWith('/_matrix/client/v3/logout')), greaterThan(deletion));
     expect(push.active.value, isFalse);
-    expect(prefs.getString('chama.push.pushkey'), isNull);
+    expect(prefs.getString('alo.push.pushkey'), isNull);
   });
 
   test('a failing distributor connector does not break registration: it logs and reports no push', () async {
@@ -140,13 +140,13 @@ void main() {
   });
 
   test('the push status follows the server: a pusher the server dropped shows as off', () async {
-    SharedPreferences.setMockInitialValues({'chama.push.pushkey': 'PUB'});
+    SharedPreferences.setMockInitialValues({'alo.push.pushkey': 'PUB'});
     final prefs = await SharedPreferences.getInstance();
     var pushers = <Map<String, Object?>>[];
     var online = true;
     final matrix = MockClient((req) async {
       if (!online) throw http.ClientException('offline');
-      if (req.url.path == '/_matrix/client/v3/pushers') return http.Response(jsonEncode({'pushers': pushers}), 200);
+      if (req.url.path == '/_matrix/client/v3/pushers') return http.Response.bytes(utf8.encode(jsonEncode({'pushers': pushers})), 200);
       return http.Response('{}', 200);
     });
     final service = await testService(prefs, matrix: matrix);
@@ -158,8 +158,8 @@ void main() {
       'app_id': pushAppId,
       'pushkey': key,
       'kind': 'http',
-      'app_display_name': 'Chama',
-      'device_display_name': 'Chama',
+      'app_display_name': 'Alô',
+      'device_display_name': 'Alô',
       'lang': 'pt-BR',
       'data': {'url': 'http://sygnal:5000/_matrix/push/v1/notify', 'format': 'event_id_only'},
     };

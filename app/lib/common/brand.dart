@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import 'theme.dart';
 
-/// The Chama mark: one continuous line that draws the arches of the Pampulha
+/// The Alô mark: one continuous line that draws the arches of the Pampulha
 /// church and closes into a speech bubble. Same geometry as
-/// assets/brand/chama-mark.svg (100-unit grid, stroke 6, round ends).
-class ChamaMark extends StatelessWidget {
-  const ChamaMark({super.key, this.size = 56, this.color, this.tile = false});
+/// assets/brand/alo-mark.svg (100-unit grid, stroke 6, round ends).
+class AloMark extends StatelessWidget {
+  const AloMark({super.key, this.size = 56, this.color, this.tile = false});
   final double size;
 
   /// The line colour. Defaults to açaí on light surfaces and ipê on dark;
@@ -55,26 +55,26 @@ class _MarkPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
     if (tile) {
-      // chama-icon.svg: the whole 100 grid, corners 23.
+      // alo-icon.svg: the whole 100 grid, corners 23.
       canvas.scale(size.width / 100);
       canvas.drawRRect(
         RRect.fromRectAndRadius(const Rect.fromLTWH(0, 0, 100, 100), const Radius.circular(23)),
         Paint()..color = Tokens.acai,
       );
-      canvas.drawPath(ChamaMark.path(), stroke);
+      canvas.drawPath(AloMark.path(), stroke);
       return;
     }
-    // chama-mark.svg crops the grid to 10..90.
+    // alo-mark.svg crops the grid to 10..90.
     canvas.scale(size.width / 80);
     canvas.translate(-10, -10);
-    canvas.drawPath(ChamaMark.path(), stroke);
+    canvas.drawPath(AloMark.path(), stroke);
   }
 
   @override
   bool shouldRepaint(_MarkPainter old) => old.color != color || old.tile != tile;
 }
 
-/// Mark + "chama" wordmark (onboarding).
+/// Mark + "alo" wordmark (onboarding).
 class BrandLockup extends StatelessWidget {
   const BrandLockup({super.key});
 
@@ -82,7 +82,7 @@ class BrandLockup extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
-      const ChamaMark(size: 56, tile: true),
+      const AloMark(size: 56, tile: true),
       const SizedBox(width: 14),
       Text(
         L10n.of(context).wordmark,

@@ -4,7 +4,7 @@ import { createHmac } from 'node:crypto';
 import { signJwt, verifyJwt } from '../src/jwt.ts';
 
 test('round-trips claims and sets iat/exp', () => {
-  const t = signJwt({ sub: '5511987654321', iss: 'chama-id', aud: 'chama' }, 's3cret', 120, 1_000_000);
+  const t = signJwt({ sub: '5511987654321', iss: 'alo-id', aud: 'alo' }, 's3cret', 120, 1_000_000);
   const c = verifyJwt(t, 's3cret', 1_000_010);
   assert.equal(c.sub, '5511987654321');
   assert.equal(c.iat, 1_000_000);

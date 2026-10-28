@@ -12,7 +12,7 @@ DEVICE=${1:-${ANDROID_SERIAL:-$(adb devices | awk '/^emulator-/{print $1; exit}'
 [ -n "$DEVICE" ] || { echo "No emulator running"; exit 1; }
 SERVER=${NTFY_SERVER:-http://10.0.2.2:8081}
 # ntfy 1.25.2, F-Droid build (versionCode 63).
-APK=$HOME/.cache/chama-ntfy/io.heckel.ntfy_63.apk
+APK=$HOME/.cache/alo-ntfy/io.heckel.ntfy_63.apk
 SHA256=b4baa6f668bd57ad5df3b4e0e769165dcf25c5ee19fdb04f78077ee819616f2a
 a() { adb -s "$DEVICE" "$@"; }
 

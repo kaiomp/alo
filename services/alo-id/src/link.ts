@@ -20,7 +20,7 @@ export function box(v: unknown): Box {
 }
 
 // Device-link rendezvous (spec §5). The web shows {id, its public key} in a QR code; the key never
-// reaches chama-id, so it relays only boxes it cannot open or forge. The phone posts the offer (a
+// reaches alo-id, so it relays only boxes it cannot open or forge. The phone posts the offer (a
 // login token for the web), the web the answer (its device keys), each once.
 export class Links {
   private db: DatabaseSync;

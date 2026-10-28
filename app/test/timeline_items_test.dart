@@ -1,5 +1,5 @@
-import 'package:chama/chat/timeline_items.dart';
-import 'package:chama/services/models.dart';
+import 'package:alo/chat/timeline_items.dart';
+import 'package:alo/services/models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Message msg(String id, String sender, DateTime t) =>

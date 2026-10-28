@@ -1,4 +1,4 @@
-package chat.chama.app
+package app.usealo.app
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -31,7 +31,7 @@ class MainActivity : FlutterActivity() {
         // The engine outlives this activity: the handler keeps the app's
         // context, never the activity.
         val appContext = applicationContext
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "chat.chama.app/clipboard")
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "app.usealo.app/clipboard")
             .setMethodCallHandler { call, result ->
                 if (call.method != "copySensitive") return@setMethodCallHandler result.notImplemented()
                 val clip = ClipData.newPlainText("", call.arguments as String)
@@ -57,7 +57,7 @@ class MainActivity : FlutterActivity() {
                 // lib/main.dart backgroundStartArg
                 dartExecutor.executeDartEntrypoint(
                     DartExecutor.DartEntrypoint.createDefault(),
-                    listOf("--chama-background"),
+                    listOf("--alo-background"),
                 )
             }
     }

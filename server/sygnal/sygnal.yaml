@@ -15,15 +15,15 @@ http:
   port: 5000
 apps:
   # app_id of the pushers the app registers (lib/services/push.dart).
-  chat.chama.app:
+  app.usealo.app:
     type: webpush
     vapid_private_key: /sygnal/vapid.pem
-    vapid_contact_email: push@chama.test
+    vapid_contact_email: push@alo.test
     # Limit: no allowed_endpoints, because UnifiedPush endpoints can be any server,
     # so the endpoint URL a client registers decides where Sygnal posts. Production
     # egress rule: Sygnal may open outbound HTTPS (443) to public addresses only;
     # the firewall drops its traffic to loopback, private (10/8, 172.16/12,
     # 192.168/16), link-local (169.254/16, incl. cloud metadata), CGNAT (100.64/10)
     # and ULA/link-local IPv6, and Sygnal shares no network with Synapse's main
-    # process, the workers' replication, chama-id, Postgres or Redis.
+    # process, the workers' replication, alo-id, Postgres or Redis.
     ttl: 86400

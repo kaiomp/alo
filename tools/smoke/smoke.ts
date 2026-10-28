@@ -17,7 +17,7 @@ if (typeof root.methodFactory === 'function' && typeof root.rebuild === 'functio
 } else console.warn('smoke: matrix-js-sdk logger internals changed; SDK logs not filtered');
 
 const BASE = process.env.BASE ?? 'http://localhost:8080';
-const TEXT = 'Olá do Chama 🔥';
+const TEXT = 'Olá do Alô 🔥';
 let step = 'start';
 
 const timer = setTimeout(() => {
@@ -39,11 +39,11 @@ async function signIn(name: string) {
   step = `${name}: sign in`;
   await post('/id/v1/otp/request', { phone });
   const v = await post('/id/v1/otp/verify', { phone, code: '000000' });
-  if (v.phone !== phone) throw new Error(`${name}: chama-id normalised ${phone} to ${v.phone}`);
-  if (!/^@u[a-z2-7]{16}:chama\.test$/.test(v.user_id)) throw new Error(`${name}: user_id not opaque: ${v.user_id}`);
+  if (v.phone !== phone) throw new Error(`${name}: alo-id normalised ${phone} to ${v.phone}`);
+  if (!/^@u[a-z2-7]{16}:alo\.test$/.test(v.user_id)) throw new Error(`${name}: user_id not opaque: ${v.user_id}`);
   if (v.user_id.includes(phone.slice(-8))) throw new Error(`${name}: user_id contains phone digits: ${v.user_id}`);
   const login = await sdk.createClient({ baseUrl: BASE }).loginRequest({ type: 'org.matrix.login.jwt', token: v.login_token });
-  if (login.user_id !== v.user_id) throw new Error(`${name}: login user ${login.user_id} != chama-id user ${v.user_id}`);
+  if (login.user_id !== v.user_id) throw new Error(`${name}: login user ${login.user_id} != alo-id user ${v.user_id}`);
   const client = sdk.createClient({ baseUrl: BASE, userId: login.user_id, accessToken: login.access_token, deviceId: login.device_id });
 
   step = `${name}: start crypto and sync`;
@@ -124,10 +124,10 @@ try {
   console.log('ok: B decrypted the message');
 
   // The stored event must be m.room.encrypted with ciphertext, and no stored event may
-  // contain the plaintext. "do Chama" is the ASCII part of TEXT, so JSON escaping cannot hide it.
+  // contain the plaintext. "do Alô" is the ASCII part of TEXT, so JSON escaping cannot hide it.
   step = 'server DB: check the stored event';
   if (!/^\$[\w-]+$/.test(eventId)) throw new Error(`unexpected event id ${eventId}`);
-  const sql = `select e.type, j.json like '%"ciphertext"%', (select count(*) from event_json where json like '%do Chama%')
+  const sql = `select e.type, j.json like '%"ciphertext"%', (select count(*) from event_json where json like '%do Alô%')
     from events e join event_json j using (event_id) where e.event_id = '${eventId}'`;
   const server = join(import.meta.dirname, '../../server');
   const row = execFileSync('docker', ['compose', '-f', join(server, 'compose.yaml'), '--env-file', join(server, 'data/.env'),

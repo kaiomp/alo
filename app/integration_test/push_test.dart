@@ -1,9 +1,9 @@
-import 'package:chama/chat/chat_screen.dart';
-import 'package:chama/chat_list/home_screen.dart';
-import 'package:chama/common/deps.dart';
-import 'package:chama/common/notifications.dart';
-import 'package:chama/main.dart' as app;
-import 'package:chama/services/push.dart';
+import 'package:alo/chat/chat_screen.dart';
+import 'package:alo/chat_list/home_screen.dart';
+import 'package:alo/common/deps.dart';
+import 'package:alo/common/notifications.dart';
+import 'package:alo/main.dart' as app;
+import 'package:alo/services/push.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';

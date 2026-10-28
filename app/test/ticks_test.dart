@@ -1,4 +1,4 @@
-import 'package:chama/services/ticks.dart';
+import 'package:alo/services/ticks.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

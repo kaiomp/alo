@@ -3,11 +3,11 @@ import 'package:matrix/matrix.dart';
 import '../auth/id_client.dart';
 
 /// The SDK client plus one hook: during an identity reset the new public
-/// cross-signing keys go to chama-id, which uploads them for us. Synapse
-/// would ask for a password (UIA) there, and Chama accounts have none
-/// (spec §4, docs/chama-id-api.md "reset-identity").
-class ChamaClient extends Client {
-  ChamaClient(
+/// cross-signing keys go to alo-id, which uploads them for us. Synapse
+/// would ask for a password (UIA) there, and Alô accounts have none
+/// (spec §4, docs/alo-id-api.md "reset-identity").
+class AloClient extends Client {
+  AloClient(
     super.clientName, {
     required super.database,
     super.supportedLoginTypes,

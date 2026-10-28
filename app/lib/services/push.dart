@@ -11,9 +11,9 @@ import 'package:unifiedpush/unifiedpush.dart';
 import '../config.dart';
 import 'chat_service.dart';
 
-/// app_id of Chama pushers. Sygnal sends it to its Web Push pushkin
+/// app_id of Alô pushers. Sygnal sends it to its Web Push pushkin
 /// (server/sygnal/sygnal.yaml).
-const pushAppId = 'chat.chama.app';
+const pushAppId = 'app.usealo.app';
 
 /// Room and event of a push from Sygnal's Web Push pushkin (event_id_only:
 /// no content), or null for anything else.
@@ -41,7 +41,7 @@ class PushService {
   final ChatService _chat;
   final SharedPreferences _prefs;
   final http.Client _http;
-  static const _pushkeyKey = 'chama.push.pushkey';
+  static const _pushkeyKey = 'alo.push.pushkey';
 
   /// True while this device has a pusher on the server.
   final active = ValueNotifier<bool>(false);
@@ -145,8 +145,8 @@ class PushService {
       Pusher(
         appId: pushAppId,
         pushkey: pubKey,
-        appDisplayName: 'Chama',
-        deviceDisplayName: _chat.client.deviceName ?? 'Chama',
+        appDisplayName: 'Alô',
+        deviceDisplayName: _chat.client.deviceName ?? 'Alô',
         lang: 'pt-BR',
         kind: 'http',
         data: PusherData(

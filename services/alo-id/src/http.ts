@@ -20,7 +20,7 @@ export function send(res: ServerResponse, status: number, body: unknown) {
   res.end(JSON.stringify(body));
 }
 
-// Caddy sets X-Forwarded-For; only trust it while chama-id is reachable through Caddy alone.
+// Caddy sets X-Forwarded-For; only trust it while alo-id is reachable through Caddy alone.
 export function clientIp(req: IncomingMessage): string {
   const xff = req.headers['x-forwarded-for'];
   const first = (Array.isArray(xff) ? xff[0] : xff)?.split(',')[0]?.trim();

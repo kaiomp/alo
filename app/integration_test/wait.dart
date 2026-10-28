@@ -8,5 +8,5 @@ Future<void> until(bool Function() ok, {Duration timeout = const Duration(second
 }
 
 // Set by scripts/e2e.sh: fresh random numbers each run, E.164 digits.
-const appPhone = String.fromEnvironment('CHAMA_TEST_PHONE');
-const peerPhone = String.fromEnvironment('CHAMA_PEER_PHONE');
+const appPhone = String.fromEnvironment('ALO_TEST_PHONE');
+const peerPhone = String.fromEnvironment('ALO_PEER_PHONE');

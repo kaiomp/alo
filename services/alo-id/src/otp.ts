@@ -43,7 +43,7 @@ export class OtpService {
       .run(phone, this.hash(phone, code), now + TTL, now);
     this.db.prepare('INSERT INTO ip_requests (ip, at) VALUES (?, ?)').run(ip, now);
     this.addEvent(phone, 'request', now);
-    await this.opts.sms.send(phone, `Seu código Chama: ${code}. Não compartilhe com ninguém.`);
+    await this.opts.sms.send(phone, `Seu código Alô: ${code}. Não compartilhe com ninguém.`);
     return { retryAfter: PHONE_GAP };
   }
   verify(phone: string, code: string): void {

@@ -407,7 +407,7 @@ class DemoChatSession extends ChangeNotifier implements ChatSession {
     if (photo != null) return demoBytes(photo);
     final m = _chat.messages.firstWhere((m) => m.id == messageId);
     if (m.kind == MessageKind.voice) return SynchronousFuture(silentWav(m.durationMs ?? 1000));
-    return SynchronousFuture(Uint8List.fromList(utf8.encode('%PDF-1.4\n% Chama demo\n')));
+    return SynchronousFuture(Uint8List.fromList(utf8.encode('%PDF-1.4\n% Alô demo\n')));
   }
 
   @override

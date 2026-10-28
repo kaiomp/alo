@@ -13,7 +13,7 @@ import 'new_group_screen.dart';
 import 'phone_field.dart';
 
 /// WhatsApp's contact picker: "Novo grupo", a chat by number, then
-/// "Contatos no Chama" and "Convidar para o Chama". Pops with the room ID.
+/// "Contatos no Alô" and "Convidar para o Alô". Pops with the room ID.
 class NewChatScreen extends StatefulWidget {
   const NewChatScreen({super.key});
 
@@ -63,8 +63,8 @@ class _NewChatScreenState extends State<NewChatScreen> {
           listenable: deps.contacts,
           builder: (context, _) {
             final contacts = deps.contacts;
-            final onChama = [
-              for (final c in contacts.onChama)
+            final onAlo = [
+              for (final c in contacts.onAlo)
                 if (_matches(c.name, c.phone)) c,
             ];
             final invite = [
@@ -108,9 +108,9 @@ class _NewChatScreenState extends State<NewChatScreen> {
                     blocked: contacts.access == ContactsAccess.blocked,
                     onAllow: () => runOrSnack(context, contacts.allow),
                   ),
-                if (onChama.isNotEmpty)
-                  SectionHeader(l.contactsOnChama(l.appName), key: const Key('contacts_on_chama')),
-                for (final c in onChama)
+                if (onAlo.isNotEmpty)
+                  SectionHeader(l.contactsOnAlo(l.appName), key: const Key('contacts_on_alo')),
+                for (final c in onAlo)
                   ContactRow(
                     key: ValueKey('contact_${c.userId}'),
                     name: c.name,
@@ -118,7 +118,7 @@ class _NewChatScreenState extends State<NewChatScreen> {
                     seed: c.userId,
                     onTap: _opening ? null : () => _open(c.userId),
                   ),
-                if (invite.isNotEmpty) SectionHeader(l.inviteToChama(l.appName), key: const Key('contacts_invite')),
+                if (invite.isNotEmpty) SectionHeader(l.inviteToAlo(l.appName), key: const Key('contacts_invite')),
                 for (final c in invite)
                   ContactRow(
                     key: ValueKey('invite_${c.phone}'),
@@ -127,7 +127,7 @@ class _NewChatScreenState extends State<NewChatScreen> {
                     seed: c.phone,
                     trailing: TextButton(
                       onPressed: () =>
-                          runOrSnack(context, () => deps.shareText(l.inviteText(chamaInviteUrl, l.appName))),
+                          runOrSnack(context, () => deps.shareText(l.inviteText(aloInviteUrl, l.appName))),
                       child: Text(l.invite, semanticsLabel: '${l.invite} ${ContactRow.labelOf(c.name, c.phone)}'),
                     ),
                   ),
@@ -177,7 +177,7 @@ class ContactRow extends StatelessWidget {
   }
 }
 
-/// Why Chama wants the address book, shown before the system dialog (Android
+/// Why Alô wants the address book, shown before the system dialog (Android
 /// asks apps to explain first; the Play Store asks for a prominent
 /// disclosure). Without it the number field still works.
 class ContactsRationale extends StatelessWidget {

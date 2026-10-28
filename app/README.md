@@ -1,4 +1,4 @@
-# App Chama
+# App Alô
 
 Um único app Flutter para Android e para a web (iOS e desktop depois), construído sobre o SDK
 Dart [matrix](https://pub.dev/packages/matrix), com o vodozemac para a criptografia de ponta a
@@ -26,7 +26,7 @@ Entre com qualquer celular brasileiro (por exemplo `11 91234-5678`) e o código 
 
 O endereço do servidor vem de `lib/config.dart`: em debug, `http://localhost:8080` na web e
 `http://10.0.2.2:8080` no emulador Android (é assim que o emulador enxerga a sua máquina). Para
-outro endereço, use `--dart-define=CHAMA_BASE_URL=…`.
+outro endereço, use `--dart-define=ALO_BASE_URL=…`.
 
 ## Testar
 
@@ -34,7 +34,7 @@ outro endereço, use `--dart-define=CHAMA_BASE_URL=…`.
 - `make app-e2e-web`, `make app-e2e-android`: o app conversa com uma pessoa de teste
   roteirizada (`tools/peer`) contra a pilha local. `scripts/e2e.sh <chrome|android> <arquivo>`
   roda um teste de integração só. No Android, o primeiro AVD é ligado, a menos que
-  `CHAMA_AVD=<nome>` diga outro. O Chrome é procurado no caminho do macOS; em outros sistemas,
+  `ALO_AVD=<nome>` diga outro. O Chrome é procurado no caminho do macOS; em outros sistemas,
   defina `CHROME=<caminho do executável do chrome>`.
 - `scripts/screenshots.sh`: gera as capturas de tela da documentação (web e Android, temas claro
   e escuro) em `build/screenshots`.
@@ -78,14 +78,14 @@ flowchart TD
 ## Contatos
 
 Depois da entrada, o app lê a agenda (permissão READ_CONTACTS; a tela Nova conversa explica o
-motivo antes de o Android perguntar) e pergunta ao chama-id quais números têm conta. Só os
+motivo antes de o Android perguntar) e pergunta ao alo-id quais números têm conta. Só os
 hashes SHA-256 dos números saem do celular, cada número no máximo uma vez por dia, no máximo
-1000 por requisição (veja [API do chama-id, "Privacidade da busca de contatos"](../docs/chama-id-api.md#privacidade-da-busca-de-contatos-issue-7)).
+1000 por requisição (veja [API do alo-id, "Privacidade da busca de contatos"](../docs/alo-id-api.md#privacidade-da-busca-de-contatos-issue-7)).
 Os nomes salvos na agenda substituem os nomes de exibição em todo o app. Sem a permissão, as
 conversas começam digitando um número.
 
 <p align="center">
-  <img src="../docs/imagens/android-nova-conversa-claro.webp" alt="Tela Nova conversa com Contatos no Chama e Convidar para o Chama" width="260">
+  <img src="../docs/imagens/android-nova-conversa-claro.webp" alt="Tela Nova conversa com Contatos no Alô e Convidar para o Alô" width="260">
 </p>
 
 ## Notificações push
@@ -104,26 +104,26 @@ Dois flavors: `fdroid` (o padrão, sem código do Google; o push precisa de um a
 o ntfy) e `play` (adiciona o distribuidor FCM embutido do UnifiedPush, então o push funciona sem
 app extra).
 
-- `make app-apk CHAMA_BASE_URL=https://chama.example`: um APK fdroid por ABI (arm64-v8a,
+- `make app-apk ALO_BASE_URL=https://alo.example`: um APK fdroid por ABI (arm64-v8a,
   armeabi-v7a, x86_64) em `build/app/outputs/flutter-apk/`.
-- `make app-aab CHAMA_BASE_URL=https://chama.example`: o pacote da Play Store,
+- `make app-aab ALO_BASE_URL=https://alo.example`: o pacote da Play Store,
   `build/app/outputs/bundle/playRelease/app-play-release.aab`.
 
-`CHAMA_BASE_URL` é obrigatório e precisa ser `https://`: builds release e profile se recusam a
+`ALO_BASE_URL` é obrigatório e precisa ser `https://`: builds release e profile se recusam a
 abrir sem ele. O `network_security_config.xml` do Android (só HTTPS) não vale para o cliente HTTP
 do próprio Dart, então é essa checagem que impede códigos e tokens de saírem por HTTP sem
 criptografia.
 
-A assinatura lê a chave do ambiente, nunca do repositório: `CHAMA_KEYSTORE` (caminho de um
-arquivo .jks ou .p12 fora do repositório), `CHAMA_KEYSTORE_PASSWORD`, `CHAMA_KEY_ALIAS` e
-`CHAMA_KEY_PASSWORD`. Sem elas, um build release para com erro. Só para teste local,
-`CHAMA_ALLOW_DEBUG_KEY=1` assina com a chave de debug e o nome da versão termina em `-debugkey`;
+A assinatura lê a chave do ambiente, nunca do repositório: `ALO_KEYSTORE` (caminho de um
+arquivo .jks ou .p12 fora do repositório), `ALO_KEYSTORE_PASSWORD`, `ALO_KEY_ALIAS` e
+`ALO_KEY_PASSWORD`. Sem elas, um build release para com erro. Só para teste local,
+`ALO_ALLOW_DEBUG_KEY=1` assina com a chave de debug e o nome da versão termina em `-debugkey`;
 as lojas recusam esses builds, e um build assinado pela loja não consegue atualizá-los (quem
 testou teria de desinstalar e perder chaves e conversas).
 
-Para uma loja que assina o APK sozinha (o servidor de build do F-Droid), `CHAMA_UNSIGNED=1` gera o
+Para uma loja que assina o APK sozinha (o servidor de build do F-Droid), `ALO_UNSIGNED=1` gera o
 release sem assinatura e ignora as variáveis acima, por exemplo
-`CHAMA_UNSIGNED=1 flutter build apk --release --flavor fdroid --dart-define=CHAMA_BASE_URL=https://chama.example`.
+`ALO_UNSIGNED=1 flutter build apk --release --flavor fdroid --dart-define=ALO_BASE_URL=https://alo.example`.
 O APK é `build/app/outputs/flutter-apk/app-fdroid-release.apk` (sem assinatura, ele não instala
 até ser assinado).
 

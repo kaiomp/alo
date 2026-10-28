@@ -2,7 +2,7 @@ import 'package:matrix/matrix.dart';
 
 import 'models.dart';
 
-const hiddenEventsType = 'chat.chama.hidden';
+const hiddenEventsType = 'app.usealo.hidden';
 
 MessageKind kindOf(Event e) {
   if (e.redacted) return MessageKind.deleted;
@@ -56,7 +56,7 @@ bool isVisible(Event e, {required bool isGroup, required Set<String> hidden}) {
 }
 
 /// Where an encrypted reaction keeps its emoji, inside the ciphertext.
-const reactionKeyField = 'chat.chama.reaction';
+const reactionKeyField = 'app.usealo.reaction';
 
 /// The emoji of reaction [r], or null while it cannot be decrypted. In
 /// encrypted rooms the cleartext `m.relates_to.key` is a random placeholder

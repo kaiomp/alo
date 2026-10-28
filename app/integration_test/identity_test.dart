@@ -1,6 +1,6 @@
-import 'package:chama/auth/id_client.dart';
-import 'package:chama/config.dart';
-import 'package:chama/services/chat_service.dart';
+import 'package:alo/auth/id_client.dart';
+import 'package:alo/config.dart';
+import 'package:alo/services/chat_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:matrix/encryption.dart';
@@ -12,9 +12,9 @@ void main() {
 
   testWidgets('new device: reset identity, then unlock with the recovery key', (tester) async {
     expect(appPhone, isNotEmpty, reason: 'run through scripts/e2e.sh');
-    final id = IdClient(chamaBaseUrl);
+    final id = IdClient(aloBaseUrl);
     Future<ChatService> device(String name) async {
-      final chat = await ChatService.start(homeserver: chamaBaseUrl, id: id, clientName: name);
+      final chat = await ChatService.start(homeserver: aloBaseUrl, id: id, clientName: name);
       await id.requestCode(appPhone);
       await chat.signIn(await id.verifyCode(appPhone, '000000'));
       return chat;
@@ -27,14 +27,14 @@ void main() {
     final second = await device('second');
     expect(await second.cryptoStatus(), CryptoStatus.unlock);
     await second.requestResetCode();
-    // A refused reset reaches the app as the chama-id error, not as the SDK's wrapper.
+    // A refused reset reaches the app as the alo-id error, not as the SDK's wrapper.
     await expectLater(
       second.resetEncryption('111111'),
       throwsA(isA<IdError>().having((e) => e.code, 'code', 'invalid_code')),
     );
     final key = await second.resetEncryption('000000');
     expect(await second.cryptoStatus(), CryptoStatus.ready);
-    // chama-id signed out the first device.
+    // alo-id signed out the first device.
     await until(() => !first.loggedIn.value, what: 'first device signed out');
 
     // Third device with the recovery key: verified without a reset.
@@ -50,9 +50,9 @@ void main() {
     // Another number than the test above: this account starts with no keys.
     final last = int.parse(appPhone[appPhone.length - 1]);
     final phone = '${appPhone.substring(0, appPhone.length - 1)}${(last + 1) % 10}';
-    final id = IdClient(chamaBaseUrl);
+    final id = IdClient(aloBaseUrl);
     Future<ChatService> device(String name) async {
-      final chat = await ChatService.start(homeserver: chamaBaseUrl, id: id, clientName: name);
+      final chat = await ChatService.start(homeserver: aloBaseUrl, id: id, clientName: name);
       await id.requestCode(phone);
       await chat.signIn(await id.verifyCode(phone, '000000'));
       return chat;

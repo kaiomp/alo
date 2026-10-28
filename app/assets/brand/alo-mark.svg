@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="10 10 80 80">
-  <!-- Chama mark: one line draws the arches of the Pampulha church and closes into a speech bubble.
+  <!-- Alô mark: one line draws the arches of the Pampulha church and closes into a speech bubble.
        100-unit grid cropped to 10..90, stroke 6, round ends. Açaí on light surfaces. -->
   <path d="M22 86L30 68C14 56 13 38 24 29Q37 13 50 28Q63 13 76 29C87 38 86 57 72 66Q52 77 30 68" fill="none" stroke="#4A1D6E" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

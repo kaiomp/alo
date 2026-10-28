@@ -1,4 +1,4 @@
-name: chama
+name: alo
 services:
   postgres:
     image: postgres:17.11-alpine
@@ -75,20 +75,20 @@ services:
     networks: [push]
     healthcheck: { test: ["CMD-SHELL", "wget -qO- http://localhost/v1/health | grep -q true"], interval: 3s, retries: 20 }
 
-  # No published port: chama-id trusts X-Forwarded-For, so only Caddy may reach it.
-  chama-id:
-    build: { context: .., dockerfile: services/chama-id/Dockerfile }
+  # No published port: alo-id trusts X-Forwarded-For, so only Caddy may reach it.
+  alo-id:
+    build: { context: .., dockerfile: services/alo-id/Dockerfile }
     environment:
       JWT_SECRET: ${JWT_SECRET}
       OTP_PEPPER: ${OTP_PEPPER}
       SERVER_NAME: ${SERVER_NAME}
       PUBLIC_BASEURL: ${PUBLIC_BASEURL}
-      CHAMA_DEV: "1"
-      DB_PATH: /data/chama-id.sqlite
+      ALO_DEV: "1"
+      DB_PATH: /data/alo-id.sqlite
       SYNAPSE_INTERNAL_URL: http://synapse:8008
       REGISTRATION_SHARED_SECRET: ${REGISTRATION_SHARED_SECRET}
       SYNAPSE_AS_TOKEN: ${AS_TOKEN}
-    volumes: ["./data/chama-id:/data"]
+    volumes: ["./data/alo-id:/data"]
     depends_on: { synapse: { condition: service_healthy } }
 
   caddy:
@@ -107,7 +107,7 @@ services:
       synapse: { condition: service_healthy }
       sync1: { condition: service_healthy }
       media1: { condition: service_healthy }
-      chama-id: { condition: service_healthy }
+      alo-id: { condition: service_healthy }
       pusher1: { condition: service_healthy }
       sygnal: { condition: service_healthy }
       ntfy: { condition: service_healthy }

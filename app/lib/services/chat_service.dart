@@ -8,7 +8,7 @@ import 'package:matrix/matrix.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../auth/id_client.dart';
-import 'chama_client.dart';
+import 'alo_client.dart';
 import 'chat_session.dart';
 import 'database.dart';
 import 'delivery.dart';
@@ -18,9 +18,9 @@ import 'security_code.dart';
 import 'ticks.dart';
 
 const jwtLoginType = 'org.matrix.login.jwt';
-const pinnedTag = 'chat.chama.pinned';
-const archivedTag = 'chat.chama.archived';
-const privacyType = 'chat.chama.privacy';
+const pinnedTag = 'app.usealo.pinned';
+const archivedTag = 'app.usealo.archived';
+const privacyType = 'app.usealo.privacy';
 
 /// What this device must do before it can read and send messages (spec §5).
 enum CryptoStatus {
@@ -34,7 +34,7 @@ enum CryptoStatus {
   unlock,
 
   /// A setup was cut off after the master key reached the server (network
-  /// drop, app killed). Running setup again needs a password Chama accounts
+  /// drop, app killed). Running setup again needs a password Alô accounts
   /// do not have, so the only way on is the SMS reset.
   repair,
 }
@@ -83,14 +83,14 @@ class ChatService {
   static Future<ChatService> start({
     required Uri homeserver,
     required IdClient id,
-    String clientName = 'chama',
+    String clientName = 'alo',
     bool background = false,
   }) async {
     if (!_vodozemacReady) {
       await vod.init();
       _vodozemacReady = true;
     }
-    final client = ChamaClient(
+    final client = AloClient(
       clientName,
       database: await openDatabase(clientName),
       supportedLoginTypes: {jwtLoginType},
@@ -112,7 +112,7 @@ class ChatService {
   }
 
   /// Restores the saved session of [client] from its local database.
-  static Future<ChatService> restore(ChamaClient client, {required IdClient id, required Uri homeserver}) async {
+  static Future<ChatService> restore(AloClient client, {required IdClient id, required Uri homeserver}) async {
     // Waits only for the local database (rooms, account data, device keys),
     // so the chats show at once, also offline. The first sync runs on.
     await client.init(waitForFirstSync: false);
@@ -120,7 +120,7 @@ class ChatService {
     return ChatService(client, DeliveryTracker(client, prefs), id, prefs, homeserver: homeserver);
   }
 
-  final ChamaClient client;
+  final AloClient client;
   final DeliveryTracker delivery;
   final SecurityCodeWatch securityCodes;
   final IdClient id;
@@ -192,7 +192,7 @@ class ChatService {
 
   // ---- sign-in and profile ----
 
-  static const _phoneKey = 'chama.phone';
+  static const _phoneKey = 'alo.phone';
 
   /// The signed-in phone (E.164 digits); needed again for an identity reset.
   String? get phone => _prefs.getString(_phoneKey);
@@ -202,7 +202,7 @@ class ChatService {
     await client.login(
       jwtLoginType,
       token: login.loginToken,
-      initialDeviceDisplayName: kIsWeb ? 'Chama Web' : 'Chama ${defaultTargetPlatform.name}',
+      initialDeviceDisplayName: kIsWeb ? 'Alô Web' : 'Alô ${defaultTargetPlatform.name}',
     );
     // Only once signed in: a failed login must not leave a phone behind.
     await _prefs.setString(_phoneKey, login.phone);
@@ -287,10 +287,10 @@ class ChatService {
     return (await id.requestCode(p)).retryAfter;
   }
 
-  /// Step 2: new keys are made here and chama-id installs the public half
+  /// Step 2: new keys are made here and alo-id installs the public half
   /// (and signs out the account's other devices). Old messages stay
   /// unreadable on this device. Returns the new recovery key.
-  /// A chama-id refusal is thrown as its [IdError] so the screen can say why.
+  /// A alo-id refusal is thrown as its [IdError] so the screen can say why.
   Future<String> resetEncryption(String code) async {
     IdError? refused;
     client.resetUpload = (keys) async {
@@ -304,7 +304,7 @@ class ChatService {
     try {
       return await _keepUntilSaved(await client.initCryptoIdentity());
     } catch (_) {
-      // The SDK's bootstrap wraps the upload error; ChamaClient recovers
+      // The SDK's bootstrap wraps the upload error; AloClient recovers
       // from no_identity by itself.
       final e = refused;
       if (e != null && e.code != 'no_identity') throw e;
@@ -481,7 +481,7 @@ class ChatService {
 
   // ---- new chats and groups ----
 
-  /// Chama accounts for up to 1000 numbers (E.164 digits), as {digits: user ID}.
+  /// Alô accounts for up to 1000 numbers (E.164 digits), as {digits: user ID}.
   /// Signed out (no access token): [IdError] `invalid_token`.
   Future<Map<String, String>> lookupPhones(List<String> phoneDigits) async {
     final token = client.accessToken;
@@ -489,7 +489,7 @@ class ChatService {
     return id.lookup(phoneDigits, accessToken: token);
   }
 
-  /// The Chama account for [phoneDigits], or null when the number has none.
+  /// The Alô account for [phoneDigits], or null when the number has none.
   Future<String?> findByPhone(String phoneDigits) async => (await lookupPhones([phoneDigits]))[phoneDigits];
 
   /// Opens (or creates) the encrypted 1:1 chat with [userId]. An existing

@@ -1,14 +1,14 @@
 import 'dart:convert';
 
-import 'package:chama/common/deps.dart';
-import 'package:chama/common/notifications.dart';
-import 'package:chama/common/theme.dart';
-import 'package:chama/contacts/address_book.dart';
-import 'package:chama/contacts/contact_sync.dart';
-import 'package:chama/contacts/contacts_service.dart';
-import 'package:chama/group/new_chat_screen.dart';
-import 'package:chama/l10n/app_localizations.dart';
-import 'package:chama/services/push.dart';
+import 'package:alo/common/deps.dart';
+import 'package:alo/common/notifications.dart';
+import 'package:alo/common/theme.dart';
+import 'package:alo/contacts/address_book.dart';
+import 'package:alo/contacts/contact_sync.dart';
+import 'package:alo/contacts/contacts_service.dart';
+import 'package:alo/group/new_chat_screen.dart';
+import 'package:alo/l10n/app_localizations.dart';
+import 'package:alo/services/push.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -36,26 +36,26 @@ class FakeBook implements AddressBook {
 }
 
 void main() {
-  testWidgets('rationale first; once allowed, contacts on Chama, invites and search', (tester) async {
+  testWidgets('rationale first; once allowed, contacts on Alô, invites and search', (tester) async {
     // A phone screen (360 x 800), tall enough for every row.
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
-    // chama-id: of the numbers, only Ana's has an account.
+    // alo-id: of the numbers, only Ana's has an account.
     final ana = sha256.convert(utf8.encode('5511912340001')).toString();
-    final chamaId = MockClient(
+    final aloId = MockClient(
       (req) async => http.Response(
         jsonEncode({
           'registered': [
-            {'hash': ana, 'user_id': '@ana:chama.test'},
+            {'hash': ana, 'user_id': '@ana:alo.test'},
           ],
         }),
         200,
       ),
     );
-    final service = (await tester.runAsync(() => testService(prefs, chamaId: chamaId)))!;
+    final service = (await tester.runAsync(() => testService(prefs, aloId: aloId)))!;
     service.client.accessToken = 'tok';
     service.loggedIn.value = true;
     final contacts = ContactsService(
@@ -79,7 +79,7 @@ void main() {
         pickFile: ({required bool image}) async => null,
         shareText: (text) async => shared.add(text),
         child: MaterialApp(
-          theme: chamaTheme(Brightness.light),
+          theme: aloTheme(Brightness.light),
           locale: const Locale('pt'),
           supportedLocales: L10n.supportedLocales,
           localizationsDelegates: L10n.localizationsDelegates,
@@ -98,8 +98,8 @@ void main() {
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
     await tester.pump();
     expect(find.byKey(const Key('contacts_allow')), findsNothing);
-    expect(find.byKey(const Key('contacts_on_chama')), findsOneWidget);
-    expect(find.byKey(const ValueKey('contact_@ana:chama.test')), findsOneWidget);
+    expect(find.byKey(const Key('contacts_on_alo')), findsOneWidget);
+    expect(find.byKey(const ValueKey('contact_@ana:alo.test')), findsOneWidget);
     expect(find.byKey(const ValueKey('invite_5511955550002')), findsOneWidget);
     // No saved name: the number stands in for it.
     expect(
@@ -109,7 +109,7 @@ void main() {
 
     // Rows, the search box and the invite button are at least 48 dp tall.
     expect(tester.getSize(find.byKey(const Key('contact_search'))).height, greaterThanOrEqualTo(48));
-    expect(tester.getSize(find.byKey(const ValueKey('contact_@ana:chama.test'))).height, greaterThanOrEqualTo(48));
+    expect(tester.getSize(find.byKey(const ValueKey('contact_@ana:alo.test'))).height, greaterThanOrEqualTo(48));
     final inviteBia = find.descendant(
       of: find.byKey(const ValueKey('invite_5511955550002')),
       matching: find.byType(TextButton),
@@ -119,7 +119,7 @@ void main() {
     expect(tester.getSemantics(inviteBia), isSemantics(label: 'Convidar Bia Lima', isButton: true, hasTapAction: true));
 
     await tester.tap(inviteBia);
-    expect(shared.single, contains('https://chama.chat'));
+    expect(shared.single, contains('https://usealo.app'));
 
     await tester.enterText(find.byKey(const Key('contact_search')), 'bia');
     await tester.pump();

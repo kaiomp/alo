@@ -3,14 +3,14 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-const _channel = MethodChannel('chat.chama.app/clipboard');
+const _channel = MethodChannel('app.usealo.app/clipboard');
 Timer? _clearTimer;
 
 /// Copies a secret (the recovery key). On Android it is flagged sensitive
 /// (MainActivity.kt), so the copy preview and keyboard clipboard histories
 /// hide it. It is cleared after [clearAfter] if still on the clipboard.
 /// Limit: Android 10+ lets an app read the clipboard only while it is in
-/// front, so when Chama is in the background at that moment the key stays
+/// front, so when Alô is in the background at that moment the key stays
 /// until [clearSecret] runs (Continuar) or the system expires it. On the web
 /// reading the clipboard asks the user for permission, so it is not cleared.
 Future<void> copySecret(String text, {Duration clearAfter = const Duration(seconds: 60)}) async {

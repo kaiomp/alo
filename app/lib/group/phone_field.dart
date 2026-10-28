@@ -6,7 +6,7 @@ import '../common/deps.dart';
 import '../l10n/app_localizations.dart';
 
 /// "+55" number field with a full-width button under it. Calls [onUser] with
-/// the Chama user ID (found through the chama-id directory) and the digits
+/// the Alô user ID (found through the alo-id directory) and the digits
 /// once the number is valid and has an account; shows an error otherwise.
 class PhoneLookupField extends StatefulWidget {
   const PhoneLookupField({super.key, required this.buttonLabel, required this.onUser, this.fieldKey, this.focusNode});
@@ -45,7 +45,7 @@ class _PhoneLookupFieldState extends State<PhoneLookupField> {
       final userId = await Deps.of(context).chat.findByPhone(digits);
       if (!mounted) return;
       if (userId == null) {
-        setState(() => _error = l.notOnChama(l.appName));
+        setState(() => _error = l.notOnAlo(l.appName));
         return;
       }
       await widget.onUser(userId, digits);

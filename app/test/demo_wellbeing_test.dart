@@ -1,4 +1,4 @@
-import 'package:chama/demo/demo_wellbeing.dart';
+import 'package:alo/demo/demo_wellbeing.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

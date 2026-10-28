@@ -169,7 +169,7 @@ class _StageState extends State<_Stage> {
       textDirection: TextDirection.ltr,
       child: Stack(
         children: [
-          const ChamaApp(locale: Locale('pt')),
+          const AloApp(locale: Locale('pt')),
           if (d != null) Positioned.fill(child: TapOverlay(taps: d.taps)),
           if (!_ready)
             Positioned.fill(
@@ -179,7 +179,7 @@ class _StageState extends State<_Stage> {
                   delegates: L10n.localizationsDelegates,
                   child: const ColoredBox(
                     color: Tokens.cream,
-                    child: Center(child: ChamaMark(size: 72, tile: true)),
+                    child: Center(child: AloMark(size: 72, tile: true)),
                   ),
                 ),
               ),

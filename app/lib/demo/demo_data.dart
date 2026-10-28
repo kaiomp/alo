@@ -300,7 +300,7 @@ class DemoWorld {
       (c) => [
         text(carol, 'Bia, consegue me mandar a proposta hoje?', ago(h: 6)),
         file(me, 'Proposta_identidade_visual.pdf', 2516582, ago(h: 5, m: 20)),
-        text(me, 'Tá aí! Qualquer dúvida me chama', ago(h: 5, m: 19)),
+        text(me, 'Tá aí! Qualquer dúvida me alo', ago(h: 5, m: 19)),
         text(carol, 'Recebi! Vou ler com calma e te falo amanhã', ago(h: 4, m: 45)),
       ],
     );

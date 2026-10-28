@@ -1,10 +1,10 @@
 import 'dart:async';
 
-import 'package:chama/auth/id_client.dart';
-import 'package:chama/services/chama_client.dart';
-import 'package:chama/services/chat_service.dart';
-import 'package:chama/services/chat_session.dart';
-import 'package:chama/services/delivery.dart';
+import 'package:alo/auth/id_client.dart';
+import 'package:alo/services/alo_client.dart';
+import 'package:alo/services/chat_service.dart';
+import 'package:alo/services/chat_session.dart';
+import 'package:alo/services/delivery.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:matrix/matrix.dart';
 // TimelineChunk is not exported, and a Timeline cannot be built without one.
@@ -56,7 +56,7 @@ void main() {
       database: await databaseFactoryFfi.openDatabase(':memory:'),
       sqfliteFactory: databaseFactoryFfi,
     );
-    final client = ChamaClient('chat_session_test', database: db);
+    final client = AloClient('chat_session_test', database: db);
     final delivery = DeliveryTracker(client, prefs);
     final service = ChatService(
       client,
@@ -65,7 +65,7 @@ void main() {
       prefs,
       homeserver: Uri.parse('http://localhost:8080'),
     );
-    final room = _SlowRoom(id: '!r:chama.test', client: client);
+    final room = _SlowRoom(id: '!r:alo.test', client: client);
     client.rooms.add(room);
 
     final session = ChatSession(service, room);

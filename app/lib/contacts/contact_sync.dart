@@ -14,9 +14,9 @@ class BookContact {
   final List<String> numbers;
 }
 
-/// A saved contact with a Chama account.
-class ChamaContact {
-  const ChamaContact({required this.name, required this.phone, required this.userId, this.moved = false});
+/// A saved contact with a Alô account.
+class AloContact {
+  const AloContact({required this.name, required this.phone, required this.userId, this.moved = false});
   final String name;
 
   /// E.164 digits without '+'.
@@ -28,7 +28,7 @@ class ChamaContact {
   final bool moved;
 }
 
-/// A saved contact without an account, for "Convidar para o Chama".
+/// A saved contact without an account, for "Convidar para o Alô".
 class InviteContact {
   const InviteContact({required this.name, required this.phone});
   final String name;
@@ -36,8 +36,8 @@ class InviteContact {
 }
 
 class ContactSyncResult {
-  const ContactSyncResult(this.onChama, this.invite, [this.moved = const []]);
-  final List<ChamaContact> onChama;
+  const ContactSyncResult(this.onAlo, this.invite, [this.moved = const []]);
+  final List<AloContact> onAlo;
   final List<InviteContact> invite;
 
   /// Numbers found answering for another account in this run: the account
@@ -50,13 +50,13 @@ class ContactSyncResult {
 /// one seen for it, kept while the number has none).
 typedef _Entry = ({String? userId, int checkedAt, String name, String? trusted});
 
-/// Asks chama-id which of these numbers (up to 1000) have an account.
+/// Asks alo-id which of these numbers (up to 1000) have an account.
 typedef LookupPhones = Future<Map<String, String>> Function(List<String> phoneDigits);
 
-/// Matches the address book against Chama accounts and remembers the answers.
+/// Matches the address book against Alô accounts and remembers the answers.
 ///
-/// The server sees each number's SHA-256 hash (docs/chama-id-api.md). To spend
-/// few lookups (chama-id allows 30 per hour and 10 000 hashes per day per
+/// The server sees each number's SHA-256 hash (docs/alo-id-api.md). To spend
+/// few lookups (alo-id allows 30 per hour and 10 000 hashes per day per
 /// account), only numbers that were never checked, or were checked over a day
 /// ago, are sent, at most [maxBatch] per request. A refusal (rate_limited) or a
 /// network error stops the run; what was learned is kept and the next run
@@ -70,11 +70,11 @@ class ContactSync {
 
   static const _secure = FlutterSecureStorage();
 
-  // Limit: chama-id takes at most 1000 hashes per lookup.
+  // Limit: alo-id takes at most 1000 hashes per lookup.
   static const maxBatch = 1000;
   static const refreshAfter = Duration(days: 1);
-  static const _cacheKey = 'chama.contacts.v1';
-  static const _retryKey = 'chama.contacts.retry_at';
+  static const _cacheKey = 'alo.contacts.v1';
+  static const _retryKey = 'alo.contacts.retry_at';
 
   final SharedPreferences _prefs;
   final LookupPhones _lookup;
@@ -161,7 +161,7 @@ class ContactSync {
             final was = cache[d];
             final userId = found[d];
             final trusted = was?.trusted ?? userId;
-            // A recycled number (chama-id gives it a fresh account) or a
+            // A recycled number (alo-id gives it a fresh account) or a
             // directory answering wrongly: the saved name stays off the new
             // account, and the chats with the old one say so, once.
             // Limit: it stays off until the number answers for the trusted
@@ -187,7 +187,7 @@ class ContactSync {
     Map<String, _Entry> cache,
     List<({String userId, String name})> moved,
   ) {
-    final onChama = <String, ChamaContact>{};
+    final onAlo = <String, AloContact>{};
     final invite = <InviteContact>[];
     for (final c in book) {
       final digits = c.numbers.map(normalizeContactPhone).whereType<String>().toSet();
@@ -196,9 +196,9 @@ class ContactSync {
       for (final d in registered) {
         final e = cache[d]!;
         final isMoved = e.userId != e.trusted;
-        onChama.putIfAbsent(
+        onAlo.putIfAbsent(
           e.userId!,
-          () => ChamaContact(name: isMoved ? '' : e.name, phone: d, userId: e.userId!, moved: isMoved),
+          () => AloContact(name: isMoved ? '' : e.name, phone: d, userId: e.userId!, moved: isMoved),
         );
       }
       // Only numbers already checked: an unchecked one may still have an account.
@@ -208,7 +208,7 @@ class ContactSync {
     }
     int byName(String a, String b) => foldText(a).compareTo(foldText(b));
     return ContactSyncResult(
-      onChama.values.toList()..sort((a, b) => byName(a.name, b.name)),
+      onAlo.values.toList()..sort((a, b) => byName(a.name, b.name)),
       invite..sort((a, b) => byName(a.name, b.name)),
       moved,
     );

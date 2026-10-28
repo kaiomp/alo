@@ -318,7 +318,7 @@ final _textTheme = TextTheme(
 const fontFamily = 'Inter';
 const monoFontFamily = 'JetBrainsMono';
 
-ThemeData chamaTheme(Brightness brightness) {
+ThemeData aloTheme(Brightness brightness) {
   final dark = brightness == Brightness.dark;
   final scheme = dark ? _dark : _light;
   final chat = dark ? ChatColors.dark : ChatColors.light;

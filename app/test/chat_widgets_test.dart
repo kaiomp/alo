@@ -1,23 +1,23 @@
 import 'dart:async';
 
-import 'package:chama/auth/id_client.dart';
-import 'package:chama/chat/composer.dart';
-import 'package:chama/chat/message_bubble.dart';
-import 'package:chama/chat/voice/voice_player.dart';
-import 'package:chama/chat/voice/voice_recorder.dart';
-import 'package:chama/common/deps.dart';
-import 'package:chama/common/notifications.dart';
-import 'package:chama/contacts/address_book.dart';
-import 'package:chama/contacts/contacts_service.dart';
-import 'package:chama/common/theme.dart';
-import 'package:chama/l10n/app_localizations.dart';
-import 'package:chama/services/chama_client.dart';
-import 'package:chama/services/chat_service.dart';
-import 'package:chama/services/chat_session.dart';
-import 'package:chama/services/delivery.dart';
-import 'package:chama/services/models.dart';
-import 'package:chama/services/ticks.dart';
-import 'package:chama/services/push.dart';
+import 'package:alo/auth/id_client.dart';
+import 'package:alo/chat/composer.dart';
+import 'package:alo/chat/message_bubble.dart';
+import 'package:alo/chat/voice/voice_player.dart';
+import 'package:alo/chat/voice/voice_recorder.dart';
+import 'package:alo/common/deps.dart';
+import 'package:alo/common/notifications.dart';
+import 'package:alo/contacts/address_book.dart';
+import 'package:alo/contacts/contacts_service.dart';
+import 'package:alo/common/theme.dart';
+import 'package:alo/l10n/app_localizations.dart';
+import 'package:alo/services/alo_client.dart';
+import 'package:alo/services/chat_service.dart';
+import 'package:alo/services/chat_session.dart';
+import 'package:alo/services/delivery.dart';
+import 'package:alo/services/models.dart';
+import 'package:alo/services/ticks.dart';
+import 'package:alo/services/push.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -37,7 +37,7 @@ void main() {
     const body = 'Chego às 13h';
     await tester.pumpWidget(
       MaterialApp(
-        theme: chamaTheme(Brightness.light),
+        theme: aloTheme(Brightness.light),
         locale: const Locale('pt'),
         supportedLocales: L10n.supportedLocales,
         localizationsDelegates: L10n.localizationsDelegates,
@@ -45,7 +45,7 @@ void main() {
           body: MessageBubble(
             message: Message(
               id: r'$e',
-              senderId: '@me:chama.test',
+              senderId: '@me:alo.test',
               senderName: 'Eu',
               isMine: true,
               time: DateTime(2026, 10, 24, 7, 29),
@@ -235,7 +235,7 @@ Message _message(
   List<Reaction> reactions = const [],
 }) => Message(
   id: r'$m',
-  senderId: '@me:chama.test',
+  senderId: '@me:alo.test',
   senderName: 'Eu',
   isMine: true,
   time: DateTime(2026, 10, 24, 7, 29),
@@ -248,7 +248,7 @@ Message _message(
 );
 
 Widget _app(Widget child) => MaterialApp(
-  theme: chamaTheme(Brightness.light),
+  theme: aloTheme(Brightness.light),
   locale: const Locale('pt'),
   supportedLocales: L10n.supportedLocales,
   localizationsDelegates: L10n.localizationsDelegates,
@@ -292,7 +292,7 @@ Widget _composer(ChatService service, ChatSession session, _Recorder recorder, {
   pickFile: ({required image}) async => null,
   shareText: (_) async {},
   child: MaterialApp(
-    theme: chamaTheme(Brightness.light),
+    theme: aloTheme(Brightness.light),
     locale: const Locale('pt'),
     supportedLocales: L10n.supportedLocales,
     localizationsDelegates: L10n.localizationsDelegates,
@@ -315,7 +315,7 @@ Future<(ChatService, ChatSession)> _session() async {
     database: await databaseFactoryFfi.openDatabase(':memory:'),
     sqfliteFactory: databaseFactoryFfi,
   );
-  final client = ChamaClient('message_bubble_test', database: db);
+  final client = AloClient('message_bubble_test', database: db);
   final service = ChatService(
     client,
     DeliveryTracker(client, prefs),
@@ -323,5 +323,5 @@ Future<(ChatService, ChatSession)> _session() async {
     prefs,
     homeserver: Uri.parse('http://localhost:8080'),
   );
-  return (service, ChatSession(service, Room(id: '!r:chama.test', client: client)));
+  return (service, ChatSession(service, Room(id: '!r:alo.test', client: client)));
 }

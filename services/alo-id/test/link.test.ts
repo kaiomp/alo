@@ -17,13 +17,13 @@ test('offer, then answer by the same account, each once; poll sees both', () => 
   assert.match(id, /^[A-Za-z0-9_-]{22}$/);
   assert.equal(expires_in, LINK_TTL);
   assert.deepEqual(links.poll(id), { offer: null, answer: null });
-  assert.throws(() => links.answer(id, '@ua:chama.test', B), (e) => code(e) === 'conflict', 'no offer yet');
-  links.offer(id, '@ua:chama.test', B);
-  assert.throws(() => links.offer(id, '@ub:chama.test', B), (e) => code(e) === 'conflict', 'first offer wins');
+  assert.throws(() => links.answer(id, '@ua:alo.test', B), (e) => code(e) === 'conflict', 'no offer yet');
+  links.offer(id, '@ua:alo.test', B);
+  assert.throws(() => links.offer(id, '@ub:alo.test', B), (e) => code(e) === 'conflict', 'first offer wins');
   assert.deepEqual(links.poll(id), { offer: B, answer: null });
-  assert.throws(() => links.answer(id, '@ub:chama.test', B), (e) => code(e) === 'forbidden', 'another account');
-  links.answer(id, '@ua:chama.test', { ...B, mac: 'b3RoZXI=' });
-  assert.throws(() => links.answer(id, '@ua:chama.test', B), (e) => code(e) === 'conflict');
+  assert.throws(() => links.answer(id, '@ub:alo.test', B), (e) => code(e) === 'forbidden', 'another account');
+  links.answer(id, '@ua:alo.test', { ...B, mac: 'b3RoZXI=' });
+  assert.throws(() => links.answer(id, '@ua:alo.test', B), (e) => code(e) === 'conflict');
   assert.deepEqual(links.poll(id), { offer: B, answer: { ...B, mac: 'b3RoZXI=' } });
 });
 test('an entry lives 2 minutes, and 2 more after the offer; then it is gone', () => {
@@ -31,13 +31,13 @@ test('an entry lives 2 minutes, and 2 more after the offer; then it is gone', ()
   const a = links.create();
   tick(LINK_TTL);
   assert.throws(() => links.poll(a.id), (e) => code(e) === 'not_found');
-  assert.throws(() => links.offer(a.id, '@ua:chama.test', B), (e) => code(e) === 'not_found');
+  assert.throws(() => links.offer(a.id, '@ua:alo.test', B), (e) => code(e) === 'not_found');
   const b = links.create();
   assert.equal((db.prepare('SELECT COUNT(*) AS n FROM links').get() as { n: number }).n, 1, 'expired rows swept');
   tick(LINK_TTL - 1);
-  links.offer(b.id, '@ua:chama.test', B);
+  links.offer(b.id, '@ua:alo.test', B);
   tick(LINK_TTL - 1);
-  links.answer(b.id, '@ua:chama.test', B);
+  links.answer(b.id, '@ua:alo.test', B);
   tick(1);
   assert.throws(() => links.poll(b.id), (e) => code(e) === 'not_found');
   for (const id of [undefined, 5, 'nope']) assert.throws(() => links.poll(id), (e) => code(e) === 'not_found');
