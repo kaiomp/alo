@@ -149,7 +149,9 @@ flowchart LR
    Ligue a issue (por exemplo, `Closes #42`). Mudanças de tela ficam muito mais fáceis de
    revisar com uma captura de tela.
 7. **Revisão.** Alguém do projeto lê, comenta e aprova. Comentário em revisão é sobre o
-   código, nunca sobre a pessoa.
+   código, nunca sobre a pessoa. Todo pull request precisa de pelo menos 1 aprovação.
+8. **Merge.** Por enquanto, quem faz o merge no `main` é o Kaio. Quem tem acesso de escrita
+   envia os próprios branches, mas nunca faz push direto no `main`.
 
 As regras do código em detalhe (textos da interface no ARB, cores só como tokens, só
 `lib/services/` fala com o SDK Matrix, uma pasta por funcionalidade, comentários `// Limit:`,
