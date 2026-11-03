@@ -36,8 +36,8 @@ As diferenças estão por trás:
 |---|---|---|
 | Dono | Uma empresa privada (Meta) | Ninguém em particular: código aberto, pensado para ser operado por instituições públicas ou sem fins lucrativos |
 | Código | Fechado | Aberto (AGPL-3.0), qualquer pessoa pode auditar |
-| Anúncios e uso de dados | Anúncios na aba Atualizações (desde 2025) e dados compartilhados com a Meta | Não existem |
-| Algoritmo, feed ou recomendação | Há conteúdo recomendado em algumas áreas | Não existe. A lista segue só a ordem da última mensagem |
+| Anúncios e uso de dados | Anúncios na aba Atualizações (desde 2025) e dados compartilhados com a Meta | Sem venda de dados. Anúncio nunca nas conversas; na Rede (planejada), só marcado e limitado (veja abaixo) |
+| Algoritmo, feed ou recomendação | Há conteúdo recomendado em algumas áreas | Nada ranqueado em segredo. As conversas seguem só a ordem da última mensagem; na Rede (planejada), cada recomendação diz por que aparece e você escolhe o algoritmo |
 | Protocolo | Fechado | Aberto (Matrix). Outros servidores compatíveis podem existir |
 | Criptografia de ponta a ponta | Sim | Sim, em todas as conversas, sem exceção |
 
@@ -72,6 +72,16 @@ Ainda não. Hoje o Alô tem conversas, grupos, fotos, documentos, mensagens de v
 respostas, edição e exclusão de mensagens. Status, canais, comunidades, enquetes e mensagens
 temporárias vêm na etapa M5; ligações de voz e vídeo, na M6. As abas "Atualizações",
 "Comunidades" e "Ligações" já aparecem no app com o aviso "em breve".
+
+### E as abas Momentos, Rede e Voz que aparecem nos vídeos?
+
+São um **protótipo**: telas que já dá para navegar no modo demonstração, com pessoas, posts e
+políticos inventados, mas que ainda não estão ligadas a nenhum servidor. **Momentos** são
+fotos e textos que somem em 24 horas, só para os seus contatos. **Rede** é um feed em que
+cada recomendação diz por que aparece. **Voz** é um espaço de participação cidadã, do país ao
+bairro. Há também o **Bem-estar**, contra o uso compulsivo, e o **Modo simples**, com letras
+maiores e menos botões. Ainda não há data para virarem recursos de verdade; veja o
+[roadmap](roadmap.md#abas-novas-protótipo).
 
 ---
 
@@ -168,9 +178,27 @@ servidor guarda as mensagens cifradas sem prazo.
 
 ### Tem algoritmo escolhendo o que eu vejo?
 
-Não. A lista de conversas segue só a ordem da última atividade. Não há feed, ranking, conteúdo
-recomendado nem anúncio. Quando existirem canais (M5), eles também não terão recomendação, e a
-busca será só por nome exato ou número.
+**Nas conversas, não.** A lista de conversas segue só a ordem da última atividade, sem
+ranking, recomendação ou anúncio. Quando existirem canais (M5), eles também não terão
+recomendação, e a busca será só por nome exato ou número.
+
+**Na Rede, sim, mas nunca em segredo.** A Rede é o feed planejado do Alô (hoje só existe no
+protótipo). A regra é que nada seja ranqueado às escondidas:
+
+- cada post recomendado diz por que está ali ("Porque você segue…", "Perto de você",
+  "Tema: comida"), e você pode pedir mais ou menos daquilo;
+- em "Escolha seu algoritmo" você troca o algoritmo, inclusive por feeds feitos pela
+  comunidade, e liga ou desliga temas;
+- a aba **Seguindo** mostra só quem você segue, do mais novo ao mais antigo, e tem fim
+  ("Você está em dia").
+
+### Vai ter anúncio?
+
+**Nas conversas e nos Momentos, nunca.** Na Rede (planejada), pode haver, com regras fixas:
+marcado como "Patrocinado", no máximo 1 a cada 10 posts, escolhido só pelo tema do que você
+está vendo, nunca pelo conteúdo das suas conversas, e sem rastrear você em outros apps ou
+sites. Post pago por uma marca leva o selo "Parceria paga". E o Alô não vende dados de
+ninguém.
 
 ### O código é aberto mesmo? Alguém confere?
 
@@ -312,16 +340,18 @@ Configurações → Notificações o app mostra se as notificações estão ativ
 
 O Alô é um projeto de código aberto, feito para ser operado por uma instituição pública ou sem
 fins lucrativos. Qualquer pessoa pode ler o código, apontar problemas e contribuir. Para começar,
-veja o [guia de desenvolvimento](desenvolvimento.md). Instituições e financiadores que queiram
-apoiar ou operar um servidor encontram o caminho em [Como apoiar](../README.md#como-apoiar).
+veja o [guia de contribuição](../CONTRIBUTING.md). Instituições e financiadores que queiram
+apoiar ou operar um servidor encontram o caminho em [Como ajudar](../README.md#como-ajudar).
 
 ### Quem paga os servidores?
 
 **Isso ainda não está definido.** O Alô ainda não tem um operador em produção. O modelo
 pensado é este:
 
-- **Sem anúncios e sem venda de dados**, nunca. O custo é de infraestrutura, e quem opera é uma
-  instituição pública ou sem fins lucrativos, com apoio de parceiros e financiadores.
+- **Sem venda de dados**, nunca, e **nenhum anúncio nas conversas**. O custo é de
+  infraestrutura, e quem opera é uma instituição sem fins lucrativos ou pública, com apoio de
+  parceiros e financiadores. As regras para anúncios na Rede (planejada) estão em
+  [Vai ter anúncio?](#vai-ter-anúncio).
 - **Os principais custos** são os servidores e o envio dos SMS de entrada (milhões de códigos
   custam dinheiro de verdade). O serviço de SMS foi feito para trocar de provedor sem mudar o
   app, para usar sempre o mais barato.

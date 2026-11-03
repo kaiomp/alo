@@ -3,7 +3,12 @@
 O Alô é construído em sete etapas, chamadas de M1 a M7 (M de *milestone*, marco). Cada etapa
 tem um critério claro de "pronto", conferido por um teste automático. As três primeiras já
 estão concluídas: o servidor, o app Android e a versão web funcionam no ambiente de
-desenvolvimento. O lançamento ao público vem com a M7.
+desenvolvimento. A M4 está em andamento: a parte do servidor está pronta e faltam as telas do
+app. O lançamento ao público vem com a M7.
+
+Além das conversas, o app terá as abas **Momentos**, **Rede**, **Voz** e **Perfil** (com o
+**Bem-estar**), mais o **Modo simples**. Hoje elas existem só como protótipo navegável, no
+modo demonstração, e ainda não têm etapa definida (veja [Abas novas](#abas-novas-protótipo)).
 
 Cada etapa tem uma *issue* (um registro de tarefa) no GitHub, com a lista do que falta.
 
@@ -16,16 +21,19 @@ flowchart LR
   M5 --> M6["M6<br/>Ligações"]
   M6 --> M7["M7<br/>Produção"]
   M7 -.-> F["Depois:<br/>federação por DDD,<br/>modo sem internet,<br/>iPhone e computador"]
+  P["Abas novas: Momentos, Rede,<br/>Voz, Bem-estar, Modo simples<br/>(protótipo, etapa a definir)"]
 
   classDef pronto fill:#2f9e44,stroke:#2b8a3e,color:#ffffff
-  classDef proxima fill:#4A1D6E,stroke:#34124F,color:#ffffff
+  classDef andamento fill:#4A1D6E,stroke:#34124F,color:#ffffff
   classDef planejada fill:#f1f3f5,stroke:#868e96,color:#212529
+  classDef prototipo fill:#FFF4CC,stroke:#F5B700,color:#212529
   class M1,M2,M3 pronto
-  class M4 proxima
+  class M4 andamento
   class M5,M6,M7,F planejada
+  class P prototipo
 ```
 
-Legenda: verde = concluída, roxo = próxima, cinza = planejada.
+Legenda: verde = concluída, roxo = em andamento, cinza = planejada, amarelo = só protótipo.
 
 ## Resumo
 
@@ -34,10 +42,11 @@ Legenda: verde = concluída, roxo = próxima, cinza = planejada.
 | M1 · Fundação | ✅ Concluída | `make up` sobe o servidor e um script faz dois usuários de teste entrarem com o código `000000` e trocarem uma mensagem criptografada. | — |
 | M2 · Núcleo do app | ✅ Concluída | Teste integrado no Chrome e no emulador Android: o usuário do app conversa com um usuário de teste, vê os tiques ficarem azuis, envia foto e mensagem de voz. | [#1](https://github.com/kaiomp/alo/issues/1) |
 | M3 · Lançamento Android | ✅ Concluída | Teste no emulador: o usuário Android conversa com um usuário web nos dois sentidos, e uma mensagem chega como notificação com o app em segundo plano. | [#2](https://github.com/kaiomp/alo/issues/2) |
-| M4 · Aparelhos e segurança da conta | 🔨 Próxima | A versão web, conectada lendo o QR code com o emulador, consegue ler o histórico anterior. | [#3](https://github.com/kaiomp/alo/issues/3), [#11](https://github.com/kaiomp/alo/issues/11) |
+| M4 · Aparelhos e segurança da conta | 🔨 Em andamento (servidor pronto, app por fazer) | A versão web, conectada lendo o QR code com o emulador, consegue ler o histórico anterior. | [#3](https://github.com/kaiomp/alo/issues/3), [#11](https://github.com/kaiomp/alo/issues/11) |
 | M5 · Extras | ⏳ Planejada | Cada recurso tem um teste de ponta a ponta. | [#4](https://github.com/kaiomp/alo/issues/4) |
 | M6 · Ligações | ⏳ Planejada | Dois clientes fazem uma ligação no ambiente local. | [#5](https://github.com/kaiomp/alo/issues/5) |
 | M7 · Produção | ⏳ Planejada | Um teste de carga atinge as metas de escala (abaixo). | [#6](https://github.com/kaiomp/alo/issues/6) |
+| Abas novas (Momentos, Rede, Voz, Perfil, Bem-estar, Modo simples) | 🧪 Protótipo | A definir. | — |
 
 ## Etapas concluídas
 
@@ -108,23 +117,22 @@ O que faltava para o app Android ser usável no dia a dia.
 
 Pendências pequenas estão em [#10](https://github.com/kaiomp/alo/issues/10).
 
-## Próxima etapa
+## Etapa em andamento
 
 ### M4 · Aparelhos e segurança da conta 🔨 · [#3](https://github.com/kaiomp/alo/issues/3)
 
 Usar o Alô em mais de um aparelho e proteger a conta contra quem tenta se passar pelo dono.
+A parte do servidor está pronta e testada; as telas do app ainda não começaram.
 
-- **Conectar a versão web por QR code**, como os "Aparelhos conectados" do WhatsApp. O
-  navegador mostra um QR code, o celular lê, e o computador recebe as chaves para ler o
-  histórico. O alo-id só vê dados cifrados nesse processo, que expira em 2 minutos.
-- **Lista de aparelhos** conectados, com a opção de remover qualquer um.
-- **PIN da conta** (confirmação em duas etapas). Além de proteger a redefinição de
-  identidade, impede que o número seja cadastrado de novo por 7 dias.
-- **Aviso de "novo aparelho"** para os contatos.
-- **Aviso na conversa** sobre mensagens vindas de um aparelho não verificado ou sem
-  criptografia ([#11](https://github.com/kaiomp/alo/issues/11)). As notificações já escondem
-  nome e texto nesses casos; a conversa ainda não marca essas mensagens. Isso fecha o caminho do
-  golpe "troquei de número, me manda um PIX" feito com um chip clonado.
+| Recurso | Servidor (alo-id e Synapse) | App |
+|---|---|---|
+| **Conectar a versão web por QR code**, como os "Aparelhos conectados" do WhatsApp. O navegador mostra um QR code, o celular lê, e o computador recebe as chaves para ler o histórico. O alo-id só vê dados cifrados nesse processo, que expira em 2 minutos. | ✅ Rotas `/id/v1/link*` e tokens de login de uso único | ⏳ Por fazer |
+| **Lista de aparelhos** conectados, com a opção de remover qualquer um. | ✅ Rota `/id/v1/devices/remove` | ⏳ Por fazer |
+| **PIN da conta** (confirmação em duas etapas). Além de proteger a redefinição de identidade, impede que o número seja cadastrado de novo por 7 dias. | ✅ Rotas `/id/v1/pin/*`, bloqueio por tentativas, espera de 7 dias no "Esqueci meu PIN" | ⏳ Por fazer |
+| **Aviso de "novo aparelho"** para os contatos. | — | ⏳ Por fazer |
+| **Aviso na conversa** sobre mensagens vindas de um aparelho não verificado ou sem criptografia ([#11](https://github.com/kaiomp/alo/issues/11)). As notificações já escondem nome e texto nesses casos; a conversa ainda não marca essas mensagens. Isso fecha o caminho do golpe "troquei de número, me manda um PIX" feito com um chip clonado. | — | ⏳ Por fazer |
+
+As rotas do servidor estão descritas na [API do alo-id](alo-id-api.md).
 
 ## Etapas planejadas
 
@@ -134,7 +142,7 @@ Os recursos que completam a experiência do WhatsApp:
 
 | Recurso | Como fica no Alô |
 |---|---|
-| Status | Fotos e textos que somem em 24 horas, vistos só pelos contatos. |
+| Status | Fotos e textos que somem em 24 horas, vistos só pelos contatos. No protótipo, é a aba **Momentos** (veja abaixo). |
 | Canais | Salas públicas em que só os administradores publicam, sem ranking de recomendação. |
 | Comunidades | Vários grupos do mesmo assunto reunidos, como os da escola ou do bairro. |
 | Enquetes e localização | Novos tipos de mensagem. |
@@ -151,6 +159,27 @@ dado para vazar, ser apreendido ou decifrado no futuro, e a conta de armazenamen
 Aparelhos novos e a versão web passam a ver só os últimos 30 dias, e um backup cifrado
 controlado pelo próprio usuário será desenhado à parte. Hoje esse limite ainda não está ligado
 no servidor.
+
+### Abas novas (protótipo)
+
+O app vai além das conversas. As telas abaixo já existem e podem ser navegadas no
+[modo demonstração](desenvolvimento.md#modo-demonstração-sem-servidor), com serviços falsos e
+dados inventados. Nada delas está ligado a um servidor, e ainda não há etapa nem desenho
+técnico definido para torná-las reais.
+
+| Aba | Como deve ser | O que existe hoje |
+|---|---|---|
+| **Momentos** | Fotos e textos que somem em 24 horas, vistos só pelos contatos, criptografados de ponta a ponta como as conversas, sem anúncios. | Protótipo |
+| **Rede** | Feed com duas abas. **Para você** recomenda, mas sempre diz por que cada post aparece ("Porque você segue…", "Perto de você", "Tema: comida") e tem "Mostrar mais/menos disso". **Escolha seu algoritmo** deixa a pessoa trocar o algoritmo (inclusive por feeds feitos pela comunidade) e os temas. **Seguindo** mostra só quem você segue, do mais novo ao mais antigo, e termina em "Você está em dia". Vídeos curtos (reels) começam sem som. Perfis de criadores e de negócios locais, selo "Parceria paga". Anúncios marcados "Patrocinado", no máximo 1 a cada 10 posts, escolhidos só pelo tema, nunca pelas conversas, sem rastrear a pessoa em outros apps e nunca nas conversas nem nos Momentos. | Protótipo; a regra de 1 anúncio a cada 10 itens já tem teste (`app/lib/feed/ads.dart`) |
+| **Voz** | Participação cidadã do país ao bairro (Brasil → estado → cidade → bairro): representantes com dados abertos, consultas com identidade verificada e voto anônimo, abaixo-assinados, problemas do bairro com foto e apoio dos vizinhos, orçamento participativo. Apartidária: fatos com fonte, nada ordenado por relevância, nenhuma cor de partido. | Protótipo; políticos, projetos e números são fictícios e as telas mostram "Dados de exemplo" |
+| **Perfil** | "Seus dados são seus": exportar tudo e levar os seguidores para outro servidor. | Protótipo |
+| **Bem-estar** | Contra o uso compulsivo: a Rede tem fim, limite diário com cartão de pausa, Modo descanso, Resumo de notificações, curtidas escondidas, modo cinza. Sem sequências, medalhas ou culpa. | Protótipo |
+| **Modo simples** | Para todas as idades: letras 25% maiores, só três abas (Conversas, Rede, Voz), botões maiores, sem animações decorativas. | Protótipo |
+
+Perguntas em aberto para tornar essas abas reais: onde e como guardar posts e seguidores
+sem quebrar a promessa de privacidade, como verificar que alguém mora num bairro sem expor a
+identidade no voto, de onde vêm os dados abertos de cada nível de governo e como moderar
+conteúdo público às claras.
 
 ### M6 · Ligações ⏳ · [#5](https://github.com/kaiomp/alo/issues/5)
 
