@@ -11,7 +11,7 @@ para quem contribui e uma seção de problemas comuns.
 > **Resumo em quatro comandos** (depois de instalar os pré-requisitos):
 >
 > ```sh
-> pnpm install     # dependências Node (alo-id, ferramentas de teste)
+> pnpm install     # dependências Node (alo-id, site, ferramentas de teste)
 > make up          # sobe o servidor local em http://localhost:8080
 > make smoke       # dois usuários entram e trocam uma mensagem criptografada
 > make app-web     # abre o app no Chrome
@@ -107,9 +107,12 @@ flutter doctor               # confere tudo de uma vez
 
 ```
 alo/
+├── README.md                   o que é o Alô, situação, começo rápido
+├── CONTRIBUTING.md             como contribuir: primeiros passos, issues, pull requests
+├── CODE_OF_CONDUCT.md          código de conduta
 ├── Makefile                    atalhos: make up, make test, make app-web, make app-apk…
 ├── package.json                workspace pnpm (Node 26, pnpm 10.32.1)
-├── pnpm-workspace.yaml         pacotes do workspace: services/* e tools/*
+├── pnpm-workspace.yaml         pacotes do workspace: services/*, tools/* e site
 ├── server/                     a pilha do servidor em Docker Compose
 │   ├── compose.yaml            todos os serviços, redes e portas
 │   ├── caddy/Caddyfile         proxy reverso: decide qual serviço atende cada caminho
@@ -119,7 +122,7 @@ alo/
 │   ├── scripts/check.sh        testes de aceitação contra a pilha rodando
 │   └── data/                   gerado: segredos (.env), banco do alo-id, mídia, chaves. Fora do git
 ├── services/
-│   └── alo-id/               serviço de entrada por telefone (código SMS → login Matrix), em TypeScript
+│   └── alo-id/                 serviço de entrada por telefone (código SMS → login Matrix), em TypeScript
 │       ├── src/                código: rotas, OTP, contas, diretório de contatos, cliente admin do Synapse
 │       └── test/               testes com node:test
 ├── tools/
@@ -134,17 +137,26 @@ alo/
 │   ├── android/                projeto Android: flavors fdroid e play, assinatura
 │   ├── web/                    página e ícones da versão web (web/pkg é gerado)
 │   └── assets/                 fontes e marca
+├── site/                       o site usealo.app, um Worker da Cloudflare (guia em site/LEIAME.md)
+│   ├── public/                 HTML, CSS, JS, imagens e vídeo
+│   ├── src/                    o Worker: formulários, validação, convites, cabeçalhos de segurança
+│   ├── migrations/             tabelas do banco D1
+│   └── test/                   testes com node:test
 └── docs/
     ├── design/                 documento de arquitetura
     ├── imagens/                capturas de tela e logo usados na documentação
-    ├── alo-id-api.md         API do alo-id
+    ├── README.md               índice da documentação e glossário
+    ├── alo-id-api.md           API do alo-id
     ├── desenvolvimento.md      este guia
-    └── operacao.md             como operar um servidor em produção
+    ├── operacao.md             como operar um servidor em produção
+    ├── perguntas-frequentes.md perguntas frequentes, para todos
+    ├── roadmap.md              etapas M1 a M7 e o que vem depois
+    └── seguranca-e-privacidade.md  o que o servidor vê e o que não vê
 ```
 
 Outros documentos: [README do app](../app/README.md),
-[API do alo-id](alo-id-api.md), [operação em produção](operacao.md) e a
-[arquitetura](design/2026-10-24-architecture.md).
+[API do alo-id](alo-id-api.md), [operação em produção](operacao.md), o
+[site](../site/LEIAME.md) e a [arquitetura](design/2026-10-24-architecture.md).
 
 ---
 
@@ -529,7 +541,7 @@ O servidor nunca manda o conteúdo da mensagem no push. Sem um distribuidor inst
 
 | Comando | O que roda | Precisa da pilha? |
 |---|---|---|
-| `make test` | todos os testes de unidade: `pnpm -r test` (alo-id) e `flutter test` (app) | não |
+| `make test` | todos os testes de unidade: `pnpm -r test` (alo-id e site) e `flutter test` (app) | não |
 | `pnpm --filter alo-id test` | só os testes do alo-id (81 hoje) | não |
 | `make app-test` | testes de unidade e de widget do app (185 hoje) | não |
 | `cd app && flutter analyze` | análise estática do Dart (lints do `analysis_options.yaml`) | não |
@@ -769,7 +781,10 @@ make up && ./server/scripts/check.sh && make smoke     # se mexeu no servidor
 make app-e2e-web                                       # se mexeu no app
 ```
 
-As tarefas abertas estão nas issues do GitHub, por marco (M4 a M7).
+As tarefas abertas estão nas [issues do GitHub](https://github.com/kaiomp/alo/issues), por
+marco (M4 a M7); as boas para começar levam o rótulo `good first issue`. O passo a passo de
+branch e pull request, quem pode ajudar e onde conversar estão em
+[Como contribuir](../CONTRIBUTING.md).
 
 ---
 

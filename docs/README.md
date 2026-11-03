@@ -4,6 +4,7 @@
 
 Este é o mapa de toda a documentação do Alô, o mensageiro livre, aberto e com criptografia de
 ponta a ponta feito para o Brasil. Comece pelo documento que combina com o que você procura.
+Quem chegou para ajudar começa pelo [guia de contribuição](../CONTRIBUTING.md).
 
 ## Por onde começar
 
@@ -14,6 +15,7 @@ flowchart TD
   inicio --> q2["Minhas mensagens<br/>estão seguras?"]
   inicio --> q3["Quero rodar ou<br/>contribuir com o código"]
   inicio --> q4["Quero operar<br/>um servidor"]
+  inicio --> q5["Quero ajudar<br/>o projeto"]
 
   q1 --> d1["README do projeto"]
   q1 --> d2["Roadmap"]
@@ -26,6 +28,9 @@ flowchart TD
   q3 --> d8["API do alo-id"]
   q4 --> d9["Operação"]
   q4 --> d6
+  q5 --> d10["Como contribuir"]
+  q5 --> d11["Código de conduta"]
+  q5 --> d5
 ```
 
 ## Todos os documentos
@@ -36,7 +41,14 @@ flowchart TD
 |---|---|
 | [README do projeto](../README.md) | O que é o Alô, por que existe, telas, status e começo rápido. |
 | [Perguntas frequentes](perguntas-frequentes.md) | Respostas diretas, sem jargão: o governo pode ler minhas mensagens? E se eu perder o celular? Por que número de telefone? Quem paga os servidores? |
-| [Roadmap](roadmap.md) | As etapas M1 a M7: o que está pronto, o que vem a seguir e as ideias para depois do lançamento. |
+| [Roadmap](roadmap.md) | As etapas M1 a M7: o que está pronto, o que vem a seguir, as abas novas (hoje protótipo) e as ideias para depois do lançamento. |
+
+### Para quem quer ajudar
+
+| Documento | O que tem nele |
+|---|---|
+| [Como contribuir](../CONTRIBUTING.md) | Quem pode ajudar (dev, QA, design, comunicação, jurídico, Voz), primeiros passos, como pegar uma tarefa, branch e pull request, onde conversar. |
+| [Código de conduta](../CODE_OF_CONDUCT.md) | Como nos tratamos e como relatar um problema. |
 
 ### Para parceiros, financiadores e auditores
 
@@ -51,7 +63,8 @@ flowchart TD
 |---|---|
 | [Desenvolvimento](desenvolvimento.md) | Preparar o ambiente, subir o servidor local, rodar o app, testes e como contribuir. |
 | [App Alô](../app/README.md) | O app Flutter: rodar no Android e no Chrome, testes, mapa do código, contatos, notificações e builds de release (F-Droid e Play). |
-| [API do alo-id](alo-id-api.md) | As rotas do serviço de entrada: código por SMS, busca de contatos e redefinição de identidade, com erros e limites. |
+| [API do alo-id](alo-id-api.md) | As rotas do serviço de entrada: código por SMS, busca de contatos, redefinição de identidade, PIN da conta, remoção de aparelhos e vinculação por QR, com erros e limites. |
+| [Site usealo.app](../site/LEIAME.md) | O site público e o formulário de inscrição: estrutura, rodar no computador, publicar no Worker da Cloudflare. |
 
 ### Para quem vai operar um servidor
 
